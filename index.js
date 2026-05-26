@@ -26,7 +26,7 @@ const userId = document.querySelector('#userId');
 const pictureUrl = document.querySelector('#pictureUrl');
 const displayName = document.querySelector('#displayName');
 const statusMessage = document.querySelector('#statusMessage');
-const phone = document.querySelector('#phone');
+const phoneInput = document.querySelector('#phoneInput');
 
 // QR element
 const code = document.querySelector('#code');
@@ -74,9 +74,18 @@ async function getUserProfile() {
     const userEmail = decodedIDToken ? (decodedIDToken.email || 'ไม่พบอีเมล') : 'ไม่พบอีเมล';
     email.innerHTML = '<b>email:</b> ' + userEmail;
 
-    // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ต้องเปิดสิทธิ์ scope: phone ใน LINE Console)
-    const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || 'ไม่พบเบอร์โทรศัพท์') : 'ไม่พบเบอร์โทรศัพท์';
-    phone.innerHTML = '<b>phone:</b> ' + userPhone;
+    // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (หากเป็นบัญชีองค์กรที่มี LINE Profile+)
+    const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
+    if (userPhone) {
+      phoneInput.value = userPhone;
+    }
+
+    // อัปเดตข้อมูลเบอร์โทรศัพท์เมื่อมีการพิมพ์กรอกใหม่
+    phoneInput.addEventListener('input', () => {
+      if (userProfileData) {
+        userProfileData.phone = phoneInput.value;
+      }
+    });
 
     // Save profile data for sending later
     userProfileData = {
