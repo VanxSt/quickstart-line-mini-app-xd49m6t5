@@ -98,7 +98,7 @@ async function getUserProfile() {
 
 async function saveDataAutomatically() {
   if (!userProfileData) {
-    alert('ไม่สามารถดึงข้อมูลโปรไฟล์ได้');
+    console.warn('ไม่สามารถดึงข้อมูลโปรไฟล์เพื่อบันทึกอัตโนมัติได้');
     return;
   }
 
@@ -113,24 +113,24 @@ async function saveDataAutomatically() {
     
     const result = await response.json();
     if (result.status === 'success') {
-       alert('ระบบส่งข้อมูลเข้า Sheet สำเร็จ!');
+       console.log('ระบบส่งข้อมูลเข้า Sheet สำเร็จ (อัตโนมัติ)');
     } else {
-       alert('ส่งข้อมูลได้ แต่ Google Script แจ้งว่า: ' + JSON.stringify(result));
+       console.warn('ส่งข้อมูลได้ แต่ Google Script แจ้งว่า: ' + JSON.stringify(result));
     }
   } catch (error) {
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ (อาจเป็นเพราะ URL Google Script ผิด หรือยังไม่ได้ Deploy สิทธิ์ Everyone): ' + error.message);
+    console.error('เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อบันทึกอัตโนมัติ: ' + error.message);
   }
 }
 
 if (btnSaveData) {
   btnSaveData.addEventListener('click', async () => {
     if (!userProfileData) {
-      alert('ยังไม่ได้โหลดข้อมูลโปรไฟล์');
+      console.warn('ยังไม่ได้โหลดข้อมูลโปรไฟล์');
       return;
     }
 
     if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') {
-      alert('กรุณาใส่ Web App URL ของ Google Apps Script ในไฟล์ index.js ก่อน');
+      console.error('กรุณาใส่ Web App URL ของ Google Apps Script ในไฟล์ index.js ก่อน');
       return;
     }
 
@@ -148,16 +148,24 @@ if (btnSaveData) {
 
       const result = await response.json();
       if (result.status === 'success') {
-        alert('บันทึกข้อมูลสำเร็จ!');
+        console.log('บันทึกข้อมูลสำเร็จ!');
+        btnSaveData.textContent = 'บันทึกสำเร็จ! ✓';
+        btnSaveData.style.backgroundColor = '#2e7d32'; // Green feedback
       } else {
-        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        btnSaveData.textContent = 'เกิดข้อผิดพลาด ✗';
+        btnSaveData.style.backgroundColor = '#c62828'; // Red feedback
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      btnSaveData.textContent = 'เกิดข้อผิดพลาด ✗';
+      btnSaveData.style.backgroundColor = '#c62828'; // Red feedback
     } finally {
-      btnSaveData.textContent = 'บันทึกข้อมูลลูกค้า';
-      btnSaveData.disabled = false;
+      setTimeout(() => {
+        btnSaveData.textContent = 'บันทึกข้อมูลลูกค้า';
+        btnSaveData.style.backgroundColor = '#4CAF50'; // Reset color
+        btnSaveData.disabled = false;
+      }, 2500);
     }
   });
 }
