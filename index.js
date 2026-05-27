@@ -26,6 +26,7 @@ const userId = document.querySelector('#userId');
 const pictureUrl = document.querySelector('#pictureUrl');
 const displayName = document.querySelector('#displayName');
 const statusMessage = document.querySelector('#statusMessage');
+const phone = document.querySelector('#phone');
 
 // QR element
 const code = document.querySelector('#code');
@@ -73,12 +74,17 @@ async function getUserProfile() {
     const userEmail = decodedIDToken ? (decodedIDToken.email || 'ไม่พบอีเมล') : 'ไม่พบอีเมล';
     email.innerHTML = '<b>email:</b> ' + userEmail;
 
+    // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+)
+    const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
+    phone.innerHTML = '<b>phone:</b> ' + (userPhone || 'ไม่พบเบอร์โทรศัพท์ (กรุณาขออนุมัติสิทธิ์ LINE Profile+)');
+
     // Save profile data for sending later
     userProfileData = {
       userId: profile.userId,
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       email: userEmail,
+      phone: userPhone,
       pictureUrl: profile.pictureUrl
     };
 
