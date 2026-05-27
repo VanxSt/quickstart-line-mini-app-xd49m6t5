@@ -1,18 +1,78 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover"
-    />
-    <title>หน้าถัดไป</title>
-  </head>
-  <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-    <h2>นี่คือหน้าถัดไป</h2>
-    <p>คุณสามารถใส่เนื้อหาอื่นๆ ได้ที่หน้านี้</p>
-    <button onclick="window.history.back()" style="padding: 10px 20px; font-size: 16px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">
-      กลับหน้าแรก
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+  <title>เมนูพรีเมียมแค็ตตาล็อก</title>
+  <link rel="stylesheet" href="catalog.css" />
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <button class="btn-back" id="btnBack" aria-label="ย้อนกลับ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
     </button>
-  </body>
+    <div class="navbar-brand">
+      <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&q=80&w=100" alt="Cafe Logo" class="navbar-logo">
+      <span class="navbar-title">THE LUXE CAFE</span>
+    </div>
+    <div style="width: 36px;"></div> <!-- Spacer to center the logo -->
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>Premium Menu</h1>
+    <p>คัดสรรวัตถุดิบชั้นเลิศ รังสรรค์ความอร่อยในทุกเมนู</p>
+  </section>
+
+  <!-- Search Section -->
+  <section class="search-container">
+    <div class="search-box">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." />
+    </div>
+  </section>
+
+  <!-- Category Tabs -->
+  <nav class="categories">
+    <button class="category-tab active" data-category="all">ทั้งหมด</button>
+    <button class="category-tab" data-category="coffee">กาแฟ</button>
+    <button class="category-tab" data-category="tea">ชา</button>
+    <button class="category-tab" data-category="bakery">เบเกอรี่</button>
+  </nav>
+
+  <!-- Products Grid -->
+  <main class="products-grid" id="productsGrid">
+    <!-- Products will be dynamically rendered here by catalog.js -->
+  </main>
+
+  <!-- Product Detail Modal -->
+  <div class="modal" id="productModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span style="font-weight: 600; color: var(--text-light);">รายละเอียดสินค้า</span>
+        <button class="btn-close" id="btnCloseModal" aria-label="ปิด">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div id="modalContentBody">
+        <!-- Content will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="catalog.js"></script>
+</body>
 </html>
