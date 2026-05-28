@@ -367,6 +367,13 @@ body {
 }
 
 /* Phone Input Styling */
+.phone-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
 .phone-input {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -388,4 +395,29 @@ body {
 
 .phone-input::placeholder {
   color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-save-inline {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(197, 168, 128, 0.2);
+}
+
+.btn-save-inline:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(197, 168, 128, 0.35);
+}
+
+.btn-save-inline:active {
+  transform: translateY(0);
 }
