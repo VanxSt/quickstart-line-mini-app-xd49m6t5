@@ -1,60 +1,67 @@
-// Mock Product Data
-const PRODUCTS = [
-  {
-    id: 1,
-    name: 'Iced Caramel Macchiato',
-    category: 'coffee',
-    price: 120,
-    desc: 'เอสเพรสโซ่รสเข้มข้นผสมกับนมสดและไซรัปวานิลลา ราดด้วยซอสคาราเมลหอมหวานสูตรพิเศษ เสิร์ฟพร้อมน้ำแข็งเย็นชื่นใจ เหมาะสำหรับผู้ที่ชอบรสชาติหอมหวานมันกลมกล่อม',
-    img: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=600',
-    tag: 'ยอดนิยม'
-  },
-  {
-    id: 2,
-    name: 'Premium Hot Matcha Latte',
-    category: 'tea',
-    price: 95,
-    desc: 'มัทฉะแท้นำเข้าจากเมืองอูจิ ประเทศญี่ปุ่น ชงอย่างพิถีพิถันผสมผสานกับนมสดแท้ 100% สตรีมจนร้อนได้ที่ ตกแต่งด้วยลาเต้อาร์ตที่งดงาม ให้กลิ่นอายความหอมแบบมัทฉะแท้ๆ ในทุกอึก',
-    img: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&q=80&w=600',
-    tag: 'แนะนำ'
-  },
-  {
-    id: 3,
-    name: 'Signature Almond Croissant',
-    category: 'bakery',
-    price: 110,
-    desc: 'ครัวซองต์เนยสดฝรั่งเศส นำไปอบซ้ำแบบ Double-baked สอดไส้ด้วยครีมอัลมอนด์ฟรานจิเพนรสเข้มข้น โรยด้วยแผ่นอัลมอนด์อบกรอบและน้ำตาลไอซิ่ง กรอบนอกนุ่มใน หอมมันอร่อย',
-    img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=600',
-    tag: 'อบสดใหม่'
-  },
-  {
-    id: 4,
-    name: 'Cold Brew Citrus Coffee',
-    category: 'coffee',
-    price: 105,
-    desc: 'กาแฟสกัดเย็นแบบพรีเมียมบ่มนานกว่า 18 ชั่วโมง เพื่อดึงรสชาติความหวานตามธรรมชาติของเมล็ดกาแฟ ผสมผสานอย่างลงตัวกับน้ำส้มยูสุคั้นสด ให้ความสดชื่นตื่นตัวในยามบ่าย',
-    img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=600',
-    tag: 'สดชื่น'
-  },
-  {
-    id: 5,
-    name: 'Dirty Coffee',
-    category: 'coffee',
-    price: 115,
-    desc: 'นมสดเย็นจัดสูตรลับเฉพาะของทางร้าน เสิร์ฟแยกชั้นราดทับด้วยช็อตเอสเพรสโซ่ Ristretto ที่เข้มข้น ดื่มด่ำรสสัมผัสที่แตกต่างระหว่างความร้อนและความเย็นในแก้วเดียว',
-    img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
-    tag: 'ขวัญใจคอกาแฟ'
-  },
-  {
-    id: 6,
-    name: 'Premium Earl Grey Tea',
-    category: 'tea',
-    price: 85,
-    desc: 'ชาเอิร์ลเกรย์เกรดพรีเมียม แช่ในน้ำร้อนอุณหภูมิที่พอดีเพื่อให้กลิ่นส้มมะกรูดอันเป็นเอกลักษณ์ฟุ้งกระจายอย่างนุ่มนวล เสิร์ฟในรูปแบบกาน้ำชาแก้วหรูหรา',
-    img: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&q=80&w=600',
-    tag: 'ออร์แกนิก'
-  }
-];
+// Replace with your deployed Google Apps Script Web App URL
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWK4anEfZyl979XuTghcPpbS0zKyRNCM2cjAloh6nW5adAHD8o-dyKnK7LBpSMWAHL/exec';
+
+let PRODUCTS = [];
+
+// Mock Product Data for Fallback
+function getMockProducts() {
+  return [
+    {
+      id: 1,
+      name: 'Iced Caramel Macchiato',
+      category: 'coffee',
+      price: 120,
+      desc: 'เอสเพรสโซ่รสเข้มข้นผสมกับนมสดและไซรัปวานิลลา ราดด้วยซอสคาราเมลหอมหวานสูตรพิเศษ เสิร์ฟพร้อมน้ำแข็งเย็นชื่นใจ เหมาะสำหรับผู้ที่ชอบรสชาติหอมหวานมันกลมกล่อม',
+      img: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=600',
+      tag: 'ยอดนิยม'
+    },
+    {
+      id: 2,
+      name: 'Premium Hot Matcha Latte',
+      category: 'tea',
+      price: 95,
+      desc: 'มัทฉะแท้นำเข้าจากเมืองอูจิ ประเทศญี่ปุ่น ชงอย่างพิถีพิถันผสมผสานกับนมสดแท้ 100% สตรีมจนร้อนได้ที่ ตกแต่งด้วยลาเต้อาร์ตที่งดงาม ให้กลิ่นอายความหอมแบบมัทฉะแท้ๆ ในทุกอึก',
+      img: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&q=80&w=600',
+      tag: 'แนะนำ'
+    },
+    {
+      id: 3,
+      name: 'Signature Almond Croissant',
+      category: 'bakery',
+      price: 110,
+      desc: 'ครัวซองต์เนยสดฝรั่งเศส นำไปอบซ้ำแบบ Double-baked สอดไส้ด้วยครีมอัลมอนด์ฟรานจิเพนรสเข้มข้น โรยด้วยแผ่นอัลมอนด์อบกรอบและน้ำตาลไอซิ่ง กรอบนอกนุ่มใน หอมมันอร่อย',
+      img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=600',
+      tag: 'อบสดใหม่'
+    },
+    {
+      id: 4,
+      name: 'Cold Brew Citrus Coffee',
+      category: 'coffee',
+      price: 105,
+      desc: 'กาแฟสกัดเย็นแบบพรีเมียมบ่มนานกว่า 18 ชั่วโมง เพื่อดึงรสชาติความหวานตามธรรมชาติของเมล็ดกาแฟ ผสมผสานอย่างลงตัวกับน้ำส้มยูสุคั้นสด ให้ความสดชื่นตื่นตัวในยามบ่าย',
+      img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=600',
+      tag: 'สดชื่น'
+    },
+    {
+      id: 5,
+      name: 'Dirty Coffee',
+      category: 'coffee',
+      price: 115,
+      desc: 'นมสดเย็นจัดสูตรลับเฉพาะของทางร้าน เสิร์ฟแยกชั้นราดทับด้วยช็อตเอสเพรสโซ่ Ristretto ที่เข้มข้น ดื่มด่ำรสสัมผัสที่แตกต่างระหว่างความร้อนและความเย็นในแก้วเดียว',
+      img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
+      tag: 'ขวัญใจคอกาแฟ'
+    },
+    {
+      id: 6,
+      name: 'Premium Earl Grey Tea',
+      category: 'tea',
+      price: 85,
+      desc: 'ชาเอิร์ลเกรย์เกรดพรีเมียม แช่ในน้ำร้อนอุณหภูมิที่พอดีเพื่อให้กลิ่นส้มมะกรูดอันเป็นเอกลักษณ์ฟุ้งกระจายอย่างนุ่มนวล เสิร์ฟในรูปแบบกาน้ำชาแก้วหรูหรา',
+      img: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&q=80&w=600',
+      tag: 'ออร์แกนิก'
+    }
+  ];
+}
 
 // App State
 let currentCategory = 'all';
@@ -351,6 +358,40 @@ btnBack.addEventListener('click', () => {
 // Start application
 async function start() {
   await initLiff();
+  
+  // แสดง Loading state ระหว่างดึงข้อมูลสินค้าจาก Sheets
+  if (productsGrid) {
+    productsGrid.innerHTML = `
+      <div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-light);">
+        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block;">
+          <line x1="12" y1="2" x2="12" y2="6"></line>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+          <line x1="2" y1="12" x2="6" y2="12"></line>
+          <line x1="18" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+        </svg>
+        <span>กำลังโหลดเมนูสินค้าสุดพิเศษ...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      PRODUCTS = data.products || [];
+    } else {
+      console.warn('Google Sheets error, using mock data:', data.message);
+      PRODUCTS = getMockProducts();
+    }
+  } catch (error) {
+    console.error('Fetch error, using mock data:', error);
+    PRODUCTS = getMockProducts();
+  }
+
   renderProducts();
   
   // Check if URL has a specific product query param (deep link)

@@ -9,7 +9,9 @@ function doPost(e) {
     var phone = data.phone; // ดึงค่าเบอร์โทรศัพท์ที่ LINE ส่งมาอัตโนมัติ
     var pictureUrl = data.pictureUrl;
     
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    // ดึงจากชีตชื่อ "Members" หรือใช้ชีตแรกหากหาไม่เจอ
+    var sheet = ss.getSheetByName("Members") || ss.getSheets()[0];
     
     // ตรวจสอบว่าผู้ใช้คนนี้เคยลงทะเบียนหรือมีข้อมูลอยู่แล้วหรือไม่ (ค้นหาจาก userId ในคอลัมน์ B)
     var dataRange = sheet.getDataRange();
@@ -58,14 +60,59 @@ function doPost(e) {
 
 function doGet(e) {
   try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = e.parameter.action;
+    
+    // Action 1: ดึงข้อมูลสินค้าจากชีต Catalog
+    if (action === 'getProducts') {
+      var catalogSheet = ss.getSheetByName("Catalog");
+      if (!catalogSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: 'error', 
+          message: 'ไม่พบชีตชื่อ "Catalog" กรุณาสร้างชีตใหม่ชื่อ "Catalog" ใน Google Sheets ของคุณก่อนครับ' 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var values = catalogSheet.getDataRange().getValues();
+      var products = [];
+      
+      // ข้ามหัวตาราง (แถว 1 / index 0)
+      for (var i = 1; i < values.length; i++) {
+        var row = values[i];
+        if (!row[0] && row[0] !== 0) continue; // ข้ามถ้ารหัสสินค้าว่างเปล่า
+        
+        products.push({
+          id: Number(row[0]),
+          name: String(row[1] || ''),
+          category: String(row[2] || ''),
+          price: Number(row[3] || 0),
+          desc: String(row[4] || ''),
+          img: String(row[5] || ''),
+          tag: String(row[6] || ''),
+          status: String(row[7] || 'active')
+        });
+      }
+      
+      // กรองสินค้าที่สถานะไม่ใช่ inactive
+      var activeProducts = products.filter(function(p) {
+        return p.status.toLowerCase() !== 'inactive';
+      });
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: 'success', 
+        products: activeProducts 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Action 2: ดึงข้อมูลสมาชิก (เดิม)
     var userId = e.parameter.userId;
     if (!userId) {
       return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Missing userId' }))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var dataRange = sheet.getDataRange();
+    var memberSheet = ss.getSheetByName("Members") || ss.getSheets()[0];
+    var dataRange = memberSheet.getDataRange();
     var values = dataRange.getValues();
     
     for (var i = 1; i < values.length; i++) {
