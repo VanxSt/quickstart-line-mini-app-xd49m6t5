@@ -19,7 +19,7 @@ const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
 let userProfileData = null;
 
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWQHNgwWaManwhA0avqcKWmLOcHUB82c1gIBF74WlxMFiS1dEmxfzt6Vc3XwcJGO1x/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSusSD8iCKf42eV1CT13cdeIFnPYlvJ2ewJOv8O6-Evd-0tuIsJ9KLFqq4iuzMWPp5/exec';
 
 // Profile elements
 const email = document.querySelector('#email');
@@ -57,14 +57,14 @@ async function getUserProfile() {
     userId.textContent = profile.userId;
     statusMessage.textContent = profile.statusMessage || 'ยินดีต้อนรับสมาชิกใหม่';
     displayName.textContent = profile.displayName;
-    
+
     const decodedIDToken = liff.getDecodedIDToken();
     const userEmail = decodedIDToken ? (decodedIDToken.email || 'ไม่พบอีเมล') : 'ไม่พบอีเมล';
     email.textContent = userEmail;
 
     // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+)
     const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
-    
+
     // ค้นหาเบอร์โทรศัพท์ที่เคยบันทึกไว้ใน Google Sheets
     let savedPhone = '';
     try {
@@ -112,12 +112,12 @@ async function saveDataAutomatically() {
       },
       body: JSON.stringify(userProfileData)
     });
-    
+
     const result = await response.json();
     if (result.status === 'success') {
-       console.log('ระบบส่งข้อมูลเข้า Sheet สำเร็จ (อัตโนมัติ)');
+      console.log('ระบบส่งข้อมูลเข้า Sheet สำเร็จ (อัตโนมัติ)');
     } else {
-       console.warn('ส่งข้อมูลได้ แต่ Google Script แจ้งว่า: ' + JSON.stringify(result));
+      console.warn('ส่งข้อมูลได้ แต่ Google Script แจ้งว่า: ' + JSON.stringify(result));
     }
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อบันทึกอัตโนมัติ: ' + error.message);
@@ -128,7 +128,7 @@ function showToast(message, isSuccess = true) {
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
   const toastIcon = toast.querySelector('.toast-icon');
-  
+
   toastMessage.textContent = message;
   if (isSuccess) {
     toastIcon.textContent = '✓';
@@ -137,7 +137,7 @@ function showToast(message, isSuccess = true) {
     toastIcon.textContent = '✗';
     toastIcon.style.backgroundColor = '#c62828';
   }
-  
+
   toast.classList.add('show');
   setTimeout(() => {
     toast.classList.remove('show');
@@ -227,7 +227,7 @@ if (btnSavePhoneInline) {
       showToast('ยังไม่ได้โหลดข้อมูลโปรไฟล์', false);
       return;
     }
-    
+
     // อัปเดตข้อมูลเบอร์โทรศัพท์ล่าสุด
     userProfileData.phone = phone.value;
 
