@@ -31,7 +31,7 @@ function doPost(e) {
       sheet.getRange(foundRow, 4).setValue(statusMessage);
       sheet.getRange(foundRow, 5).setValue(email);
       sheet.getRange(foundRow, 6).setValue(pictureUrl); // คอลัมน์ F (6) คือ Picture URL
-      sheet.getRange(foundRow, 7).setValue(phone);      // คอลัมน์ G (7) คือ Phone
+      sheet.getRange(foundRow, 7).setNumberFormat('@').setValue(phone); // คอลัมน์ G (7) คือ Phone (ตั้งค่าเป็นข้อความเพื่อรักษาเลข 0)
     } else {
       // หากยังไม่มีข้อมูลผู้ใช้รายนี้ ให้ทำการบันทึกแถวใหม่
       sheet.appendRow([
@@ -41,8 +41,11 @@ function doPost(e) {
         statusMessage, 
         email, 
         pictureUrl, // คอลัมน์ F (6) คือ Picture URL
-        phone       // คอลัมน์ G (7) คือ Phone
+        ""          // ใส่ค่าว่างไว้ก่อนในคอลัมน์ G (7) เพื่อตั้งค่ารูปแบบทีหลัง
       ]);
+      // ดึงแถวล่าสุดแล้วตั้งค่าเบอร์โทรศัพท์เป็น Plain Text เพื่อไม่ให้เลข 0 นำหน้าหาย
+      var lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow, 7).setNumberFormat('@').setValue(phone);
     }
     
     return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))

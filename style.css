@@ -393,6 +393,20 @@ body {
   box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.2);
 }
 
+.phone-input.readonly-mode {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: default;
+  box-shadow: none;
+}
+
+.phone-input.readonly-mode:focus {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
 .phone-input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }

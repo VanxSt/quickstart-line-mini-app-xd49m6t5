@@ -41,6 +41,34 @@ async function main() {
   getUserProfile();
 }
 main();
+// ฟังก์ชันจัดการสถานะช่องกรอกเบอร์โทร (ReadOnly หรือแก้ไขได้)
+function setPhoneInputState(isReadOnly) {
+  if (!phone || !btnSavePhoneInline) return;
+  
+  if (isReadOnly) {
+    phone.readOnly = true;
+    phone.classList.add('readonly-mode');
+    btnSavePhoneInline.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+    `;
+    btnSavePhoneInline.title = 'แก้ไขเบอร์โทร';
+    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #4a4a4a 0%, #2b2b2b 100%)';
+  } else {
+    phone.readOnly = false;
+    phone.classList.remove('readonly-mode');
+    phone.focus();
+    btnSavePhoneInline.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    `;
+    btnSavePhoneInline.title = 'บันทึกเบอร์โทร';
+    btnSavePhoneInline.style.background = 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)';
+  }
+}
 
 async function getUserProfile() {
   try {
@@ -79,6 +107,13 @@ async function getUserProfile() {
 
     const finalPhone = savedPhone || userPhone;
     phone.value = finalPhone;
+
+    // ตั้งค่าสถานะการกรอกของเบอร์โทร
+    if (finalPhone) {
+      setPhoneInputState(true);
+    } else {
+      setPhoneInputState(false);
+    }
 
     // Save profile data for sending later
     userProfileData = {
@@ -151,6 +186,11 @@ if (btnSaveData) {
       return;
     }
 
+    // อัปเดตเบอร์โทรล่าสุดจากช่องกรอกข้อมูลลงใน object ก่อนส่งไปเซฟ
+    if (phone) {
+      userProfileData.phone = phone.value;
+    }
+
     if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') {
       showToast('กรุณาตั้งค่า Web App URL ของ Google Sheets', false);
       return;
@@ -183,6 +223,9 @@ if (btnSaveData) {
       const result = await response.json();
       if (result.status === 'success') {
         showToast('อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว!', true);
+        if (phone && phone.value) {
+          setPhoneInputState(true);
+        }
       } else {
         showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', false);
       }
@@ -228,6 +271,12 @@ if (btnSavePhoneInline) {
       return;
     }
 
+    // หากปัจจุบันเป็นโหมด ReadOnly (แสดงรูปดินสอ) ให้กดเพื่อเข้าสู่โหมดแก้ไข
+    if (phone.readOnly) {
+      setPhoneInputState(false);
+      return;
+    }
+
     // อัปเดตข้อมูลเบอร์โทรศัพท์ล่าสุด
     userProfileData.phone = phone.value;
 
@@ -257,6 +306,7 @@ if (btnSavePhoneInline) {
       const result = await response.json();
       if (result.status === 'success') {
         showToast('บันทึกเบอร์โทรศัพท์สำเร็จ!', true);
+        setPhoneInputState(true); // บันทึกเสร็จแล้วล็อกทันที
       } else {
         showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', false);
       }
@@ -264,14 +314,16 @@ if (btnSavePhoneInline) {
       console.error('Error saving phone inline:', error);
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', false);
     } finally {
-      setTimeout(() => {
-        btnSavePhoneInline.disabled = false;
+      btnSavePhoneInline.disabled = false;
+      // การแสดงผลปุ่มจะถูกควบคุมโดย setPhoneInputState หากบันทึกสำเร็จ
+      // แต่ถ้าบันทึกไม่สำเร็จและช่องกรอกยังเขียนได้ ให้คืนค่ารูปเครื่องหมายถูก
+      if (!phone.readOnly) {
         btnSavePhoneInline.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         `;
-      }, 1000);
+      }
     }
   });
 }
