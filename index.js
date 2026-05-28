@@ -19,7 +19,7 @@ const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
 let userProfileData = null;
 
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSusSD8iCKf42eV1CT13cdeIFnPYlvJ2ewJOv8O6-Evd-0tuIsJ9KLFqq4iuzMWPp5/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWK4anEfZyl979XuTghcPpbS0zKyRNCM2cjAloh6nW5adAHD8o-dyKnK7LBpSMWAHL/exec';
 
 // Profile elements
 const email = document.querySelector('#email');
@@ -44,7 +44,7 @@ main();
 // ฟังก์ชันจัดการสถานะช่องกรอกเบอร์โทร (ReadOnly หรือแก้ไขได้)
 function setPhoneInputState(isReadOnly) {
   if (!phone || !btnSavePhoneInline) return;
-  
+
   if (isReadOnly) {
     phone.readOnly = true;
     phone.classList.add('readonly-mode');
