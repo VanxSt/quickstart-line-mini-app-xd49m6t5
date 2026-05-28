@@ -18,7 +18,7 @@ function doPost(e) {
     
     // วนลูปค้นหาจากแถวที่ 2 (ดัชนี 1) เป็นต้นไปเพื่อข้ามแถวหัวตาราง (Header)
     for (var i = 1; i < values.length; i++) {
-      if (values[i][1] === userId) { // คอลัมน์ที่ 2 (ดัชนี 1) คือ userId
+      if (values[i][1] && values[i][1].toString().trim() === userId.toString().trim()) { // คอลัมน์ที่ 2 คือ userId
         foundRow = i + 1; // ดัชนีแถวใน getRange เริ่มต้นที่ 1
         break;
       }
@@ -30,8 +30,8 @@ function doPost(e) {
       sheet.getRange(foundRow, 3).setValue(displayName);
       sheet.getRange(foundRow, 4).setValue(statusMessage);
       sheet.getRange(foundRow, 5).setValue(email);
-      sheet.getRange(foundRow, 6).setValue(phone);
-      sheet.getRange(foundRow, 7).setValue(pictureUrl);
+      sheet.getRange(foundRow, 6).setValue(pictureUrl); // คอลัมน์ F (6) คือ Picture URL
+      sheet.getRange(foundRow, 7).setValue(phone);      // คอลัมน์ G (7) คือ Phone
     } else {
       // หากยังไม่มีข้อมูลผู้ใช้รายนี้ ให้ทำการบันทึกแถวใหม่
       sheet.appendRow([
@@ -40,8 +40,8 @@ function doPost(e) {
         displayName, 
         statusMessage, 
         email, 
-        phone, 
-        pictureUrl
+        pictureUrl, // คอลัมน์ F (6) คือ Picture URL
+        phone       // คอลัมน์ G (7) คือ Phone
       ]);
     }
     
@@ -66,7 +66,7 @@ function doGet(e) {
     var values = dataRange.getValues();
     
     for (var i = 1; i < values.length; i++) {
-      if (values[i][1] === userId) { // คอลัมน์ที่ 2 (ดัชนี 1) คือ userId
+      if (values[i][1] && values[i][1].toString().trim() === userId.toString().trim()) { // คอลัมน์ที่ 2 คือ userId
         var userData = {
           status: 'success',
           found: true,
@@ -74,8 +74,8 @@ function doGet(e) {
           displayName: values[i][2],
           statusMessage: values[i][3],
           email: values[i][4],
-          phone: values[i][5],
-          pictureUrl: values[i][6]
+          pictureUrl: values[i][5], // คอลัมน์ F (ดัชนี 5) คือ Picture URL
+          phone: values[i][6]       // คอลัมน์ G (ดัชนี 6) คือ Phone
         };
         return ContentService.createTextOutput(JSON.stringify(userData))
           .setMimeType(ContentService.MimeType.JSON);
