@@ -52,3 +52,40 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+function doGet(e) {
+  try {
+    var userId = e.parameter.userId;
+    if (!userId) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Missing userId' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var dataRange = sheet.getDataRange();
+    var values = dataRange.getValues();
+    
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][1] === userId) { // คอลัมน์ที่ 2 (ดัชนี 1) คือ userId
+        var userData = {
+          status: 'success',
+          found: true,
+          userId: values[i][1],
+          displayName: values[i][2],
+          statusMessage: values[i][3],
+          email: values[i][4],
+          phone: values[i][5],
+          pictureUrl: values[i][6]
+        };
+        return ContentService.createTextOutput(JSON.stringify(userData))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', found: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}

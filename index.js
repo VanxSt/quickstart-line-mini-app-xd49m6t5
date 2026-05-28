@@ -63,7 +63,21 @@ async function getUserProfile() {
 
     // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+)
     const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
-    phone.value = userPhone;
+    
+    // ค้นหาเบอร์โทรศัพท์ที่เคยบันทึกไว้ใน Google Sheets
+    let savedPhone = '';
+    try {
+      const dbResponse = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${profile.userId}`);
+      const dbData = await dbResponse.json();
+      if (dbData.status === 'success' && dbData.found) {
+        savedPhone = dbData.phone || '';
+      }
+    } catch (dbError) {
+      console.error('Error fetching phone from database:', dbError);
+    }
+
+    const finalPhone = savedPhone || userPhone;
+    phone.value = finalPhone;
 
     // Save profile data for sending later
     userProfileData = {
@@ -71,7 +85,7 @@ async function getUserProfile() {
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       email: userEmail,
-      phone: userPhone,
+      phone: finalPhone,
       pictureUrl: profile.pictureUrl
     };
 
