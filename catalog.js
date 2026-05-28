@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWK4anEfZyl979XuTghcPpbS0zKyRNCM2cjAloh6nW5adAHD8o-dyKnK7LBpSMWAHL/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWJzbFePEBpgz0Vfp1t7bdosRkKLWKU5BifWXdt1mN7Zg9efpqAZrnRLYiHbOUm2VF/exec';
 
 let PRODUCTS = [];
 
@@ -111,11 +111,16 @@ function renderProducts() {
   }
 
   filtered.forEach(product => {
+    // ตรวจสอบว่าสินค้ามีรูปภาพหรือไม่ หากไม่มีให้ใช้รูปภาพสัญลักษณ์ No Image สำรองแทน
+    const productImg = (product.img && product.img.trim().startsWith('http')) 
+      ? product.img.trim() 
+      : 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+
     const card = document.createElement('div');
     card.className = 'product-card animate-fade-in';
     card.innerHTML = `
       <div class="product-img-wrapper">
-        <img class="product-img" src="${product.img}" alt="${product.name}" loading="lazy">
+        <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy">
         ${product.tag ? `<span class="product-tag">${product.tag}</span>` : ''}
       </div>
       <div class="product-info">
@@ -150,8 +155,12 @@ function openProductDetail(id) {
 
   activeProduct = product;
   
+  const productImg = (product.img && product.img.trim().startsWith('http')) 
+    ? product.img.trim() 
+    : 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+
   modalContent.innerHTML = `
-    <img class="modal-img" src="${product.img}" alt="${product.name}">
+    <img class="modal-img" src="${productImg}" alt="${product.name}">
     <h2 class="modal-title">${product.name}</h2>
     <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
     <p class="modal-desc">${product.desc}</p>
