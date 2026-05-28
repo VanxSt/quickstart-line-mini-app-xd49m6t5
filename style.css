@@ -365,3 +365,27 @@ body {
 .animate-spin {
   animation: spin 1s linear infinite;
 }
+
+/* Phone Input Styling */
+.phone-input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+  transition: var(--transition);
+}
+
+.phone-input:focus {
+  border-color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.2);
+}
+
+.phone-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}

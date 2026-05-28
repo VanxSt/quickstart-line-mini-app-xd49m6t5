@@ -63,7 +63,7 @@ async function getUserProfile() {
 
     // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+)
     const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
-    phone.textContent = userPhone || 'ไม่พบเบอร์โทรศัพท์';
+    phone.value = userPhone;
 
     // Save profile data for sending later
     userProfileData = {
@@ -186,6 +186,14 @@ if (btnSaveData) {
         `;
         btnSaveData.disabled = false;
       }, 1500);
+    }
+  });
+}
+
+if (phone) {
+  phone.addEventListener('input', () => {
+    if (userProfileData) {
+      userProfileData.phone = phone.value;
     }
   });
 }
