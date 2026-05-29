@@ -3,6 +3,29 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWJzbFePEBpg
 
 let PRODUCTS = [];
 
+// Helper สำหรับปรับแต่ง URL รูปภาพเพื่อประสิทธิภาพสูงสุด (แปลงเป็น WebP และย่อขนาดหากมี CDN รองรับ)
+function getOptimizedImageUrl(url) {
+  if (!url || !url.trim().startsWith('http')) {
+    return 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+  }
+  
+  let optimizedUrl = url.trim();
+  
+  // สำหรับรูป Unsplash (ที่ใช้ในระบบและตัวอย่าง) บังคับแปลงเป็น WebP และจำกัดความกว้างสูงสุด 600px
+  if (optimizedUrl.includes('unsplash.com')) {
+    optimizedUrl = optimizedUrl.replace(/auto=[a-z]+/g, 'format=webp');
+    optimizedUrl = optimizedUrl.replace(/fm=[a-z]+/g, 'fm=webp');
+    if (!optimizedUrl.includes('format=webp') && !optimizedUrl.includes('fm=webp')) {
+      optimizedUrl += (optimizedUrl.includes('?') ? '&' : '?') + 'format=webp';
+    }
+    if (!optimizedUrl.includes('w=')) {
+      optimizedUrl += '&w=600';
+    }
+  }
+  
+  return optimizedUrl;
+}
+
 // Mock Product Data for Fallback
 function getMockProducts() {
   return [
@@ -119,10 +142,8 @@ function renderProducts() {
   const toRender = filtered.slice(0, visibleLimit);
 
   toRender.forEach(product => {
-    // ตรวจสอบว่าสินค้ามีรูปภาพหรือไม่ หากไม่มีให้ใช้รูปภาพสัญลักษณ์ No Image สำรองแทน
-    const productImg = (product.img && product.img.trim().startsWith('http')) 
-      ? product.img.trim() 
-      : 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+    // ดึง URL รูปภาพที่ปรับประสิทธิภาพแล้ว (รองรับ WebP อัตโนมัติสำหรับ CDN)
+    const productImg = getOptimizedImageUrl(product.img);
 
     const card = document.createElement('div');
     card.className = 'product-card animate-fade-in';
@@ -172,9 +193,7 @@ function openProductDetail(id) {
 
   activeProduct = product;
   
-  const productImg = (product.img && product.img.trim().startsWith('http')) 
-    ? product.img.trim() 
-    : 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+  const productImg = getOptimizedImageUrl(product.img);
 
   modalContent.innerHTML = `
     <img class="modal-img" src="${productImg}" alt="${product.name}">
