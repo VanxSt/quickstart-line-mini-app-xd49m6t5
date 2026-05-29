@@ -90,43 +90,78 @@ async function getUserProfile() {
     const userEmail = decodedIDToken ? (decodedIDToken.email || 'ไม่พบอีเมล') : 'ไม่พบอีเมล';
     email.textContent = userEmail;
 
-    // ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+)
+    // 1. ดึงเบอร์โทรศัพท์จาก Decoded ID Token (ผ่าน LINE Profile+ หากได้รับอนุญาต)
     const userPhone = decodedIDToken ? (decodedIDToken.phone || decodedIDToken.phone_number || '') : '';
 
-    // ค้นหาเบอร์โทรศัพท์ที่เคยบันทึกไว้ใน Google Sheets
-    let savedPhone = '';
-    try {
-      const dbResponse = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${profile.userId}`);
-      const dbData = await dbResponse.json();
-      if (dbData.status === 'success' && dbData.found) {
-        savedPhone = dbData.phone || '';
-      }
-    } catch (dbError) {
-      console.error('Error fetching phone from database:', dbError);
-    }
+    // 2. ดึงเบอร์โทรศัพท์จาก Cache เพื่อความเร็วสูงสุด (0 มิลลิวินาที)
+    const cachedPhone = localStorage.getItem('user_phone_' + profile.userId);
+    const initialPhone = cachedPhone || userPhone;
 
-    const finalPhone = savedPhone || userPhone;
-    phone.value = finalPhone;
+    phone.value = initialPhone;
 
-    // ตั้งค่าสถานะการกรอกของเบอร์โทร
-    if (finalPhone) {
+    // ตั้งค่าสถานะการกรอกของเบอร์โทรทันทีเพื่อไม่ให้ผู้ใช้รอ
+    if (initialPhone) {
       setPhoneInputState(true);
     } else {
       setPhoneInputState(false);
     }
 
-    // Save profile data for sending later
+    // เซ็ตข้อมูลโปรไฟล์ขั้นต้นก่อนดึงข้อมูลเพิ่มจากชีต
     userProfileData = {
       userId: profile.userId,
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       email: userEmail,
-      phone: finalPhone,
+      phone: initialPhone,
       pictureUrl: profile.pictureUrl
     };
 
-    // ทำการบันทึกข้อมูลอัตโนมัติเมื่อโหลดโปรไฟล์เสร็จ
-    saveDataAutomatically();
+    // 3. ดึงข้อมูลจริงจาก Google Sheets เป็นเบื้องหลัง (Non-blocking / Background Fetch)
+    fetch(`${GOOGLE_SCRIPT_URL}?userId=${profile.userId}`)
+      .then(response => response.json())
+      .then(dbData => {
+        if (dbData.status === 'success') {
+          if (dbData.found) {
+            const savedPhone = dbData.phone || '';
+            
+            // หากเบอร์ที่ดึงมาไม่ตรงกับที่แสดงผลอยู่ ให้ปรับปรุงใน UI และอัปเดตแคช
+            if (savedPhone !== initialPhone) {
+              phone.value = savedPhone;
+              userProfileData.phone = savedPhone;
+              
+              if (savedPhone) {
+                setPhoneInputState(true);
+                localStorage.setItem('user_phone_' + profile.userId, savedPhone);
+              } else {
+                setPhoneInputState(false);
+                localStorage.removeItem('user_phone_' + profile.userId);
+              }
+            }
+
+            // ตรวจสอบว่าโปรไฟล์ใน Sheets มีการเปลี่ยนจาก LINE หรือไม่เพื่อหลีกเลี่ยงการ POST บันทึกซ้ำโดยไม่จำเป็น
+            const isProfileChanged = 
+              dbData.displayName !== profile.displayName ||
+              dbData.statusMessage !== (profile.statusMessage || 'ยินดีต้อนรับสมาชิกใหม่') ||
+              dbData.email !== userEmail ||
+              dbData.pictureUrl !== profile.pictureUrl ||
+              savedPhone !== initialPhone;
+
+            if (isProfileChanged) {
+              saveDataAutomatically();
+            }
+          } else {
+            // กรณีไม่เคยมีประวัติในชีตเลย (สมาชิกใหม่) ให้เริ่มบันทึกเข้าระบบ
+            if (initialPhone) {
+              localStorage.setItem('user_phone_' + profile.userId, initialPhone);
+            }
+            saveDataAutomatically();
+          }
+        }
+      })
+      .catch(dbError => {
+        console.error('Error fetching phone from database in background:', dbError);
+      });
+
   } catch (error) {
     console.error('Error getting profile:', error);
     showToast('เกิดข้อผิดพลาดในการดึงข้อมูลโปรไฟล์', false);
@@ -224,6 +259,7 @@ if (btnSaveData) {
       if (result.status === 'success') {
         showToast('อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว!', true);
         if (phone && phone.value) {
+          localStorage.setItem('user_phone_' + userProfileData.userId, phone.value);
           setPhoneInputState(true);
         }
       } else {
@@ -306,6 +342,9 @@ if (btnSavePhoneInline) {
       const result = await response.json();
       if (result.status === 'success') {
         showToast('บันทึกเบอร์โทรศัพท์สำเร็จ!', true);
+        if (phone.value) {
+          localStorage.setItem('user_phone_' + userProfileData.userId, phone.value);
+        }
         setPhoneInputState(true); // บันทึกเสร็จแล้วล็อกทันที
       } else {
         showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', false);
