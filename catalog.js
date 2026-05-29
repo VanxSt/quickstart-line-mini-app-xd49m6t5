@@ -67,6 +67,7 @@ function getMockProducts() {
 let currentCategory = 'all';
 let searchQuery = '';
 let activeProduct = null;
+let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
 
 // Elements
 const productsGrid = document.getElementById('productsGrid');
@@ -114,7 +115,10 @@ function renderProducts() {
     return;
   }
 
-  filtered.forEach(product => {
+  // แสดงผลเฉพาะจำนวนสินค้าที่จำกัดไว้ (Lazy Rendering / Pagination)
+  const toRender = filtered.slice(0, visibleLimit);
+
+  toRender.forEach(product => {
     // ตรวจสอบว่าสินค้ามีรูปภาพหรือไม่ หากไม่มีให้ใช้รูปภาพสัญลักษณ์ No Image สำรองแทน
     const productImg = (product.img && product.img.trim().startsWith('http')) 
       ? product.img.trim() 
@@ -371,6 +375,7 @@ async function orderProduct(product) {
 // Event Listeners
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
+  visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อค้นหาใหม่
   renderProducts();
 });
 
@@ -382,9 +387,22 @@ categoryTabs.forEach(tab => {
     // Add to current
     tab.classList.add('active');
     currentCategory = tab.dataset.category;
+    visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อเปลี่ยนหมวดหมู่
     
     renderProducts();
   });
+});
+
+// Infinite Scroll - โหลดสินค้าเพิ่มทีละ 20 รายการเมื่อเลื่อนจอถึงด้านล่าง
+window.addEventListener('scroll', () => {
+  // หากแสดงสินค้าครบทั้งหมดในระบบแล้ว ไม่ต้องทำอะไรเพิ่ม
+  if (visibleLimit >= PRODUCTS.length) return;
+
+  // ตรวจสอบว่าเลื่อนหน้าจอลงมาใกล้ถึงด้านล่าง (ห่างจากขอบล่าง 250px)
+  if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 250) {
+    visibleLimit += 20;
+    renderProducts();
+  }
 });
 
 // Modal Close logic
@@ -419,8 +437,26 @@ btnBack.addEventListener('click', () => {
 async function start() {
   await initLiff();
   
-  // แสดง Loading state ระหว่างดึงข้อมูลสินค้าจาก Sheets
-  if (productsGrid) {
+  // 1. ตรวจสอบข้อมูลจาก Cache เพื่อการโหลดที่เร็วที่สุดในหลักมิลลิวินาที (Stale-While-Revalidate)
+  const cachedData = localStorage.getItem('catalog_products_cache');
+  const cachedTime = localStorage.getItem('catalog_products_cache_time');
+  const cacheDuration = 3 * 60 * 1000; // ตั้งค่า Cache ให้มีอายุ 3 นาที
+  
+  let hasValidCache = false;
+  if (cachedData && cachedTime) {
+    try {
+      PRODUCTS = JSON.parse(cachedData);
+      if (PRODUCTS.length > 0) {
+        hasValidCache = true;
+        renderProducts(); // เรนเดอร์สินค้าจากแคชทันทีโดยไม่ต้องรอโหลดจากอินเทอร์เน็ต
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached products:', e);
+    }
+  }
+
+  // 2. หากยังไม่มีข้อมูลในแคชเลย ให้แสดงตัวหมุนโหลดก่อน
+  if (!hasValidCache && productsGrid) {
     productsGrid.innerHTML = `
       <div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-light);">
         <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block;">
@@ -438,22 +474,41 @@ async function start() {
     `;
   }
 
-  try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
-    const data = await response.json();
-    if (data.status === 'success') {
-      PRODUCTS = data.products || [];
-    } else {
-      console.warn('Google Sheets error, using mock data:', data.message);
-      PRODUCTS = getMockProducts();
+  // 3. ดึงข้อมูลจริงจาก Google Sheets เบื้องหลัง (หรือดึงหลักหากไม่มีแคช)
+  const shouldFetchFresh = !hasValidCache || (Date.now() - Number(cachedTime) > cacheDuration);
+  
+  if (shouldFetchFresh) {
+    try {
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        const freshProducts = data.products || [];
+        
+        // เปรียบเทียบข้อมูลแคชเดิมและข้อมูลใหม่ หากต่างกันค่อยเรนเดอร์ใหม่ป้องกันหน้าจอกระตุก
+        if (JSON.stringify(freshProducts) !== JSON.stringify(PRODUCTS)) {
+          PRODUCTS = freshProducts;
+          renderProducts();
+        }
+        
+        // บันทึกลงใน Cache
+        localStorage.setItem('catalog_products_cache', JSON.stringify(PRODUCTS));
+        localStorage.setItem('catalog_products_cache_time', String(Date.now()));
+      } else {
+        console.warn('Google Sheets error, using fallback:', data.message);
+        if (PRODUCTS.length === 0) {
+          PRODUCTS = getMockProducts();
+          renderProducts();
+        }
+      }
+    } catch (error) {
+      console.error('Fetch error, using fallback:', error);
+      if (PRODUCTS.length === 0) {
+        PRODUCTS = getMockProducts();
+        renderProducts();
+      }
     }
-  } catch (error) {
-    console.error('Fetch error, using mock data:', error);
-    PRODUCTS = getMockProducts();
   }
 
-  renderProducts();
-  
   // Check if URL has a specific product query param (deep link)
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('product');
