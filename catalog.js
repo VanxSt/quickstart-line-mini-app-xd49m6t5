@@ -75,6 +75,10 @@ const categoryTabs = document.querySelectorAll('.category-tab');
 const modal = document.getElementById('productModal');
 const modalContent = document.getElementById('modalContentBody');
 const btnBack = document.getElementById('btnBack');
+const lightbox = document.getElementById('imageLightbox');
+const lightboxImg = document.getElementById('lightboxImage');
+const lightboxCaption = document.getElementById('lightboxCaption');
+const btnCloseLightbox = document.getElementById('btnCloseLightbox');
 
 // Initialize LIFF
 async function initLiff() {
@@ -137,6 +141,15 @@ function renderProducts() {
         </div>
       </div>
     `;
+
+    // Click on product image specifically opens the fullscreen lightbox
+    const imgWrapper = card.querySelector('.product-img-wrapper');
+    if (imgWrapper) {
+      imgWrapper.addEventListener('click', (e) => {
+        e.stopPropagation(); // Don't trigger the card's click event (which opens the detail modal)
+        openLightbox(productImg, product.name);
+      });
+    }
 
     // Click on card to open detail modal
     card.addEventListener('click', (e) => {
@@ -201,6 +214,14 @@ function openProductDetail(id) {
     orderProduct(product);
   });
 
+  // Click on the modal image to view in fullscreen lightbox
+  const modalImg = modalContent.querySelector('.modal-img');
+  if (modalImg) {
+    modalImg.addEventListener('click', () => {
+      openLightbox(productImg, product.name);
+    });
+  }
+
   modal.classList.add('show');
 }
 
@@ -208,6 +229,22 @@ function openProductDetail(id) {
 function closeModal() {
   modal.classList.remove('show');
   activeProduct = null;
+}
+
+// Open Lightbox for Fullscreen Image View
+function openLightbox(imgSrc, name) {
+  if (lightboxImg && lightboxCaption && lightbox) {
+    lightboxImg.src = imgSrc;
+    lightboxCaption.textContent = name;
+    lightbox.classList.add('show');
+  }
+}
+
+// Close Lightbox
+function closeLightbox() {
+  if (lightbox) {
+    lightbox.classList.remove('show');
+  }
 }
 
 // Share Product via LIFF
@@ -358,6 +395,20 @@ modal.addEventListener('click', (e) => {
 });
 
 document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+
+// Lightbox Close logic
+if (lightbox) {
+  lightbox.addEventListener('click', (e) => {
+    // Close if clicking outside the image (i.e. background)
+    if (e.target === lightbox || e.target.classList.contains('lightbox-content')) {
+      closeLightbox();
+    }
+  });
+}
+
+if (btnCloseLightbox) {
+  btnCloseLightbox.addEventListener('click', closeLightbox);
+}
 
 // Back to Home
 btnBack.addEventListener('click', () => {
