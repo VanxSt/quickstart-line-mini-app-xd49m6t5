@@ -176,10 +176,10 @@ function saveImageToDrive(base64Data, filename) {
     var decoded = Utilities.base64Decode(rawData);
     var blob = Utilities.newBlob(decoded, contentType, filename);
     
-    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 18UZh85_zf8jDnIOuQbO1unIipxjCqO1y)
+    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 1tz1eqHdVCpp82epEoRxKl84OmzUM7Str)
     var file;
     try {
-      var folder = DriveApp.getFolderById("18UZh85_zf8jDnIOuQbO1unIipxjCqO1y");
+      var folder = DriveApp.getFolderById("1tz1eqHdVCpp82epEoRxKl84OmzUM7Str");
       file = folder.createFile(blob);
     } catch (e) {
       // หากเกิดปัญหาการเข้าถึงโฟลเดอร์ให้บันทึกในหน้าหลัก (Root) ของ Google Drive แทนเพื่อไม่ให้ออเดอร์พัง
@@ -308,4 +308,10 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ฟังก์ชันสำหรับใช้กดรันครั้งแรกในตัวแก้ไขสคริปต์ เพื่อยอมรับสิทธิ์การใช้งาน Google Drive (DriveApp)
+function triggerAuthorization() {
+  DriveApp.getRootFolder();
+  Logger.log("อนุมัติสิทธิ์การเข้าถึง Google Drive สำเร็จแล้ว!");
 }
