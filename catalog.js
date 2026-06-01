@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWJzbFePEBpgz0Vfp1t7bdosRkKLWKU5BifWXdt1mN7Zg9efpqAZrnRLYiHbOUm2VF/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1VbfwgGIGyMD03GHmrdkfanOEFJm1-hEVlR6bwe3EUqSeE9p2_0LSmWA5mIkCbHz-/exec';
 
 let PRODUCTS = [];
 
@@ -8,9 +8,9 @@ function getOptimizedImageUrl(url) {
   if (!url || !url.trim().startsWith('http')) {
     return 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
   }
-  
+
   let optimizedUrl = url.trim();
-  
+
   // สำหรับรูป Unsplash (ที่ใช้ในระบบและตัวอย่าง) บังคับแปลงเป็น WebP และจำกัดความกว้างสูงสุด 600px
   if (optimizedUrl.includes('unsplash.com')) {
     optimizedUrl = optimizedUrl.replace(/auto=[a-z]+/g, 'format=webp');
@@ -22,7 +22,7 @@ function getOptimizedImageUrl(url) {
       optimizedUrl += '&w=600';
     }
   }
-  
+
   return optimizedUrl;
 }
 
@@ -87,10 +87,16 @@ function getMockProducts() {
 }
 
 // App State
+// กำหนดเบอร์ PromptPay สำหรับสร้าง QR Code สแกนจ่าย (กรุณาเปลี่ยนเป็นเบอร์ร้านค้าจริง)
+const SHOP_PROMPTPAY_ID = '0957579454';
+
 let currentCategory = 'all';
 let searchQuery = '';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
+let cart = [];
+let slipBase64 = "";
+let currentMemberInfo = { displayName: '', phone: '' };
 
 // Elements
 const productsGrid = document.getElementById('productsGrid');
@@ -104,11 +110,37 @@ const lightboxImg = document.getElementById('lightboxImage');
 const lightboxCaption = document.getElementById('lightboxCaption');
 const btnCloseLightbox = document.getElementById('btnCloseLightbox');
 
+// Elements (Cart & Checkout)
+const btnCart = document.getElementById('btnCart');
+const cartBadge = document.getElementById('cartBadge');
+const cartModal = document.getElementById('cartModal');
+const btnCloseCartModal = document.getElementById('btnCloseCartModal');
+const btnContinueShopping = document.getElementById('btnContinueShopping');
+const btnGoToCheckout = document.getElementById('btnGoToCheckout');
+const checkoutModal = document.getElementById('checkoutModal');
+const btnCloseCheckoutModal = document.getElementById('btnCloseCheckoutModal');
+const btnGetLocation = document.getElementById('btnGetLocation');
+const btnTriggerUpload = document.getElementById('btnTriggerUpload');
+const btnRemoveSlip = document.getElementById('btnRemoveSlip');
+const btnSubmitOrder = document.getElementById('btnSubmitOrder');
+const slipInput = document.getElementById('slipInput');
+const slipPreviewContainer = document.getElementById('slipPreviewContainer');
+const slipPreviewImg = document.getElementById('slipPreviewImg');
+
 // Initialize LIFF
 async function initLiff() {
   try {
     await liff.init({ liffId: '2010169713-ao0dtP3R' });
     console.log('LIFF Initialized in catalog page');
+    if (liff.isLoggedIn()) {
+      try {
+        const profile = await liff.getProfile();
+        currentMemberInfo.displayName = profile.displayName;
+        await fetchMemberInfo(profile.userId);
+      } catch (profileError) {
+        console.error('Error fetching LINE profile on init:', profileError);
+      }
+    }
   } catch (error) {
     console.error('LIFF initialization failed:', error);
   }
@@ -120,8 +152,8 @@ function renderProducts() {
 
   const filtered = PRODUCTS.filter(product => {
     const matchesCategory = currentCategory === 'all' || product.category === currentCategory;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          product.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.desc.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -192,7 +224,7 @@ function openProductDetail(id) {
   if (!product) return;
 
   activeProduct = product;
-  
+
   const productImg = getOptimizedImageUrl(product.img);
 
   modalContent.innerHTML = `
@@ -206,21 +238,20 @@ function openProductDetail(id) {
         <span class="modal-price">฿${product.price}</span>
       </div>
       <div class="modal-buttons">
-        <button class="btn-outline" id="btnShareProduct">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="btn-outline" id="btnShareProduct" style="padding: 10px;" title="แชร์">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="18" cy="5" r="3"></circle>
             <circle cx="6" cy="12" r="3"></circle>
             <circle cx="18" cy="19" r="3"></circle>
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
           </svg>
-          แชร์
         </button>
-        <button class="btn-primary" id="btnOrderProduct">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4-4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
+        <button class="btn-outline" id="btnOrderProduct">
           สอบถาม
+        </button>
+        <button class="btn-primary" id="btnAddToCart">
+          🛒 ใส่ตะกร้า
         </button>
       </div>
     </div>
@@ -235,6 +266,12 @@ function openProductDetail(id) {
   document.getElementById('btnOrderProduct').addEventListener('click', (e) => {
     e.stopPropagation();
     orderProduct(product);
+  });
+
+  document.getElementById('btnAddToCart').addEventListener('click', (e) => {
+    e.stopPropagation();
+    addToCart(product);
+    closeModal();
   });
 
   // Click on the modal image to view in fullscreen lightbox
@@ -368,7 +405,7 @@ async function shareProduct(product) {
 // Order Product (Open LINE official account chat or send Message)
 async function orderProduct(product) {
   const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n☕ ${product.name}\n💰 ราคา: ฿${product.price}`;
-  
+
   // แปลง URL รูปภาพสินค้าให้เป็น URL แบบสัมบูรณ์ (Absolute URL) สำหรับส่งทางไลน์
   let productImg = getOptimizedImageUrl(product.img);
   if (productImg.startsWith('/')) {
@@ -376,10 +413,10 @@ async function orderProduct(product) {
   } else if (!productImg.startsWith('http')) {
     productImg = window.location.origin + '/' + productImg;
   }
-  
+
   // ตรวจสอบความปลอดภัยของ URL รูปภาพ (LINE กำหนดให้ใช้ HTTPS เท่านั้น)
   const isHttpsImage = productImg.startsWith('https://');
-  
+
   if (liff.isInClient()) {
     // 1. กรณี URL รูปภาพเป็น HTTPS และใช้งานได้
     if (isHttpsImage) {
@@ -401,7 +438,7 @@ async function orderProduct(product) {
         console.warn('Failed to send image+text, falling back to text only:', imageError);
       }
     }
-    
+
     // 2. กรณีส่งรูปภาพล้มเหลว หรือรูปภาพไม่เป็น HTTPS (เช่น localhost) -> พยายามส่งเฉพาะข้อความ
     try {
       await liff.sendMessages([
@@ -424,6 +461,569 @@ async function orderProduct(product) {
   }
 }
 
+// --- LOGIC FOR SHOPPING CART & CHECKOUT ---
+
+function loadCart() {
+  try {
+    const savedCart = localStorage.getItem('kuekoonkan_cart');
+    if (savedCart) {
+      cart = JSON.parse(savedCart);
+    }
+  } catch (e) {
+    console.error('Failed to load cart:', e);
+  }
+  updateCartBadge();
+}
+
+function saveCart() {
+  try {
+    localStorage.setItem('kuekoonkan_cart', JSON.stringify(cart));
+  } catch (e) {
+    console.error('Failed to save cart:', e);
+  }
+  updateCartBadge();
+}
+
+function addToCart(product, quantity = 1) {
+  const existingItem = cart.find(item => item.id === product.id);
+  if (existingItem) {
+    existingItem.qty += quantity;
+  } else {
+    cart.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      qty: quantity,
+      img: product.img
+    });
+  }
+  saveCart();
+  alert(`เพิ่ม "${product.name}" ลงในตะกร้าเรียบร้อย!`);
+}
+
+function updateCartItemQty(id, delta) {
+  const item = cart.find(i => i.id === id);
+  if (item) {
+    item.qty += delta;
+    if (item.qty <= 0) {
+      cart = cart.filter(i => i.id !== id);
+    }
+    saveCart();
+    renderCartItems();
+  }
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(i => i.id !== id);
+  saveCart();
+  renderCartItems();
+}
+
+function clearCart() {
+  cart = [];
+  saveCart();
+}
+
+function updateCartBadge() {
+  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  if (cartBadge) {
+    cartBadge.textContent = totalQty;
+    cartBadge.style.display = totalQty > 0 ? 'flex' : 'none';
+  }
+}
+
+function renderCartItems() {
+  const cartBody = document.getElementById('cartModalBody');
+  const totalPriceEl = document.getElementById('cartTotalPrice');
+
+  if (!cartBody) return;
+
+  if (cart.length === 0) {
+    cartBody.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; opacity: 0.5;">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <p>ตะกร้าสินค้าของคุณยังว่างเปล่า</p>
+      </div>
+    `;
+    totalPriceEl.textContent = '฿0';
+    btnGoToCheckout.disabled = true;
+    return;
+  }
+
+  cartBody.innerHTML = '';
+  let total = 0;
+
+  cart.forEach(item => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+
+    const row = document.createElement('div');
+    row.className = 'cart-item';
+    row.innerHTML = `
+      <div class="cart-item-info">
+        <span class="cart-item-title">${item.name}</span>
+        <span class="cart-item-price">฿${item.price} x ${item.qty} = ฿${subtotal}</span>
+      </div>
+      <div class="cart-item-controls">
+        <button class="btn-qty-adjust" onclick="adjustQty(${item.id}, -1)">-</button>
+        <span class="cart-item-qty">${item.qty}</span>
+        <button class="btn-qty-adjust" onclick="adjustQty(${item.id}, 1)">+</button>
+        <button class="btn-cart-remove" onclick="removeCartItem(${item.id})" title="ลบรายการ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    cartBody.appendChild(row);
+  });
+
+  totalPriceEl.textContent = `฿${total}`;
+  btnGoToCheckout.disabled = false;
+}
+
+// Bind to window for inline HTML onclick handlers
+window.adjustQty = function (id, delta) {
+  updateCartItemQty(id, delta);
+};
+
+window.removeCartItem = function (id) {
+  removeFromCart(id);
+};
+
+function openCartModal() {
+  renderCartItems();
+  cartModal.classList.add('show');
+}
+
+function closeCartModal() {
+  cartModal.classList.remove('show');
+}
+
+function openCheckoutModal() {
+  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  document.getElementById('checkoutTotalText').textContent = `฿${totalAmount}`;
+
+  // Prefill default info from member profile
+  document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
+  document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
+
+  // Reset location & slip
+  document.getElementById('gpsLocationLink').value = '';
+  document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
+  document.getElementById('locationStatus').className = 'location-status-badge';
+
+  slipInput.value = '';
+  slipBase64 = "";
+  slipPreviewImg.src = "";
+  slipPreviewContainer.style.display = 'none';
+
+  generatePromptPayQR(totalAmount);
+  validateCheckoutForm();
+
+  checkoutModal.classList.add('show');
+}
+
+function closeCheckoutModal() {
+  checkoutModal.classList.remove('show');
+}
+
+function validateCheckoutForm() {
+  const name = document.getElementById('checkoutName').value.trim();
+  const phone = document.getElementById('checkoutPhone').value.trim();
+  const address = document.getElementById('checkoutAddressDetails').value.trim();
+
+  // Valid if Name, Phone, Address details are filled AND slip image is uploaded
+  const isValid = name !== "" && phone !== "" && address !== "" && slipBase64 !== "";
+  btnSubmitOrder.disabled = !isValid;
+}
+
+async function fetchMemberInfo(userId) {
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${userId}`);
+    const data = await res.json();
+    if (data.status === 'success' && data.found) {
+      currentMemberInfo = {
+        displayName: data.displayName || '',
+        phone: data.phone || ''
+      };
+
+      // Update form fields if elements exist
+      const nameInput = document.getElementById('checkoutName');
+      const phoneInput = document.getElementById('checkoutPhone');
+      if (nameInput) nameInput.value = currentMemberInfo.displayName;
+      if (phoneInput) phoneInput.value = currentMemberInfo.phone;
+    }
+  } catch (e) {
+    console.error('Error fetching member info:', e);
+  }
+}
+
+function generatePromptPayQR(totalAmount) {
+  const qrImg = document.getElementById('qrCodeImg');
+  const qrLoading = document.getElementById('qrLoading');
+
+  if (!SHOP_PROMPTPAY_ID || SHOP_PROMPTPAY_ID === '0800000000') {
+    qrLoading.textContent = '⚠️ ยังไม่ได้กำหนดเบอร์ PromptPay ของร้านค้า';
+    qrImg.style.display = 'none';
+    return;
+  }
+
+  qrLoading.style.display = 'block';
+  qrLoading.textContent = 'กำลังสร้าง QR Code...';
+  qrImg.style.display = 'none';
+
+  const qrUrl = `https://promptpay.io/${SHOP_PROMPTPAY_ID}/${totalAmount}.png`;
+
+  qrImg.onload = () => {
+    qrLoading.style.display = 'none';
+    qrImg.style.display = 'block';
+  };
+  qrImg.onerror = () => {
+    qrLoading.textContent = '⚠️ ไม่สามารถสร้าง QR Code ได้';
+  };
+  qrImg.src = qrUrl;
+}
+
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
+  const flexPayload = {
+    type: "flex",
+    altText: `🧾 ยืนยันการสั่งซื้อใหม่ ${orderId}`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "🛒 สั่งซื้อสินค้าสำเร็จ",
+            weight: "bold",
+            size: "xl",
+            color: "#388BC2"
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            spacing: "sm",
+            contents: [
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "เลขที่สั่งซื้อ",
+                    size: "sm",
+                    color: "#aaaaaa",
+                    flex: 2
+                  },
+                  {
+                    type: "text",
+                    text: orderId,
+                    size: "sm",
+                    color: "#1a202c",
+                    flex: 4,
+                    weight: "bold"
+                  }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "ผู้รับ",
+                    size: "sm",
+                    color: "#aaaaaa",
+                    flex: 2
+                  },
+                  {
+                    type: "text",
+                    text: name,
+                    size: "sm",
+                    color: "#1a202c",
+                    flex: 4
+                  }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "เบอร์ติดต่อ",
+                    size: "sm",
+                    color: "#aaaaaa",
+                    flex: 2
+                  },
+                  {
+                    type: "text",
+                    text: phone,
+                    size: "sm",
+                    color: "#1a202c",
+                    flex: 4
+                  }
+                ]
+              },
+              {
+                type: "separator",
+                margin: "md"
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                margin: "md",
+                contents: [
+                  {
+                    type: "text",
+                    text: "ยอดเงินรวม",
+                    size: "md",
+                    color: "#1a202c",
+                    weight: "bold",
+                    flex: 3
+                  },
+                  {
+                    type: "text",
+                    text: `฿${totalPrice}`,
+                    size: "md",
+                    color: "#388BC2",
+                    weight: "bold",
+                    align: "right",
+                    flex: 3
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "text",
+            text: "เจ้าหน้าที่กำลังตรวจสอบหลักฐานการชำระเงินของคุณ ขอบคุณครับ 😊",
+            size: "xs",
+            color: "#aaaaaa",
+            wrap: true,
+            align: "center"
+          }
+        ]
+      }
+    }
+  };
+
+  try {
+    await liff.sendMessages([flexPayload]);
+  } catch (err) {
+    console.error("Error sending order Flex Message:", err);
+  }
+}
+
+// Event Listeners
+if (btnCart) btnCart.addEventListener('click', openCartModal);
+if (btnCloseCartModal) btnCloseCartModal.addEventListener('click', closeCartModal);
+if (btnContinueShopping) btnContinueShopping.addEventListener('click', closeCartModal);
+if (btnGoToCheckout) btnGoToCheckout.addEventListener('click', () => {
+  closeCartModal();
+  openCheckoutModal();
+});
+if (btnCloseCheckoutModal) btnCloseCheckoutModal.addEventListener('click', closeCheckoutModal);
+
+// Cart Modal Backdrop Close
+if (cartModal) {
+  cartModal.addEventListener('click', (e) => {
+    if (e.target === cartModal) closeCartModal();
+  });
+}
+
+// Checkout Modal Backdrop Close
+if (checkoutModal) {
+  checkoutModal.addEventListener('click', (e) => {
+    if (e.target === checkoutModal) closeCheckoutModal();
+  });
+}
+
+// GPS Location Geolocation Pinning
+if (btnGetLocation) {
+  btnGetLocation.addEventListener('click', () => {
+    const statusBadge = document.getElementById('locationStatus');
+    const gpsLinkInput = document.getElementById('gpsLocationLink');
+
+    statusBadge.textContent = '📍 กำลังดึงพิกัด GPS...';
+    statusBadge.className = 'location-status-badge';
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+          gpsLinkInput.value = mapUrl;
+          statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+          statusBadge.className = 'location-status-badge success';
+          validateCheckoutForm();
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          let errorMsg = 'ไม่สามารถดึงตำแหน่งได้';
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = 'ถูกปฏิเสธการเข้าถึงพิกัด GPS (กรุณาเปิดสิทธิ์ในเครื่องโทรศัพท์)';
+          }
+          statusBadge.textContent = `⚠️ ${errorMsg}`;
+          statusBadge.className = 'location-status-badge';
+          validateCheckoutForm();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      statusBadge.textContent = '⚠️ อุปกรณ์นี้ไม่รองรับการดึงพิกัด GPS';
+      validateCheckoutForm();
+    }
+  });
+}
+
+// Slip upload interactions
+if (btnTriggerUpload) {
+  btnTriggerUpload.addEventListener('click', () => {
+    slipInput.click();
+  });
+}
+
+if (slipInput) {
+  slipInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป (จำกัดไม่เกิน 3MB)');
+      slipInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      slipBase64 = event.target.result;
+      slipPreviewImg.src = slipBase64;
+      slipPreviewContainer.style.display = 'block';
+      validateCheckoutForm();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (btnRemoveSlip) {
+  btnRemoveSlip.addEventListener('click', () => {
+    slipInput.value = '';
+    slipBase64 = "";
+    slipPreviewImg.src = "";
+    slipPreviewContainer.style.display = 'none';
+    validateCheckoutForm();
+  });
+}
+
+// Checkout input validations
+const checkoutName = document.getElementById('checkoutName');
+const checkoutPhone = document.getElementById('checkoutPhone');
+const checkoutAddressDetails = document.getElementById('checkoutAddressDetails');
+
+if (checkoutName) checkoutName.addEventListener('input', validateCheckoutForm);
+if (checkoutPhone) checkoutPhone.addEventListener('input', validateCheckoutForm);
+if (checkoutAddressDetails) checkoutAddressDetails.addEventListener('input', validateCheckoutForm);
+
+// Submit Order to Google Sheets
+if (btnSubmitOrder) {
+  btnSubmitOrder.addEventListener('click', async () => {
+    const name = checkoutName.value.trim();
+    const phone = checkoutPhone.value.trim();
+    const addressDetails = checkoutAddressDetails.value.trim();
+    const gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+
+    const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+    btnSubmitOrder.disabled = true;
+    btnSubmitOrder.textContent = '⏳ กำลังบันทึกคำสั่งซื้อ...';
+
+    let userId = 'web-test-user';
+    let displayName = name;
+
+    if (liff.isLoggedIn()) {
+      try {
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+        displayName = profile.displayName;
+      } catch (e) {
+        console.error('Error getting LINE profile during checkout:', e);
+      }
+    }
+
+    const orderPayload = {
+      action: 'createOrder',
+      userId: userId,
+      displayName: displayName,
+      phone: phone,
+      gpsLocation: gpsLocation,
+      addressDetails: addressDetails,
+      totalPrice: totalAmount,
+      slipImage: slipBase64,
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        qty: item.qty
+      }))
+    };
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify(orderPayload)
+      });
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        alert(`🎉 สั่งซื้อสินค้าสำเร็จ!\nหมายเลขสั่งซื้อของคุณคือ: ${result.orderId}`);
+
+        // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
+        if (liff.isInClient()) {
+          await sendOrderFlexMessage(result.orderId, name, phone, totalAmount);
+        }
+
+        // เคลียร์ตะกร้าสินค้า
+        clearCart();
+
+        // ปิด Modal
+        closeCheckoutModal();
+        closeCartModal();
+      } else {
+        alert('❌ การสั่งซื้อล้มเหลว: ' + result.message);
+        btnSubmitOrder.disabled = false;
+        btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+      btnSubmitOrder.disabled = false;
+      btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+    }
+  });
+}
+
 // Event Listeners
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
@@ -435,12 +1035,12 @@ categoryTabs.forEach(tab => {
   tab.addEventListener('click', (e) => {
     // Remove active from all
     categoryTabs.forEach(t => t.classList.remove('active'));
-    
+
     // Add to current
     tab.classList.add('active');
     currentCategory = tab.dataset.category;
     visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อเปลี่ยนหมวดหมู่
-    
+
     renderProducts();
   });
 });
@@ -488,12 +1088,13 @@ btnBack.addEventListener('click', () => {
 // Start application
 async function start() {
   await initLiff();
-  
+  loadCart();
+
   // 1. ตรวจสอบข้อมูลจาก Cache เพื่อการโหลดที่เร็วที่สุดในหลักมิลลิวินาที (Stale-While-Revalidate)
   const cachedData = localStorage.getItem('catalog_products_cache');
   const cachedTime = localStorage.getItem('catalog_products_cache_time');
   const cacheDuration = 3 * 60 * 1000; // ตั้งค่า Cache ให้มีอายุ 3 นาที
-  
+
   let hasValidCache = false;
   if (cachedData && cachedTime) {
     try {
@@ -528,20 +1129,20 @@ async function start() {
 
   // 3. ดึงข้อมูลจริงจาก Google Sheets เบื้องหลัง (หรือดึงหลักหากไม่มีแคช)
   const shouldFetchFresh = !hasValidCache || (Date.now() - Number(cachedTime) > cacheDuration);
-  
+
   if (shouldFetchFresh) {
     try {
       const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
       const data = await response.json();
       if (data.status === 'success') {
         const freshProducts = data.products || [];
-        
+
         // เปรียบเทียบข้อมูลแคชเดิมและข้อมูลใหม่ หากต่างกันค่อยเรนเดอร์ใหม่ป้องกันหน้าจอกระตุก
         if (JSON.stringify(freshProducts) !== JSON.stringify(PRODUCTS)) {
           PRODUCTS = freshProducts;
           renderProducts();
         }
-        
+
         // บันทึกลงใน Cache
         localStorage.setItem('catalog_products_cache', JSON.stringify(PRODUCTS));
         localStorage.setItem('catalog_products_cache_time', String(Date.now()));
