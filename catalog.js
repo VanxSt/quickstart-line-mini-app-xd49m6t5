@@ -220,7 +220,7 @@ function openProductDetail(id) {
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4-4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
-          สอบถาม / สั่งซื้อ
+          สอบถาม
         </button>
       </div>
     </div>
@@ -367,27 +367,39 @@ async function shareProduct(product) {
 
 // Order Product (Open LINE official account chat or send Message)
 async function orderProduct(product) {
-  const message = `สนใจสั่งซื้อสินค้าชิ้นนี้ครับ:\n☕ ${product.name}\n💰 ราคา: ฿${product.price}\n\nกรุณาแจ้งช่องทางการชำระเงินและข้อมูลจัดส่งด้วยครับ`;
+  const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n☕ ${product.name}\n💰 ราคา: ฿${product.price}`;
+  
+  // แปลง URL รูปภาพสินค้าให้เป็น URL แบบสัมบูรณ์ (Absolute URL) สำหรับส่งทางไลน์
+  let productImg = getOptimizedImageUrl(product.img);
+  if (productImg.startsWith('/')) {
+    productImg = window.location.origin + productImg;
+  } else if (!productImg.startsWith('http')) {
+    productImg = window.location.origin + '/' + productImg;
+  }
   
   if (liff.isInClient()) {
     try {
       await liff.sendMessages([
         {
+          type: 'image',
+          originalContentUrl: productImg,
+          previewImageUrl: productImg
+        },
+        {
           type: 'text',
           text: message
         }
       ]);
-      alert('ส่งคำสั่งซื้อของคุณไปยังห้องแชทแล้ว!');
+      alert('ส่งรูปภาพและคำสอบถามของคุณไปยังห้องแชทแล้ว!');
     } catch (error) {
       console.error('Error sending message:', error);
-      // Fallback: copy order template or open window
       navigator.clipboard.writeText(message);
-      alert('คัดลอกข้อความสั่งซื้อแล้ว คุณสามารถวาง (Paste) ในแชทได้ทันทีครับ:\n\n' + message);
+      alert('คัดลอกข้อความสอบถามแล้ว คุณสามารถวาง (Paste) ในแชทได้ทันทีครับ:\n\n' + message);
     }
   } else {
     // Web fallback
     navigator.clipboard.writeText(message);
-    alert('คัดลอกข้อความสั่งซื้อแล้ว คุณสามารถเปิดแชท LINE เพื่อวางสั่งซื้อได้เลยครับ:\n\n' + message);
+    alert('คัดลอกข้อความสอบถามแล้ว คุณสามารถเปิดแชท LINE เพื่อวางสอบถามได้เลยครับ:\n\n' + message);
   }
 }
 
