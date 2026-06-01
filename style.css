@@ -1,20 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary-color: #c5a880; /* Warm Bronze */
-  --primary-dark: #a88b62;
-  --primary-light: #e2d5c3;
-  --bg-color: #faf8f5; /* Light Ivory */
-  --text-dark: #2c2620; /* Dark Charcoal */
-  --text-light: #7c7267;
+  --primary-color: #388BC2; /* Minimal Blue */
+  --primary-dark: #2972a0;
+  --primary-light: #e4f0f8;
+  --bg-color: #f7fafc; /* Minimal Light Gray/Blue */
+  --text-dark: #1a202c; /* Modern Dark Gray */
+  --text-light: #4a5568;
   --card-bg: #ffffff;
-  --border-color: #eae5df;
+  --border-color: #edf2f7;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(255, 255, 255, 0.5);
   --font-family: 'Prompt', sans-serif;
-  --shadow-sm: 0 4px 6px -1px rgba(197, 168, 128, 0.1), 0 2px 4px -1px rgba(197, 168, 128, 0.06);
-  --shadow-md: 0 10px 15px -3px rgba(197, 168, 128, 0.15), 0 4px 6px -2px rgba(197, 168, 128, 0.05);
-  --shadow-lg: 0 20px 25px -5px rgba(197, 168, 128, 0.2), 0 10px 10px -5px rgba(197, 168, 128, 0.1);
+  --shadow-sm: 0 4px 6px -1px rgba(56, 139, 194, 0.08), 0 2px 4px -1px rgba(56, 139, 194, 0.04);
+  --shadow-md: 0 10px 15px -3px rgba(56, 139, 194, 0.12), 0 4px 6px -2px rgba(56, 139, 194, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(56, 139, 194, 0.15), 0 10px 10px -5px rgba(56, 139, 194, 0.08);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -26,7 +26,7 @@
 }
 
 body {
-  background: radial-gradient(circle at top right, #fffdfa, #f3ede2);
+  background: radial-gradient(circle at top right, #ffffff, #f0f4f8);
   color: var(--text-dark);
   min-height: 100vh;
   display: flex;
@@ -51,6 +51,26 @@ body {
   margin-bottom: 5px;
 }
 
+.shop-logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.shop-logo {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary-color);
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.shop-logo:hover {
+  transform: scale(1.05);
+}
+
 .shop-name {
   font-size: 1.8rem;
   font-weight: 700;
@@ -69,14 +89,14 @@ body {
 
 /* Member Card */
 .member-card {
-  background: linear-gradient(135deg, #2c2620 0%, #4a3e35 100%);
+  background: linear-gradient(135deg, #388BC2 0%, #1e5274 100%);
   color: #ffffff;
   border-radius: 20px;
   padding: 24px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 30px rgba(44, 38, 32, 0.25);
-  border: 1px solid rgba(197, 168, 128, 0.3);
+  box-shadow: 0 12px 30px rgba(30, 82, 116, 0.25);
+  border: 1px solid rgba(56, 139, 194, 0.3);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -85,7 +105,7 @@ body {
 
 .member-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px rgba(44, 38, 32, 0.35);
+  box-shadow: 0 16px 36px rgba(30, 82, 116, 0.35);
 }
 
 /* Card Decorative Background Circles */
@@ -97,7 +117,7 @@ body {
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(197, 168, 128, 0.2) 0%, rgba(197, 168, 128, 0) 70%);
+  background: radial-gradient(circle, rgba(56, 139, 194, 0.2) 0%, rgba(56, 139, 194, 0) 70%);
   pointer-events: none;
 }
 
@@ -109,7 +129,7 @@ body {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(197, 168, 128, 0.15) 0%, rgba(197, 168, 128, 0) 70%);
+  background: radial-gradient(circle, rgba(56, 139, 194, 0.15) 0%, rgba(56, 139, 194, 0) 70%);
   pointer-events: none;
 }
 
@@ -126,27 +146,25 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 1px;
-  background: linear-gradient(135deg, #fff, var(--primary-color));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .card-logo svg {
-  color: var(--primary-color);
+  color: #ffffff;
 }
 
 .card-type {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--primary-color);
-  border: 1px solid rgba(197, 168, 128, 0.4);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   padding: 2px 8px;
   border-radius: 10px;
-  background-color: rgba(197, 168, 128, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.5px;
 }
 
@@ -172,7 +190,7 @@ body {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  background-color: #4a3e35;
+  background-color: var(--primary-light);
 }
 
 .profile-meta {
@@ -190,7 +208,7 @@ body {
 
 .profile-status {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
   font-weight: 300;
   max-width: 220px;
   display: -webkit-box;
@@ -215,22 +233,23 @@ body {
   align-items: center;
   gap: 10px;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
 }
 
 .detail-row svg {
-  color: var(--primary-color);
+  color: #ffffff;
   flex-shrink: 0;
 }
 
 .detail-label {
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
   width: 42px;
 }
 
 .detail-val {
   font-weight: 400;
+  color: #ffffff;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
@@ -242,7 +261,7 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
   z-index: 1;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 12px;
@@ -251,7 +270,7 @@ body {
 .card-id-label {
   font-size: 0.7rem;
   letter-spacing: 0.5px;
-  color: rgba(197, 168, 128, 0.5);
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 600;
 }
 
@@ -259,7 +278,7 @@ body {
   font-size: 0.8rem;
   letter-spacing: 0.8px;
   font-family: monospace;
-  color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
 }
 
 /* Buttons Section */
@@ -425,6 +444,10 @@ body {
   transition: var(--transition);
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(197, 168, 128, 0.2);
+}
+
+.btn-save-inline svg {
+  color: #ffffff !important;
 }
 
 .btn-save-inline:hover {

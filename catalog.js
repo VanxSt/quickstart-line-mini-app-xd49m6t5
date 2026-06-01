@@ -314,7 +314,7 @@ async function shareProduct(product) {
                       text: `ราคา ฿${product.price}`,
                       weight: 'bold',
                       size: 'lg',
-                      color: '#a88b62'
+                      color: '#2972a0'
                     }
                   ]
                 },
@@ -322,7 +322,7 @@ async function shareProduct(product) {
                   type: 'text',
                   text: product.desc,
                   wrap: true,
-                  color: '#7c7267',
+                  color: '#4a5568',
                   size: 'sm',
                   margin: 'md'
                 }
@@ -336,7 +336,7 @@ async function shareProduct(product) {
                 {
                   type: 'button',
                   style: 'primary',
-                  color: '#c5a880',
+                  color: '#388BC2',
                   action: {
                     type: 'uri',
                     label: 'ดูรายละเอียดสินค้า',
