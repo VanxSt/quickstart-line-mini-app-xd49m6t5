@@ -40,6 +40,17 @@ function createOrderHandler(ss, data) {
       slipUrl = saveImageToDrive(slipImage, "Slip-" + orderId + ".jpg");
     }
     
+    // ปรับแต่งค่า URL เป็น Hyperlink แบบกดได้สำหรับ Google Sheets
+    var gpsFormula = gpsLocation;
+    if (gpsLocation && gpsLocation.indexOf("http") === 0) {
+      gpsFormula = '=HYPERLINK("' + gpsLocation + '", "📌 เปิดแผนที่ Google Maps")';
+    }
+    
+    var slipFormula = slipUrl;
+    if (slipUrl && slipUrl.indexOf("http") === 0) {
+      slipFormula = '=HYPERLINK("' + slipUrl + '", "📄 ดูรูปสลิป")';
+    }
+    
     // ดึงหรือสร้างชีต "Orders"
     var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status"];
     var ordersSheet = getOrCreateSheet(ss, "Orders", ordersHeaders);
@@ -50,20 +61,20 @@ function createOrderHandler(ss, data) {
       orderId,
       userId,
       displayName,
-      "", // เว้นโทรศัพท์ไว้ก่อนเพื่อเซ็ตฟอร์แมต Plain text
-      gpsLocation,
+      "", // เว้นโทรศัพท์ไว้เพื่อเซ็ตฟอร์แมต Plain text ป้องกันเลข 0 หาย
+      gpsFormula,
       addressDetails,
-      slipUrl,
+      slipFormula,
       totalPrice,
       "Pending Verification" // สถานะเริ่มต้น: รอการตรวจสอบสลิป
     ]);
     
-    // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ Phone (คอลัมน์ที่ 5) ป้องกันเลข 0 หาย
+    // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ Phone (คอลัมน์ที่ 5)
     var lastRowOrders = ordersSheet.getLastRow();
     ordersSheet.getRange(lastRowOrders, 5).setNumberFormat('@').setValue(phone);
     
-    // ดึงหรือสร้างชีต "OrderDetails"
-    var detailsHeaders = ["Order ID", "Product ID", "Product Name", "Unit Price", "Quantity", "Subtotal"];
+    // ดึงหรือสร้างชีต "OrderDetails" (เพิ่ม Name, Phone และ GPS ในรายละเอียดสินค้าด้วยตามขอ)
+    var detailsHeaders = ["Order ID", "Customer Name", "Phone", "Product ID", "Product Name", "Unit Price", "Quantity", "Subtotal", "GPS Location"];
     var detailsSheet = getOrCreateSheet(ss, "OrderDetails", detailsHeaders);
     
     // บันทึกรายการสินค้าแต่ละชิ้นลงชีต OrderDetails
@@ -72,12 +83,19 @@ function createOrderHandler(ss, data) {
       var subtotal = Number(item.price || 0) * Number(item.qty || 1);
       detailsSheet.appendRow([
         orderId,
+        displayName,
+        "", // เว้นเบอร์โทรไว้สำหรับเซ็ต Plain text ป้องกันเลข 0 หาย
         item.id,
         item.name,
         item.price,
         item.qty,
-        subtotal
+        subtotal,
+        gpsFormula
       ]);
+      
+      // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ที่ 3 ของชีต OrderDetails
+      var lastRowDetails = detailsSheet.getLastRow();
+      detailsSheet.getRange(lastRowDetails, 3).setNumberFormat('@').setValue(phone);
     }
     
     return ContentService.createTextOutput(JSON.stringify({ 
