@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzAfVk9opg0mW4AhbNG5KONOmo7hXGgAFHQh3hDlSojSWONQoRIYMs5GoX1bAMGrP6O/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTGSPiJFvUknEbD2GoD9dfQGyzWsofINm5yNF7SSEs4OadqNaYtCnBpzt1HbUH6hIg/exec';
 
 let PRODUCTS = [];
 
@@ -902,25 +902,71 @@ if (btnTriggerUpload) {
   });
 }
 
+// ฟังก์ชันบีบอัดรูปภาพเพื่อลดขนาด Base64 ก่อนส่งไป Google Apps Script
+function compressImage(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const img = new Image();
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // ย่อขนาดรูปตามสัดส่วน (จำกัดด้านกว้างสูงสุด)
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // แปลงเป็น JPEG คุณภาพที่กำหนด (0.6 = ลดขนาดลง ~70% จากต้นฉบับ)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 if (slipInput) {
-  slipInput.addEventListener('change', (e) => {
+  slipInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป (จำกัดไม่เกิน 3MB)');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป (จำกัดไม่เกิน 5MB)');
       slipInput.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      slipBase64 = event.target.result;
+    try {
+      // บีบอัดรูปภาพ: ย่อเหลือกว้างสูงสุด 800px, คุณภาพ JPEG 60%
+      // ลดขนาดจาก ~3MB เหลือ ~200-400KB เพื่อให้ส่งไป Google Apps Script ได้ราบรื่น
+      slipBase64 = await compressImage(file, 800, 0.6);
       slipPreviewImg.src = slipBase64;
       slipPreviewContainer.style.display = 'block';
       validateCheckoutForm();
-    };
-    reader.readAsDataURL(file);
+      console.log('Slip compressed. Size:', Math.round(slipBase64.length / 1024), 'KB');
+    } catch (err) {
+      console.error('Error compressing slip image:', err);
+      // Fallback: ใช้ FileReader ตรงๆ หากบีบอัดไม่ได้
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        slipBase64 = event.target.result;
+        slipPreviewImg.src = slipBase64;
+        slipPreviewContainer.style.display = 'block';
+        validateCheckoutForm();
+      };
+      reader.readAsDataURL(file);
+    }
   });
 }
 
