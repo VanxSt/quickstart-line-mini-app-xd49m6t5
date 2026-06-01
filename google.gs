@@ -176,8 +176,16 @@ function saveImageToDrive(base64Data, filename) {
     var decoded = Utilities.base64Decode(rawData);
     var blob = Utilities.newBlob(decoded, contentType, filename);
     
-    // บันทึกไฟล์ภาพลงในโฟลเดอร์หลักของ Google Drive
-    var file = DriveApp.createFile(blob);
+    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 18UZh85_zf8jDnIOuQbO1unIipxjCqO1y)
+    var file;
+    try {
+      var folder = DriveApp.getFolderById("18UZh85_zf8jDnIOuQbO1unIipxjCqO1y");
+      file = folder.createFile(blob);
+    } catch (e) {
+      // หากเกิดปัญหาการเข้าถึงโฟลเดอร์ให้บันทึกในหน้าหลัก (Root) ของ Google Drive แทนเพื่อไม่ให้ออเดอร์พัง
+      file = DriveApp.createFile(blob);
+    }
+    
     // ตั้งค่าการแชร์ให้ทุกคนที่มีลิงก์สามารถเปิดดูรูปภาพสลิปได้ (สะดวกสำหรับทางร้านเข้าตรวจสอบสลิป)
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return file.getUrl();
@@ -194,6 +202,30 @@ function getOrCreateSheet(ss, name, headers) {
     sheet.appendRow(headers);
     // ทำตัวหนาแถวหัวตาราง
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+  } else {
+    // ตรวจสอบว่าหัวข้อคอลัมน์ (Row 1) ตรงกันหรือไม่
+    var lastCol = sheet.getLastColumn();
+    var currentHeaders = [];
+    if (lastCol > 0) {
+      currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    }
+    
+    var isMatch = currentHeaders.length === headers.length;
+    if (isMatch) {
+      for (var i = 0; i < headers.length; i++) {
+        if (currentHeaders[i] !== headers[i]) {
+          isMatch = false;
+          break;
+        }
+      }
+    }
+    
+    // หากหัวข้อไม่ตรงกัน (มีการอัปเดตโครงสร้างคอลัมน์) ให้ล้างข้อมูลเดิมและเขียนหัวข้อใหม่ทั้งหมดเพื่อป้องกันข้อมูลเหลื่อมกัน
+    if (!isMatch) {
+      sheet.clear();
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+    }
   }
   return sheet;
 }
