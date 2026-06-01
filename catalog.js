@@ -377,24 +377,45 @@ async function orderProduct(product) {
     productImg = window.location.origin + '/' + productImg;
   }
   
+  // ตรวจสอบความปลอดภัยของ URL รูปภาพ (LINE กำหนดให้ใช้ HTTPS เท่านั้น)
+  const isHttpsImage = productImg.startsWith('https://');
+  
   if (liff.isInClient()) {
+    // 1. กรณี URL รูปภาพเป็น HTTPS และใช้งานได้
+    if (isHttpsImage) {
+      try {
+        await liff.sendMessages([
+          {
+            type: 'image',
+            originalContentUrl: productImg,
+            previewImageUrl: productImg
+          },
+          {
+            type: 'text',
+            text: message
+          }
+        ]);
+        alert('ส่งรูปภาพและคำสอบถามของคุณไปยังห้องแชทแล้ว!');
+        return;
+      } catch (imageError) {
+        console.warn('Failed to send image+text, falling back to text only:', imageError);
+      }
+    }
+    
+    // 2. กรณีส่งรูปภาพล้มเหลว หรือรูปภาพไม่เป็น HTTPS (เช่น localhost) -> พยายามส่งเฉพาะข้อความ
     try {
       await liff.sendMessages([
-        {
-          type: 'image',
-          originalContentUrl: productImg,
-          previewImageUrl: productImg
-        },
         {
           type: 'text',
           text: message
         }
       ]);
-      alert('ส่งรูปภาพและคำสอบถามของคุณไปยังห้องแชทแล้ว!');
-    } catch (error) {
-      console.error('Error sending message:', error);
+      alert('ส่งคำสอบถามไปยังห้องแชทแล้ว!\n(หมายเหตุ: ไม่สามารถส่งรูปภาพได้เนื่องจากเงื่อนไขความปลอดภัยของระบบ LINE)');
+    } catch (textError) {
+      console.error('Failed to send text only:', textError);
+      // 3. กรณีล้มเหลวทั้งหมด (เช่น ลืมเปิดสิทธิ์ chat_message.write ใน LINE Developers Console)
       navigator.clipboard.writeText(message);
-      alert('คัดลอกข้อความสอบถามแล้ว คุณสามารถวาง (Paste) ในแชทได้ทันทีครับ:\n\n' + message);
+      alert('ไม่สามารถส่งข้อความอัตโนมัติได้\n\nวิธีแก้สำหรับเจ้าของร้าน:\n1. กรุณาเข้าไปเปิดสิทธิ์ (Scope) ชื่อ "chat_message.write" ใน LINE Developers Console ของ LIFF นี้\n2. สมาชิกต้องกดกดยอมรับสิทธิ์นี้ในแอป LINE ก่อน\n\n*ระบบได้คัดลอกข้อความไว้แล้ว คุณสามารถกดวาง (Paste) ส่งได้ทันทีครับ*');
     }
   } else {
     // Web fallback
