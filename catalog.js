@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz-vXKKxxGmGAEaUaYvMXS68truj5dbpSWJOolQ-K3Ss0G_FMY2tWXkd11WzpzIgyZ_/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQWggXfeJPCLdNWaCJMDfe_NHBwS2DmPylKrOxaAwfUQwGYvAj3On4f9SQQp9cNkPU/exec';
 
 let PRODUCTS = [];
 
