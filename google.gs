@@ -176,10 +176,10 @@ function saveImageToDrive(base64Data, filename) {
     var decoded = Utilities.base64Decode(rawData);
     var blob = Utilities.newBlob(decoded, contentType, filename);
     
-    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 1tz1eqHdVCpp82epEoRxKl84OmzUM7Str)
+    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 1OdGA3FG0h9f6Xz1invt8dD30nQCqrZ3G)
     var file;
     try {
-      var folder = DriveApp.getFolderById("1tz1eqHdVCpp82epEoRxKl84OmzUM7Str");
+      var folder = DriveApp.getFolderById("1OdGA3FG0h9f6Xz1invt8dD30nQCqrZ3G");
       file = folder.createFile(blob);
     } catch (e) {
       // หากเกิดปัญหาการเข้าถึงโฟลเดอร์ให้บันทึกในหน้าหลัก (Root) ของ Google Drive แทนเพื่อไม่ให้ออเดอร์พัง
