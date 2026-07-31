@@ -816,7 +816,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
             margin: "md",
             action: {
               type: "uri",
-              label: "🔒 เฉพาะแอดมิน: ยืนยันออเดอร์",
+              label: "✅ แอดมินกดยืนยัน",
               uri: `${GOOGLE_SCRIPT_URL}?action=confirmOrder&orderId=${orderId}`
             }
           }
@@ -829,6 +829,15 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
     await liff.sendMessages([flexPayload]);
   } catch (err) {
     console.error("Error sending order Flex Message:", err);
+    // Fallback เผื่อกรณี Flex Message ส่งไม่ผ่าน (เช่น จำนวนตัวอักษรเกินข้อจำกัดของ LINE)
+    try {
+      await liff.sendMessages([{
+        type: 'text',
+        text: `🛒 คำสั่งซื้อใหม่\nรหัส: ${orderId}\nผู้รับ: ${name}\nเบอร์: ${phone}\nยอดรวม: ฿${totalPrice}\n\n✅ ลิงก์ยืนยันออเดอร์สำหรับแอดมิน:\n${GOOGLE_SCRIPT_URL}?action=confirmOrder&orderId=${orderId}`
+      }]);
+    } catch (err2) {
+      console.error("Fallback text message also failed", err2);
+    }
   }
 }
 
