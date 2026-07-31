@@ -393,10 +393,11 @@ function doGet(e) {
   }
 }
 
-// ฟังก์ชันสำหรับใช้กดรันครั้งแรกในตัวแก้ไขสคริปต์ เพื่อยอมรับสิทธิ์การใช้งาน Google Drive (DriveApp)
+// ฟังก์ชันสำหรับใช้กดรันครั้งแรกในตัวแก้ไขสคริปต์ เพื่อยอมรับสิทธิ์
 function triggerAuthorization() {
   DriveApp.getRootFolder();
-  Logger.log("อนุมัติสิทธิ์การเข้าถึง Google Drive สำเร็จแล้ว!");
+  UrlFetchApp.fetch("https://www.google.com", { muteHttpExceptions: true });
+  Logger.log("อนุมัติสิทธิ์การเข้าถึง Google Drive และ External Request สำเร็จแล้ว!");
 }
 
 // ==========================================
