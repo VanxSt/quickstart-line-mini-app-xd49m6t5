@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzUldCF0TKMreyD7ATlSQvUiexDVAaUkVu0_iMBDXvf9D033emGQLx76y_2gUyII9q/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwaI0faT4eJwnQSU8VZpBuUw-y-xF_uzwTCPdR6oFBzBy4HChIrXCfRz7MXJXf7jnPJ/exec';
 
 let allOrders = [];
 let currentViewingOrderId = null;
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchOrders(showLoading = true) {
   const loading = document.getElementById('loadingIndicator');
-  
+
   if (showLoading) {
     loading.style.display = 'flex';
     document.getElementById('ordersBody').innerHTML = ''; // ล้างตารางเฉพาะตอนโหลดแบบมีหน้าโหลด
@@ -52,7 +52,7 @@ function renderOrders() {
 
   allOrders.forEach(order => {
     const tr = document.createElement('tr');
-    
+
     let statusClass = 'status-pending';
     if (order.status === 'ยืนยันแล้ว' || order.status === 'กำลังจัดส่ง') statusClass = 'status-confirmed';
     if (order.status === 'รอชำระเงิน') statusClass = 'status-pending'; // Or a new style, but pending is orange
@@ -65,7 +65,7 @@ function renderOrders() {
         const d = new Date(order.timestamp);
         dateStr = d.toLocaleString('th-TH');
       }
-    } catch(e){}
+    } catch (e) { }
 
     tr.innerHTML = `
       <td><strong>${order.orderId}</strong><br><small style="color:#666;">${order.paymentMethod}</small></td>
@@ -107,7 +107,7 @@ function viewOrder(orderId) {
   document.getElementById('modalOrderId').textContent = order.orderId;
   document.getElementById('modalCustomerName').textContent = order.customerName;
   document.getElementById('modalPhone').textContent = order.phone.replace(/'/g, ""); // Remove quote if present
-  
+
   // Format GPS
   let gpsText = order.gpsLocation;
   if (gpsText.includes('HYPERLINK')) {
@@ -124,7 +124,7 @@ function viewOrder(orderId) {
   // Render Items
   const itemsBody = document.getElementById('modalItemsBody');
   itemsBody.innerHTML = '';
-  
+
   order.items.forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -141,7 +141,7 @@ function viewOrder(orderId) {
   // Dynamic action buttons
   const actionsDiv = document.getElementById('modalActions');
   actionsDiv.innerHTML = ''; // Clear old buttons
-  
+
   if (order.status === 'รอตรวจสอบ') {
     if (order.paymentMethod === 'โอนจ่าย') {
       actionsDiv.innerHTML = `
@@ -179,9 +179,9 @@ async function updateStatus(newStatus) {
 
   const btnConfirm = document.getElementById('btnConfirmOrder');
   const btnCancel = document.getElementById('btnCancelOrder');
-  
+
   const originalConfirmText = btnConfirm ? btnConfirm.textContent : "กำลังบันทึก...";
-  
+
   if (btnConfirm) btnConfirm.disabled = true;
   if (btnCancel) btnCancel.disabled = true;
   if (btnConfirm) btnConfirm.textContent = "กำลังบันทึก...";
@@ -196,9 +196,9 @@ async function updateStatus(newStatus) {
         status: newStatus
       })
     });
-    
+
     const result = await response.json();
-    
+
     if (result.status === 'success') {
       alert("อัปเดตสถานะออเดอร์สำเร็จ!");
       closeModal();
