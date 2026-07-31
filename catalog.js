@@ -679,10 +679,55 @@ function generatePromptPayQR(totalAmount) {
   qrImg.src = qrUrl;
 }
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = []) {
+  // สร้างรายการสินค้าสำหรับ Flex Message
+  const itemBoxes = cartItems.map(item => ({
+    type: "box",
+    layout: "horizontal",
+    margin: "md",
+    spacing: "md",
+    contents: [
+      {
+        type: "image",
+        url: (item.image && item.image.startsWith('http')) ? item.image : "https://placehold.co/600x600/f3f0ec/a88b62.png?text=No+Image",
+        size: "sm",
+        aspectRatio: "1:1",
+        aspectMode: "cover",
+        flex: 1
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        flex: 3,
+        contents: [
+          {
+            type: "text",
+            text: `รหัส: ${item.id}`,
+            size: "xxs",
+            color: "#aaaaaa"
+          },
+          {
+            type: "text",
+            text: item.name,
+            size: "sm",
+            wrap: true,
+            weight: "bold",
+            color: "#1a202c"
+          },
+          {
+            type: "text",
+            text: `${item.qty} x ฿${item.price}`,
+            size: "sm",
+            color: "#388BC2"
+          }
+        ]
+      }
+    ]
+  }));
+
   const flexPayload = {
     type: "flex",
-    altText: `🧾 ยืนยันการสั่งซื้อใหม่ ${orderId}`,
+    altText: `🧾 สั่งซื้อใหม่ ${orderId}`,
     contents: {
       type: "bubble",
       body: {
@@ -706,89 +751,37 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  {
-                    type: "text",
-                    text: "เลขที่สั่งซื้อ",
-                    size: "sm",
-                    color: "#aaaaaa",
-                    flex: 2
-                  },
-                  {
-                    type: "text",
-                    text: orderId,
-                    size: "sm",
-                    color: "#1a202c",
-                    flex: 4,
-                    weight: "bold"
-                  }
+                  { type: "text", text: "เลขที่สั่งซื้อ", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: orderId, size: "sm", color: "#1a202c", flex: 4, weight: "bold" }
                 ]
               },
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  {
-                    type: "text",
-                    text: "ผู้รับ",
-                    size: "sm",
-                    color: "#aaaaaa",
-                    flex: 2
-                  },
-                  {
-                    type: "text",
-                    text: name,
-                    size: "sm",
-                    color: "#1a202c",
-                    flex: 4
-                  }
+                  { type: "text", text: "ผู้รับ", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: name, size: "sm", color: "#1a202c", flex: 4 }
                 ]
               },
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  {
-                    type: "text",
-                    text: "เบอร์ติดต่อ",
-                    size: "sm",
-                    color: "#aaaaaa",
-                    flex: 2
-                  },
-                  {
-                    type: "text",
-                    text: phone,
-                    size: "sm",
-                    color: "#1a202c",
-                    flex: 4
-                  }
+                  { type: "text", text: "เบอร์ติดต่อ", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: phone, size: "sm", color: "#1a202c", flex: 4 }
                 ]
               },
-              {
-                type: "separator",
-                margin: "md"
-              },
+              { type: "separator", margin: "md" },
+              // ใส่รายการสินค้าที่นี่
+              ...itemBoxes,
+              { type: "separator", margin: "md" },
               {
                 type: "box",
                 layout: "horizontal",
                 margin: "md",
                 contents: [
-                  {
-                    type: "text",
-                    text: "ยอดเงินรวม",
-                    size: "md",
-                    color: "#1a202c",
-                    weight: "bold",
-                    flex: 3
-                  },
-                  {
-                    type: "text",
-                    text: `฿${totalPrice}`,
-                    size: "md",
-                    color: "#388BC2",
-                    weight: "bold",
-                    align: "right",
-                    flex: 3
-                  }
+                  { type: "text", text: "ยอดเงินรวม", size: "md", color: "#1a202c", weight: "bold", flex: 3 },
+                  { type: "text", text: `฿${totalPrice}`, size: "md", color: "#388BC2", weight: "bold", align: "right", flex: 3 }
                 ]
               }
             ]
@@ -808,17 +801,6 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
             wrap: true,
             align: "center",
             margin: "sm"
-          },
-          {
-            type: "button",
-            style: "primary",
-            color: "#10b981",
-            margin: "md",
-            action: {
-              type: "uri",
-              label: "✅ แอดมินกดยืนยัน",
-              uri: `${GOOGLE_SCRIPT_URL}?action=confirmOrder&orderId=${orderId}`
-            }
           }
         ]
       }
@@ -829,11 +811,12 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
     await liff.sendMessages([flexPayload]);
   } catch (err) {
     console.error("Error sending order Flex Message:", err);
-    // Fallback เผื่อกรณี Flex Message ส่งไม่ผ่าน (เช่น จำนวนตัวอักษรเกินข้อจำกัดของ LINE)
+    // Fallback: สร้างข้อความแสดงรายการสินค้า
+    let itemsText = cartItems.map(item => `- [${item.id}] ${item.name} (x${item.qty})`).join('\n');
     try {
       await liff.sendMessages([{
         type: 'text',
-        text: `🛒 คำสั่งซื้อใหม่\nรหัส: ${orderId}\nผู้รับ: ${name}\nเบอร์: ${phone}\nยอดรวม: ฿${totalPrice}\n\n✅ ลิงก์ยืนยันออเดอร์สำหรับแอดมิน:\n${GOOGLE_SCRIPT_URL}?action=confirmOrder&orderId=${orderId}`
+        text: `🛒 คำสั่งซื้อใหม่\nรหัส: ${orderId}\nผู้รับ: ${name}\nเบอร์: ${phone}\n\nรายการสินค้า:\n${itemsText}\n\nยอดรวม: ฿${totalPrice}`
       }]);
     } catch (err2) {
       console.error("Fallback text message also failed", err2);
@@ -1069,7 +1052,7 @@ if (btnSubmitOrder) {
 
         // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
         if (liff.isInClient()) {
-          await sendOrderFlexMessage(result.orderId, name, phone, totalAmount);
+          await sendOrderFlexMessage(result.orderId, name, phone, totalAmount, cart);
         }
 
         // เคลียร์ตะกร้าสินค้า
