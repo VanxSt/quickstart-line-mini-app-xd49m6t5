@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwaI0faT4eJwnQSU8VZpBuUw-y-xF_uzwTCPdR6oFBzBy4HChIrXCfRz7MXJXf7jnPJ/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSuT-q27MnKHTQF5pMUZuk2ic2pNFFgHEY8bKpemFU93EtNyxmQqCAl1vZ2MJV97y4/exec';
 
 let allOrders = [];
 let currentViewingOrderId = null;
@@ -200,7 +200,11 @@ async function updateStatus(newStatus) {
     const result = await response.json();
 
     if (result.status === 'success') {
-      alert("อัปเดตสถานะออเดอร์สำเร็จ!");
+      let alertMsg = "อัปเดตสถานะออเดอร์สำเร็จ!";
+      if (result.debug && result.debug !== 'No message to send') {
+        alertMsg += "\n\n[LINE API Debug]:\n" + result.debug;
+      }
+      alert(alertMsg);
       closeModal();
       fetchOrders(); // Refresh table
     } else {

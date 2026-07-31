@@ -531,14 +531,21 @@ function updateOrderStatusNative(orderId, newStatus) {
         }
         
         if (messages.length > 0) {
-          sendLinePushMessage(userId, messages);
+          var pushResult = sendLinePushMessage(userId, messages);
+          return { status: 'success', debug: pushResult };
         }
       } catch (e) {
-        // เงียบไว้หากส่งข้อความล้มเหลว
+        return { status: 'success', debug: 'Catch Error: ' + e.message };
       }
+    } else {
+      var skipReason = "Skipped - ";
+      if (!userId || userId === 'unknown') skipReason += "No User ID";
+      else if (userId === 'web-test-user') skipReason += "Tested on PC Browser (web-test-user)";
+      else if (LINE_ACCESS_TOKEN === 'YOUR_LINE_ACCESS_TOKEN_HERE') skipReason += "No LINE Token";
+      return { status: 'success', debug: skipReason };
     }
     
-    return { status: 'success' };
+    return { status: 'success', debug: 'No message to send' };
   }
   return { status: 'error', message: 'ไม่พบออเดอร์' };
 }
@@ -546,18 +553,20 @@ function updateOrderStatusNative(orderId, newStatus) {
 function sendLinePushMessage(userId, messages) {
   var url = 'https://api.line.me/v2/bot/message/push';
   var payload = {
-    to: userId,
-    messages: messages
+    'to': userId,
+    'messages': messages
   };
   
   var options = {
-    method: 'post',
-    headers: {
+    'method': 'post',
+    'headers': {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + LINE_ACCESS_TOKEN
     },
-    payload: JSON.stringify(payload)
+    'payload': JSON.stringify(payload),
+    'muteHttpExceptions': true
   };
   
-  UrlFetchApp.fetch(url, options);
+  var response = UrlFetchApp.fetch(url, options);
+  return response.getContentText();
 }
