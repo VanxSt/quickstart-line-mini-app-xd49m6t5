@@ -32,26 +32,12 @@ function doPost(e) {
 function updateOrderStatusHandler(ss, data) {
   try {
     var orderId = data.orderId;
-    var newStatus = data.status; // เช่น "ยืนยันแล้ว", "ยกเลิก"
+    var newStatus = data.status; // เช่น "รอชำระเงิน", "กำลังจัดส่ง", "ยกเลิก"
     
-    var ordersSheet = ss.getSheetByName("Orders");
-    var dataRange = ordersSheet.getDataRange();
-    var values = dataRange.getValues();
-    var foundRow = -1;
+    // เรียกใช้ฟังก์ชันหลักที่มีระบบส่งแจ้งเตือน LINE ไปด้วย
+    var result = updateOrderStatusNative(orderId, newStatus);
     
-    for (var i = 1; i < values.length; i++) {
-      if (values[i][1] && values[i][1].toString() === orderId) {
-        foundRow = i + 1;
-        break;
-      }
-    }
-    
-    if (foundRow !== -1) {
-      ordersSheet.getRange(foundRow, 10).setValue(newStatus); // คอลัมน์ที่ 10 คือ Status
-      return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
-    } else {
-      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Order not found' })).setMimeType(ContentService.MimeType.JSON);
-    }
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
