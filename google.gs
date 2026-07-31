@@ -1,3 +1,13 @@
+// ==========================================
+// การตั้งค่า LINE Messaging API
+// ==========================================
+// 1. ใส่ Channel Access Token ของ LINE OA (Long-lived) 
+const LINE_ACCESS_TOKEN = 'UTqQBlXZsz1FHhyz3elJBbwW/Sy3ex26+xhkqy6OpjuUL6Y3gB1QYI3+CCwARapxDVxivd5Iw6TYL64IO0Kz0ykDLJ8qDJrSrDnQdrugEu14xp4MU7mClHJG03GszZzgnS9DHafrq38iKUNHtCyokQdB04t89/1O/w1cDnyilFU=';
+
+// 2. เบอร์ PromptPay ของร้านค้า
+const SHOP_PROMPTPAY_ID = '0957579454';
+// ==========================================
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -6,6 +16,8 @@ function doPost(e) {
     
     if (action === 'createOrder') {
       return createOrderHandler(ss, data);
+    } else if (action === 'updateOrderStatus') {
+      return updateOrderStatusHandler(ss, data);
     } else {
       // Default: register/update member profile
       return registerMemberHandler(ss, data);
@@ -13,6 +25,35 @@ function doPost(e) {
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Handler สำหรับอัปเดตสถานะคำสั่งซื้อจากหน้า Admin
+function updateOrderStatusHandler(ss, data) {
+  try {
+    var orderId = data.orderId;
+    var newStatus = data.status; // เช่น "ยืนยันแล้ว", "ยกเลิก"
+    
+    var ordersSheet = ss.getSheetByName("Orders");
+    var dataRange = ordersSheet.getDataRange();
+    var values = dataRange.getValues();
+    var foundRow = -1;
+    
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][1] && values[i][1].toString() === orderId) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+    
+    if (foundRow !== -1) {
+      ordersSheet.getRange(foundRow, 10).setValue(newStatus); // คอลัมน์ที่ 10 คือ Status
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Order not found' })).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -25,6 +66,7 @@ function createOrderHandler(ss, data) {
     var phone = data.phone ? "'" + data.phone : "";
     var gpsLocation = data.gpsLocation || '';
     var addressDetails = data.addressDetails || '';
+    var paymentMethod = data.paymentMethod || 'ปลายทาง'; // รับค่า Payment Method
     var totalPrice = Number(data.totalPrice || 0);
     var items = data.items || [];
     
@@ -43,7 +85,7 @@ function createOrderHandler(ss, data) {
     var slipFormula = "";
     
     // ดึงหรือสร้างชีต "Orders"
-    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status"];
+    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method"];
     var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
     
     // บันทึกคำสั่งซื้อลงชีต Orders (1 API Call)
@@ -57,7 +99,8 @@ function createOrderHandler(ss, data) {
       addressDetails,
       slipFormula,
       totalPrice,
-      "รอตรวจสอบ" // สถานะเริ่มต้น
+      "รอตรวจสอบ", // สถานะเริ่มต้น
+      paymentMethod
     ]);
     
     // ดึงหรือสร้างชีต "OrderDetails"
@@ -164,6 +207,13 @@ function doGet(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = e.parameter.action;
     
+// Action 0: แสดงหน้าเว็บ Admin Dashboard
+    if (action === 'admin') {
+      return HtmlService.createHtmlOutputFromFile('admin')
+        .setTitle('Admin Dashboard - จัดการคำสั่งซื้อ')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+    
     // Action 1: ดึงข้อมูลสินค้าจากชีต Catalog
     if (action === 'getProducts') {
       var catalogSheet = ss.getSheetByName("Catalog");
@@ -231,6 +281,58 @@ function doGet(e) {
       }
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: myOrders }))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Action 1.6: ดึงข้อมูลออเดอร์ทั้งหมด (สำหรับ Admin)
+    if (action === 'getAllOrders') {
+      var ordersSheet = ss.getSheetByName("Orders");
+      var detailsSheet = ss.getSheetByName("OrderDetails");
+      
+      if (!ordersSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: [] })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var orderValues = ordersSheet.getDataRange().getValues();
+      var orders = [];
+      
+      // ดึงรายละเอียดออเดอร์ (Items) ล่วงหน้าเพื่อนำไปเชื่อมโยง
+      var detailsMap = {};
+      if (detailsSheet) {
+        var detailValues = detailsSheet.getDataRange().getValues();
+        for (var j = 1; j < detailValues.length; j++) {
+          var dRow = detailValues[j];
+          var dOrderId = dRow[0];
+          if (!detailsMap[dOrderId]) detailsMap[dOrderId] = [];
+          detailsMap[dOrderId].push({
+            id: dRow[3],
+            name: dRow[4],
+            price: dRow[5],
+            qty: dRow[6],
+            subtotal: dRow[7]
+          });
+        }
+      }
+      
+      // วนลูปจากใหม่ไปเก่า (ล่างสุดไปบนสุด)
+      for (var k = orderValues.length - 1; k >= 1; k--) {
+        var oRow = orderValues[k];
+        if (!oRow[1]) continue; // ข้ามแถวว่าง
+        
+        orders.push({
+          timestamp: oRow[0],
+          orderId: oRow[1],
+          userId: oRow[2],
+          customerName: oRow[3],
+          phone: oRow[4],
+          gpsLocation: oRow[5],
+          addressDetails: oRow[6],
+          totalPrice: oRow[8],
+          status: oRow[9] || 'รอตรวจสอบ',
+          items: detailsMap[oRow[1]] || []
+        });
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: orders })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // Action 1.8: แอดมินยืนยันออเดอร์จาก LINE
@@ -309,4 +411,153 @@ function doGet(e) {
 function triggerAuthorization() {
   DriveApp.getRootFolder();
   Logger.log("อนุมัติสิทธิ์การเข้าถึง Google Drive สำเร็จแล้ว!");
+}
+
+// ==========================================
+// ฟังก์ชันสำหรับเรียกใช้ตรงจากหน้า admin.html (google.script.run)
+// ==========================================
+function getAllOrdersNative() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ordersSheet = ss.getSheetByName("Orders");
+  var detailsSheet = ss.getSheetByName("OrderDetails");
+  
+  if (!ordersSheet) return [];
+  
+  var orderValues = ordersSheet.getDataRange().getValues();
+  var orders = [];
+  
+  var detailsMap = {};
+  if (detailsSheet) {
+    var detailValues = detailsSheet.getDataRange().getValues();
+    for (var j = 1; j < detailValues.length; j++) {
+      var dRow = detailValues[j];
+      var dOrderId = dRow[0];
+      if (!detailsMap[dOrderId]) detailsMap[dOrderId] = [];
+      detailsMap[dOrderId].push({
+        id: dRow[3],
+        name: dRow[4],
+        price: dRow[5],
+        qty: dRow[6],
+        subtotal: dRow[7]
+      });
+    }
+  }
+  
+  for (var k = orderValues.length - 1; k >= 1; k--) {
+    var oRow = orderValues[k];
+    if (!oRow[1]) continue;
+    
+    // แปลง Date เป็น String เพื่อให้ google.script.run ส่งค่ากลับไปได้
+    var ts = oRow[0];
+    if (ts instanceof Date) {
+      ts = ts.toISOString();
+    }
+    
+    orders.push({
+      timestamp: ts,
+      orderId: oRow[1],
+      userId: oRow[2],
+      customerName: oRow[3],
+      phone: oRow[4],
+      gpsLocation: oRow[5],
+      addressDetails: oRow[6],
+      totalPrice: oRow[8],
+      status: oRow[9] || 'รอตรวจสอบ',
+      paymentMethod: oRow[10] || 'ไม่ระบุ',
+      items: detailsMap[oRow[1]] || []
+    });
+  }
+  
+  return orders;
+}
+
+function updateOrderStatusNative(orderId, newStatus) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ordersSheet = ss.getSheetByName("Orders");
+  var values = ordersSheet.getDataRange().getValues();
+  var foundRow = -1;
+  var userId = "";
+  var paymentMethod = "";
+  var totalPrice = 0;
+  
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][1] && values[i][1].toString() === orderId) {
+      foundRow = i + 1;
+      userId = values[i][2]; // User ID อยู่คอลัมน์ 3 (index 2)
+      totalPrice = values[i][8] || 0; // Total Price อยู่คอลัมน์ 9 (index 8)
+      paymentMethod = values[i][10] || "ปลายทาง"; // Payment Method อยู่คอลัมน์ 11 (index 10)
+      break;
+    }
+  }
+  
+  if (foundRow !== -1) {
+    ordersSheet.getRange(foundRow, 10).setValue(newStatus);
+    
+    // ส่งข้อความแจ้งเตือนผ่าน LINE ทันทีที่มีการเปลี่ยนสถานะ
+    if (userId && userId !== 'unknown' && userId !== 'web-test-user' && LINE_ACCESS_TOKEN !== 'YOUR_LINE_ACCESS_TOKEN_HERE') {
+      try {
+        var messages = [];
+        
+        if (newStatus === "กำลังจัดส่ง" && paymentMethod === "ปลายทาง") {
+           messages.push({
+             "type": "text",
+             "text": "📦 ออเดอร์ " + orderId + " ของคุณได้รับการยืนยันแล้ว!\nขณะนี้ร้านกำลังเตรียมสินค้าและจัดส่งให้คุณ (ชำระเงินปลายทาง)\nขอบคุณที่อุดหนุนครับ 😊"
+           });
+        } 
+        else if (newStatus === "รอชำระเงิน" && paymentMethod === "โอนจ่าย") {
+           messages.push({
+             "type": "text",
+             "text": "✅ ออเดอร์ " + orderId + " ของคุณได้รับการยืนยันแล้ว!\n\nกรุณาสแกน QR Code ด้านล่างเพื่อชำระเงินจำนวน ฿" + totalPrice + " และส่งสลิปหลักฐานการโอนเงินมาที่แชทนี้ได้เลยครับ 👇"
+           });
+           
+           var dynamicQrUrl = "https://promptpay.io/" + SHOP_PROMPTPAY_ID + "/" + totalPrice + ".png";
+           messages.push({
+             "type": "image",
+             "originalContentUrl": dynamicQrUrl,
+             "previewImageUrl": dynamicQrUrl
+           });
+        }
+        else if (newStatus === "กำลังจัดส่ง" && paymentMethod === "โอนจ่าย") {
+           messages.push({
+             "type": "text",
+             "text": "📦 แอดมินตรวจสอบยอดเงินเรียบร้อยแล้ว!\nขณะนี้ร้านกำลังเตรียมสินค้าและจัดส่งให้คุณสำหรับออเดอร์ " + orderId + "\nขอบคุณที่อุดหนุนครับ 😊"
+           });
+        }
+        else if (newStatus === "ยกเลิก") {
+           messages.push({
+             "type": "text",
+             "text": "❌ ออเดอร์ " + orderId + " ของคุณถูกยกเลิกแล้วครับ หากมีข้อสงสัยสอบถามแอดมินได้เลยครับ"
+           });
+        }
+        
+        if (messages.length > 0) {
+          sendLinePushMessage(userId, messages);
+        }
+      } catch (e) {
+        // เงียบไว้หากส่งข้อความล้มเหลว
+      }
+    }
+    
+    return { status: 'success' };
+  }
+  return { status: 'error', message: 'ไม่พบออเดอร์' };
+}
+
+function sendLinePushMessage(userId, messages) {
+  var url = 'https://api.line.me/v2/bot/message/push';
+  var payload = {
+    to: userId,
+    messages: messages
+  };
+  
+  var options = {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + LINE_ACCESS_TOKEN
+    },
+    payload: JSON.stringify(payload)
+  };
+  
+  UrlFetchApp.fetch(url, options);
 }

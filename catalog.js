@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgDLOe_cF_OwsSI9_vC8VCWfHl1DI4Oed4hZ2aLwlafoOWsplK4Yj5H_XDEwVRHpKR/exec';
+const GOOGLE_SCRIPT_URL = 'hhttps://script.google.com/macros/s/AKfycbwzUldCF0TKMreyD7ATlSQvUiexDVAaUkVu0_iMBDXvf9D033emGQLx76y_2gUyII9q/exec';
 
 let PRODUCTS = [];
 
@@ -1002,6 +1002,7 @@ if (btnSubmitOrder) {
     const phone = checkoutPhone.value.trim();
     const addressDetails = checkoutAddressDetails.value.trim();
     const gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
 
     const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
@@ -1028,6 +1029,7 @@ if (btnSubmitOrder) {
       phone: phone,
       gpsLocation: gpsLocation,
       addressDetails: addressDetails,
+      paymentMethod: paymentMethod,
       totalPrice: totalAmount,
       items: cart.map(item => ({
         id: item.id,

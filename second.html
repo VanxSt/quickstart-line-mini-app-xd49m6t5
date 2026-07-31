@@ -188,22 +188,23 @@
           </div>
         </div>
 
-        <!-- Payment PromptPay Section -->
-        <div class="checkout-section text-center">
-          <h3>💳 ชำระเงินด้วย PromptPay</h3>
-          <div class="payment-instructions">
-            <p>กรุณาสแกน QR Code ด้านล่างนี้เพื่อชำระเงินค่าสินค้า</p>
-            <div class="checkout-total-banner">
-              ยอดเงินโอน: <strong id="checkoutTotalText">฿0</strong>
-            </div>
+        <!-- Payment Method Selection -->
+        <div class="checkout-section">
+          <h3>💰 เลือกช่องทางการชำระเงิน</h3>
+          <div class="payment-method-group" style="display: flex; gap: 16px; margin-top: 12px; margin-bottom: 24px;">
+            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="paymentMethod" value="ปลายทาง" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+              <span style="font-size: 15px;">เก็บเงินปลายทาง (COD)</span>
+            </label>
+            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="paymentMethod" value="โอนจ่าย" style="width: 18px; height: 18px; accent-color: var(--primary);">
+              <span style="font-size: 15px;">โอนเงินผ่านบัญชีธนาคาร</span>
+            </label>
           </div>
           
-          <div class="qr-code-container">
-            <img id="qrCodeImg" class="qr-code-img" src="" alt="PromptPay QR Code" style="display:none;" />
-            <div id="qrLoading" class="qr-loading-text">กำลังเจเนอเรต QR Code...</div>
+          <div class="checkout-total-banner">
+            ยอดรวมที่ต้องชำระ: <strong id="checkoutTotalText">฿0</strong>
           </div>
-          
-          <p class="qr-tip">โอนเข้าบัญชี PromptPay ของร้านค้า</p>
         </div>
 
 

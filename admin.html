@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - จัดการคำสั่งซื้อ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">📦</div>
+        <h2>Admin Panel</h2>
+      </div>
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active">คำสั่งซื้อ (Orders)</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <h1>จัดการคำสั่งซื้อ</h1>
+        <button id="refreshBtn" class="btn-primary">
+          <span class="icon">🔄</span> รีเฟรชข้อมูล
+        </button>
+      </header>
+
+      <!-- Stats Summary -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3>รอดำเนินการ</h3>
+          <p id="stat-pending">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>ยืนยันแล้ว</h3>
+          <p id="stat-confirmed">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>ยอดขายทั้งหมด (ยืนยัน)</h3>
+          <p id="stat-sales">฿0</p>
+        </div>
+      </section>
+
+      <!-- Orders Table -->
+      <section class="table-container">
+        <table id="ordersTable">
+          <thead>
+            <tr>
+              <th>รหัสออเดอร์</th>
+              <th>วันที่ / เวลา</th>
+              <th>ลูกค้า</th>
+              <th>ยอดรวม</th>
+              <th>สถานะ</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <!-- Data will be populated here -->
+          </tbody>
+        </table>
+        <div id="loadingIndicator" class="loading-state">
+          <div class="spinner"></div>
+          <p>กำลังโหลดข้อมูล...</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Order Details Modal -->
+  <div id="orderModal" class="modal-overlay">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>รายละเอียด <span id="modalOrderId" style="color:var(--primary)"></span></h2>
+        <button class="close-btn" id="closeModalBtn">&times;</button>
+      </header>
+      <div class="modal-body">
+        <div class="customer-info">
+          <h3>ข้อมูลจัดส่ง</h3>
+          <p><strong>ชื่อผู้รับ:</strong> <span id="modalCustomerName"></span></p>
+          <p><strong>เบอร์ติดต่อ:</strong> <span id="modalPhone"></span></p>
+          <p><strong>พิกัดจัดส่ง:</strong> <span id="modalGps"></span></p>
+          <p><strong>ที่อยู่เพิ่มเติม:</strong> <span id="modalAddress"></span></p>
+        </div>
+        <div class="order-items">
+          <h3>รายการสินค้า</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>รหัสสินค้า</th>
+                <th>รายการ</th>
+                <th>จำนวน</th>
+                <th>รวม</th>
+              </tr>
+            </thead>
+            <tbody id="modalItemsBody">
+              <!-- Items go here -->
+            </tbody>
+          </table>
+          <h3 class="modal-total">ยอดสุทธิ: <span id="modalTotalPrice"></span></h3>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <div id="modalActions">
+          <button id="btnConfirmOrder" class="btn-success">✅ ยืนยันคำสั่งซื้อ</button>
+          <button id="btnCancelOrder" class="btn-danger">❌ ยกเลิก</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
