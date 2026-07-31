@@ -21,19 +21,18 @@ function createOrderHandler(ss, data) {
   try {
     var userId = data.userId || 'unknown';
     var displayName = data.displayName || '';
-    var phone = data.phone || '';
+    // เติม Single Quote นำหน้าเบอร์โทร เพื่อบังคับให้ Google Sheets มองเป็นข้อความ (Plain Text) ไม่ต้องเสียเวลาเซ็ต Format อีกรอบ
+    var phone = data.phone ? "'" + data.phone : "";
     var gpsLocation = data.gpsLocation || '';
     var addressDetails = data.addressDetails || '';
     var totalPrice = Number(data.totalPrice || 0);
     var items = data.items || [];
     
-    // สร้าง Order ID แบบไม่ซ้ำกัน (เช่น ORD-20260601-153012-123)
+    // สร้าง Order ID แบบไม่ซ้ำกัน
     var timestamp = new Date();
     var formattedDate = Utilities.formatDate(timestamp, "GMT+7", "yyyyMMdd-HHmmss");
     var rand = Math.floor(Math.random() * 1000);
     var orderId = "ORD-" + formattedDate + "-" + rand;
-    
-
     
     // ปรับแต่งค่า URL เป็น Hyperlink แบบกดได้สำหรับ Google Sheets
     var gpsFormula = gpsLocation;
@@ -45,15 +44,15 @@ function createOrderHandler(ss, data) {
     
     // ดึงหรือสร้างชีต "Orders"
     var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status"];
-    var ordersSheet = getOrCreateSheet(ss, "Orders", ordersHeaders);
+    var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
     
-    // บันทึกคำสั่งซื้อรวมลงชีต Orders
+    // บันทึกคำสั่งซื้อลงชีต Orders (1 API Call)
     ordersSheet.appendRow([
       timestamp,
       orderId,
       userId,
       displayName,
-      "", // เว้นโทรศัพท์ไว้เพื่อเซ็ตฟอร์แมต Plain text ป้องกันเลข 0 หาย
+      phone,
       gpsFormula,
       addressDetails,
       slipFormula,
@@ -61,22 +60,19 @@ function createOrderHandler(ss, data) {
       "รอตรวจสอบ" // สถานะเริ่มต้น
     ]);
     
-    // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ Phone (คอลัมน์ที่ 5)
-    var lastRowOrders = ordersSheet.getLastRow();
-    ordersSheet.getRange(lastRowOrders, 5).setNumberFormat('@').setValue(phone);
-    
-    // ดึงหรือสร้างชีต "OrderDetails" (เพิ่ม Name, Phone และ GPS ในรายละเอียดสินค้าด้วยตามขอ)
+    // ดึงหรือสร้างชีต "OrderDetails"
     var detailsHeaders = ["Order ID", "Customer Name", "Phone", "Product ID", "Product Name", "Unit Price", "Quantity", "Subtotal", "GPS Location"];
-    var detailsSheet = getOrCreateSheet(ss, "OrderDetails", detailsHeaders);
+    var detailsSheet = getFastSheet(ss, "OrderDetails", detailsHeaders);
     
-    // บันทึกรายการสินค้าแต่ละชิ้นลงชีต OrderDetails
+    // เตรียมข้อมูลสินค้าทั้งหมดเพื่อบันทึกรวดเดียว (Batch Insert)
+    var detailsData = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       var subtotal = Number(item.price || 0) * Number(item.qty || 1);
-      detailsSheet.appendRow([
+      detailsData.push([
         orderId,
         displayName,
-        "", // เว้นเบอร์โทรไว้สำหรับเซ็ต Plain text ป้องกันเลข 0 หาย
+        phone,
         item.id,
         item.name,
         item.price,
@@ -84,10 +80,12 @@ function createOrderHandler(ss, data) {
         subtotal,
         gpsFormula
       ]);
-      
-      // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ที่ 3 ของชีต OrderDetails
-      var lastRowDetails = detailsSheet.getLastRow();
-      detailsSheet.getRange(lastRowDetails, 3).setNumberFormat('@').setValue(phone);
+    }
+    
+    // บันทึกรายการสินค้าทั้งหมดในครั้งเดียว (1 API Call) ประหยัดเวลามาก
+    if (detailsData.length > 0) {
+      var lastRow = detailsSheet.getLastRow();
+      detailsSheet.getRange(lastRow + 1, 1, detailsData.length, detailsData[0].length).setValues(detailsData);
     }
     
     return ContentService.createTextOutput(JSON.stringify({ 
@@ -150,38 +148,13 @@ function registerMemberHandler(ss, data) {
 }
 
 
-// ฟังก์ชันช่วยเหลือสำหรับค้นหาหรือสร้างชีตใหม่พร้อมกำหนดหัวตาราง (Headers)
-function getOrCreateSheet(ss, name, headers) {
+// ฟังก์ชันช่วยเหลือสำหรับค้นหาหรือสร้างชีตแบบรวดเร็ว (ลดการอ่าน/เขียนเกินความจำเป็น)
+function getFastSheet(ss, name, headers) {
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(headers);
-    // ทำตัวหนาแถวหัวตาราง
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
-  } else {
-    // ตรวจสอบว่าหัวข้อคอลัมน์ (Row 1) ตรงกันหรือไม่
-    var lastCol = sheet.getLastColumn();
-    var currentHeaders = [];
-    if (lastCol > 0) {
-      currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    }
-    
-    var isMatch = currentHeaders.length === headers.length;
-    if (isMatch) {
-      for (var i = 0; i < headers.length; i++) {
-        if (currentHeaders[i] !== headers[i]) {
-          isMatch = false;
-          break;
-        }
-      }
-    }
-    
-    // หากหัวข้อไม่ตรงกัน (มีการอัปเดตโครงสร้างคอลัมน์) ให้ล้างข้อมูลเดิมและเขียนหัวข้อใหม่ทั้งหมดเพื่อป้องกันข้อมูลเหลื่อมกัน
-    if (!isMatch) {
-      sheet.clear();
-      sheet.appendRow(headers);
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
-    }
   }
   return sheet;
 }
