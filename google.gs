@@ -507,14 +507,14 @@ function updateOrderStatusNative(orderId, newStatus) {
         else if (newStatus === "รอชำระเงิน" && paymentMethod === "โอนจ่าย") {
            messages.push({
              "type": "text",
-             "text": "✅ ออเดอร์ " + orderId + " ของคุณได้รับการยืนยันแล้ว!\n\nกรุณาสแกน QR Code ด้านล่างเพื่อชำระเงินจำนวน ฿" + totalPrice + " และส่งสลิปหลักฐานการโอนเงินมาที่แชทนี้ได้เลยครับ 👇"
+             "text": "qr code สำหรับชำระเงิน"
            });
            
-           var dynamicQrUrl = "https://promptpay.io/" + SHOP_PROMPTPAY_ID + "/" + totalPrice + ".png";
+           var staticQrUrl = "https://i.postimg.cc/rwqW0Prh/Screenshot-10.png";
            messages.push({
              "type": "image",
-             "originalContentUrl": dynamicQrUrl,
-             "previewImageUrl": dynamicQrUrl
+             "originalContentUrl": staticQrUrl,
+             "previewImageUrl": staticQrUrl
            });
         }
         else if (newStatus === "กำลังจัดส่ง" && paymentMethod === "โอนจ่าย") {
