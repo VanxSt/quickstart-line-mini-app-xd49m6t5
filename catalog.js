@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTGSPiJFvUknEbD2GoD9dfQGyzWsofINm5yNF7SSEs4OadqNaYtCnBpzt1HbUH6hIg/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybjvnegQ74UR3ODl3O5H0I4EAl-rfsb3h1g3mtKWiVbxkf-Mfl6WmNRqMNj2Czx3En/exec';
 
 let PRODUCTS = [];
 
@@ -860,13 +860,13 @@ if (ordersModal) {
 async function loadMyOrders() {
   const ordersBody = document.getElementById('ordersModalBody');
   if (!ordersBody) return;
-  
+
   ordersBody.innerHTML = `
     <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
       กำลังโหลดประวัติการสั่งซื้อ...
     </div>
   `;
-  
+
   let userId = 'web-test-user';
   if (liff.isLoggedIn()) {
     try {
@@ -876,11 +876,11 @@ async function loadMyOrders() {
       console.error(e);
     }
   }
-  
+
   try {
     const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}`);
     const data = await res.json();
-    
+
     if (data.status === 'success' && data.orders && data.orders.length > 0) {
       ordersBody.innerHTML = '';
       data.orders.forEach(order => {
@@ -889,11 +889,11 @@ async function loadMyOrders() {
         if (order.status === 'รอตรวจสอบ') statusColor = '#f59e0b';
         else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว') statusColor = '#10b981';
         else if (order.status === 'ยกเลิก') statusColor = '#ef4444';
-        
+
         // Format date
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
-        
+
         const row = document.createElement('div');
         row.className = 'cart-item';
         row.style.flexDirection = 'column';
