@@ -611,7 +611,6 @@ function openCheckoutModal() {
   document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
   document.getElementById('locationStatus').className = 'location-status-badge';
 
-  generatePromptPayQR(totalAmount);
   validateCheckoutForm();
 
   checkoutModal.classList.add('show');
@@ -652,31 +651,6 @@ async function fetchMemberInfo(userId) {
   }
 }
 
-function generatePromptPayQR(totalAmount) {
-  const qrImg = document.getElementById('qrCodeImg');
-  const qrLoading = document.getElementById('qrLoading');
-
-  if (!SHOP_PROMPTPAY_ID || SHOP_PROMPTPAY_ID === '0800000000') {
-    qrLoading.textContent = '⚠️ ยังไม่ได้กำหนดเบอร์ PromptPay ของร้านค้า';
-    qrImg.style.display = 'none';
-    return;
-  }
-
-  qrLoading.style.display = 'block';
-  qrLoading.textContent = 'กำลังสร้าง QR Code...';
-  qrImg.style.display = 'none';
-
-  const qrUrl = `https://promptpay.io/${SHOP_PROMPTPAY_ID}/${totalAmount}.png`;
-
-  qrImg.onload = () => {
-    qrLoading.style.display = 'none';
-    qrImg.style.display = 'block';
-  };
-  qrImg.onerror = () => {
-    qrLoading.textContent = '⚠️ ไม่สามารถสร้าง QR Code ได้';
-  };
-  qrImg.src = qrUrl;
-}
 
 async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = []) {
   // สร้างรายการสินค้าสำหรับ Flex Message
