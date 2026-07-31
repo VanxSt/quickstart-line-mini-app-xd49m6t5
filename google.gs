@@ -539,8 +539,12 @@ function updateOrderStatusNative(orderId, newStatus) {
 
 function sendLinePushMessage(userId, messages) {
   var url = 'https://api.line.me/v2/bot/message/push';
+  
+  // Ensure userId is a clean string
+  var cleanUserId = userId ? userId.toString().trim() : '';
+  
   var payload = {
-    'to': userId,
+    'to': cleanUserId,
     'messages': messages
   };
   
@@ -554,6 +558,13 @@ function sendLinePushMessage(userId, messages) {
     'muteHttpExceptions': true
   };
   
-  var response = UrlFetchApp.fetch(url, options);
-  return response.getContentText();
+  try {
+    var response = UrlFetchApp.fetch(url, options);
+    var responseText = response.getContentText();
+    // Return both response and request payload for debugging
+    return responseText + "\n[Payload]: " + JSON.stringify(payload);
+  } catch (error) {
+    return 'Fetch Error: ' + error.message + "\n[Payload]: " + JSON.stringify(payload);
+  }
 }
+
