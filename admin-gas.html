@@ -364,7 +364,11 @@
       google.script.run
         .withSuccessHandler(function(result) {
           if (result.status === 'success') {
-            alert("อัปเดตสถานะออเดอร์สำเร็จ!");
+            let alertMsg = "อัปเดตสถานะออเดอร์สำเร็จ!";
+            if (result.debug && result.debug !== 'No message to send') {
+              alertMsg += "\n\n[LINE API Debug]:\n" + result.debug;
+            }
+            alert(alertMsg);
             closeModal();
             fetchOrders();
           } else {
