@@ -1,5 +1,5 @@
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybjvnegQ74UR3ODl3O5H0I4EAl-rfsb3h1g3mtKWiVbxkf-Mfl6WmNRqMNj2Czx3En/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzF6Qw3H1OCgCDufdCZQx_PVhIy5GsVZ38oCDmyakpriI67vy5bkyA3UTL5FditxNSV/exec';
 
 let PRODUCTS = [];
 
@@ -798,7 +798,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
       footer: {
         type: "box",
         layout: "vertical",
-        spacing: "sm",
+        spacing: "md",
         contents: [
           {
             type: "text",
@@ -806,7 +806,19 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
             size: "xs",
             color: "#aaaaaa",
             wrap: true,
-            align: "center"
+            align: "center",
+            margin: "sm"
+          },
+          {
+            type: "button",
+            style: "primary",
+            color: "#10b981",
+            margin: "md",
+            action: {
+              type: "uri",
+              label: "🔒 เฉพาะแอดมิน: ยืนยันออเดอร์",
+              uri: `${GOOGLE_SCRIPT_URL}?action=confirmOrder&orderId=${orderId}`
+            }
           }
         ]
       }

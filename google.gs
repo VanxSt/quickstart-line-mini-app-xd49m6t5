@@ -260,6 +260,42 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
+    // Action 1.8: แอดมินยืนยันออเดอร์จาก LINE
+    if (action === 'confirmOrder') {
+      var orderIdToConfirm = e.parameter.orderId;
+      if (!orderIdToConfirm) {
+        return HtmlService.createHtmlOutput('<div style="text-align: center; font-family: sans-serif; padding: 50px;"><h1>❌ ไม่พบรหัสออเดอร์</h1></div>');
+      }
+      var ordersSheet = ss.getSheetByName("Orders");
+      if (!ordersSheet) {
+        return HtmlService.createHtmlOutput('<div style="text-align: center; font-family: sans-serif; padding: 50px;"><h1>❌ ไม่พบฐานข้อมูลออเดอร์</h1></div>');
+      }
+      
+      var values = ordersSheet.getDataRange().getValues();
+      var foundRow = -1;
+      for (var i = 1; i < values.length; i++) {
+        if (values[i][1] && values[i][1].toString() === orderIdToConfirm) {
+          foundRow = i + 1; // +1 เพราะ array เริ่มที่ 0 แต่แถว Sheet เริ่มที่ 1
+          break;
+        }
+      }
+      
+      if (foundRow !== -1) {
+        ordersSheet.getRange(foundRow, 10).setValue("ยืนยันแล้ว"); // คอลัมน์ที่ 10 คือ Status
+        var html = '<div style="font-family: sans-serif; text-align: center; padding: 50px 20px;">' +
+                   '<h1 style="color: #10b981; font-size: 40px; margin-bottom: 10px;">✅</h1>' +
+                   '<h2 style="color: #10b981; margin-top: 0;">ยืนยันออเดอร์สำเร็จ!</h2>' +
+                   '<p style="font-size: 18px;">ออเดอร์ <b>' + orderIdToConfirm + '</b> ถูกเปลี่ยนสถานะเป็น "ยืนยันแล้ว"</p>' +
+                   '<p style="color: #666; margin-top: 30px;">คุณสามารถปิดหน้านี้แล้วกลับไปที่แชท LINE ได้เลยครับ</p>' +
+                   '</div>';
+        // ใช้ <meta name="viewport"> เพื่อให้แสดงผลบนมือถือได้พอดี
+        html = '<meta name="viewport" content="width=device-width, initial-scale=1.0">' + html;
+        return HtmlService.createHtmlOutput(html);
+      } else {
+        return HtmlService.createHtmlOutput('<div style="text-align: center; font-family: sans-serif; padding: 50px;"><h2 style="color: #ef4444;">❌ ไม่พบออเดอร์รหัส:<br>' + orderIdToConfirm + '</h2></div>');
+      }
+    }
+    
     // Action 2: ดึงข้อมูลสมาชิก
     var userId = e.parameter.userId;
     if (!userId) {
