@@ -95,7 +95,6 @@ let searchQuery = '';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
 let cart = [];
-let slipBase64 = "";
 let currentMemberInfo = { displayName: '', phone: '' };
 
 // Elements
@@ -120,12 +119,7 @@ const btnGoToCheckout = document.getElementById('btnGoToCheckout');
 const checkoutModal = document.getElementById('checkoutModal');
 const btnCloseCheckoutModal = document.getElementById('btnCloseCheckoutModal');
 const btnGetLocation = document.getElementById('btnGetLocation');
-const btnTriggerUpload = document.getElementById('btnTriggerUpload');
-const btnRemoveSlip = document.getElementById('btnRemoveSlip');
 const btnSubmitOrder = document.getElementById('btnSubmitOrder');
-const slipInput = document.getElementById('slipInput');
-const slipPreviewContainer = document.getElementById('slipPreviewContainer');
-const slipPreviewImg = document.getElementById('slipPreviewImg');
 
 // Initialize LIFF
 async function initLiff() {
@@ -613,15 +607,10 @@ function openCheckoutModal() {
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
   document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
 
-  // Reset location & slip
+  // Reset location
   document.getElementById('gpsLocationLink').value = '';
   document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
   document.getElementById('locationStatus').className = 'location-status-badge';
-
-  slipInput.value = '';
-  slipBase64 = "";
-  slipPreviewImg.src = "";
-  slipPreviewContainer.style.display = 'none';
 
   generatePromptPayQR(totalAmount);
   validateCheckoutForm();
@@ -638,8 +627,8 @@ function validateCheckoutForm() {
   const phone = document.getElementById('checkoutPhone').value.trim();
   const address = document.getElementById('checkoutAddressDetails').value.trim();
 
-  // Valid if Name, Phone, Address details are filled AND slip image is uploaded
-  const isValid = name !== "" && phone !== "" && address !== "" && slipBase64 !== "";
+  // Valid if Name, Phone, Address details are filled
+  const isValid = name !== "" && phone !== "" && address !== "";
   btnSubmitOrder.disabled = !isValid;
 }
 
@@ -702,7 +691,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
         contents: [
           {
             type: "text",
-            text: "🛒 สั่งซื้อสินค้าสำเร็จ",
+            text: "🛒 คำสั่งซื้อใหม่ (รอตรวจสอบ)",
             weight: "bold",
             size: "xl",
             color: "#388BC2"
@@ -813,7 +802,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice) {
         contents: [
           {
             type: "text",
-            text: "เจ้าหน้าที่กำลังตรวจสอบหลักฐานการชำระเงินของคุณ ขอบคุณครับ 😊",
+            text: "แอดมินกำลังตรวจสอบคำสั่งซื้อและหลักฐานการโอนเงิน กรุณารอสักครู่ครับ 😊",
             size: "xs",
             color: "#aaaaaa",
             wrap: true,
@@ -840,6 +829,103 @@ if (btnGoToCheckout) btnGoToCheckout.addEventListener('click', () => {
   openCheckoutModal();
 });
 if (btnCloseCheckoutModal) btnCloseCheckoutModal.addEventListener('click', closeCheckoutModal);
+
+// NEW: Orders Modal
+const btnOrders = document.getElementById('btnOrders');
+const ordersModal = document.getElementById('ordersModal');
+const btnCloseOrdersModal = document.getElementById('btnCloseOrdersModal');
+
+function openOrdersModal() {
+  if (ordersModal) {
+    ordersModal.classList.add('show');
+    loadMyOrders();
+  }
+}
+
+function closeOrdersModal() {
+  if (ordersModal) {
+    ordersModal.classList.remove('show');
+  }
+}
+
+if (btnOrders) btnOrders.addEventListener('click', openOrdersModal);
+if (btnCloseOrdersModal) btnCloseOrdersModal.addEventListener('click', closeOrdersModal);
+
+if (ordersModal) {
+  ordersModal.addEventListener('click', (e) => {
+    if (e.target === ordersModal) closeOrdersModal();
+  });
+}
+
+async function loadMyOrders() {
+  const ordersBody = document.getElementById('ordersModalBody');
+  if (!ordersBody) return;
+  
+  ordersBody.innerHTML = `
+    <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
+      กำลังโหลดประวัติการสั่งซื้อ...
+    </div>
+  `;
+  
+  let userId = 'web-test-user';
+  if (liff.isLoggedIn()) {
+    try {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}`);
+    const data = await res.json();
+    
+    if (data.status === 'success' && data.orders && data.orders.length > 0) {
+      ordersBody.innerHTML = '';
+      data.orders.forEach(order => {
+        // Status formatting
+        let statusColor = '#aaaaaa';
+        if (order.status === 'รอตรวจสอบ') statusColor = '#f59e0b';
+        else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว') statusColor = '#10b981';
+        else if (order.status === 'ยกเลิก') statusColor = '#ef4444';
+        
+        // Format date
+        const dateObj = new Date(order.timestamp);
+        const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
+        
+        const row = document.createElement('div');
+        row.className = 'cart-item';
+        row.style.flexDirection = 'column';
+        row.style.alignItems = 'flex-start';
+        row.innerHTML = `
+          <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 8px;">
+            <span style="font-weight: bold; color: var(--text-main);">${order.orderId}</span>
+            <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9em; background: ${statusColor}15; padding: 2px 8px; border-radius: 12px;">${order.status}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.9em; color: var(--text-light);">
+            <span>${dateStr}</span>
+            <span style="font-weight: 600; color: var(--primary-color);">฿${order.totalPrice}</span>
+          </div>
+        `;
+        ordersBody.appendChild(row);
+      });
+    } else {
+      ordersBody.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
+          ไม่พบประวัติการสั่งซื้อของคุณ
+        </div>
+      `;
+    }
+  } catch (error) {
+    ordersBody.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
+        เกิดข้อผิดพลาดในการโหลดข้อมูล
+      </div>
+    `;
+    console.error('Error fetching orders:', error);
+  }
+}
 
 // Cart Modal Backdrop Close
 if (cartModal) {
@@ -895,90 +981,6 @@ if (btnGetLocation) {
   });
 }
 
-// Slip upload interactions
-if (btnTriggerUpload) {
-  btnTriggerUpload.addEventListener('click', () => {
-    slipInput.click();
-  });
-}
-
-// ฟังก์ชันบีบอัดรูปภาพเพื่อลดขนาด Base64 ก่อนส่งไป Google Apps Script
-function compressImage(file, maxWidth, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      const img = new Image();
-      img.onload = function () {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // ย่อขนาดรูปตามสัดส่วน (จำกัดด้านกว้างสูงสุด)
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // แปลงเป็น JPEG คุณภาพที่กำหนด (0.6 = ลดขนาดลง ~70% จากต้นฉบับ)
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedBase64);
-      };
-      img.onerror = reject;
-      img.src = event.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-if (slipInput) {
-  slipInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป (จำกัดไม่เกิน 5MB)');
-      slipInput.value = '';
-      return;
-    }
-
-    try {
-      // บีบอัดรูปภาพ: ย่อเหลือกว้างสูงสุด 800px, คุณภาพ JPEG 60%
-      // ลดขนาดจาก ~3MB เหลือ ~200-400KB เพื่อให้ส่งไป Google Apps Script ได้ราบรื่น
-      slipBase64 = await compressImage(file, 800, 0.6);
-      slipPreviewImg.src = slipBase64;
-      slipPreviewContainer.style.display = 'block';
-      validateCheckoutForm();
-      console.log('Slip compressed. Size:', Math.round(slipBase64.length / 1024), 'KB');
-    } catch (err) {
-      console.error('Error compressing slip image:', err);
-      // Fallback: ใช้ FileReader ตรงๆ หากบีบอัดไม่ได้
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        slipBase64 = event.target.result;
-        slipPreviewImg.src = slipBase64;
-        slipPreviewContainer.style.display = 'block';
-        validateCheckoutForm();
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-}
-
-if (btnRemoveSlip) {
-  btnRemoveSlip.addEventListener('click', () => {
-    slipInput.value = '';
-    slipBase64 = "";
-    slipPreviewImg.src = "";
-    slipPreviewContainer.style.display = 'none';
-    validateCheckoutForm();
-  });
-}
 
 // Checkout input validations
 const checkoutName = document.getElementById('checkoutName');
@@ -1023,7 +1025,6 @@ if (btnSubmitOrder) {
       gpsLocation: gpsLocation,
       addressDetails: addressDetails,
       totalPrice: totalAmount,
-      slipImage: slipBase64,
       items: cart.map(item => ({
         id: item.id,
         name: item.name,
@@ -1043,7 +1044,7 @@ if (btnSubmitOrder) {
       const result = await response.json();
 
       if (result.status === 'success') {
-        alert(`🎉 สั่งซื้อสินค้าสำเร็จ!\nหมายเลขสั่งซื้อของคุณคือ: ${result.orderId}`);
+        alert(`ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${result.orderId}\n\nคุณสามารถตรวจสอบสถานะได้ที่ปุ่ม 'ประวัติการสั่งซื้อ'`);
 
         // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
         if (liff.isInClient()) {

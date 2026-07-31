@@ -25,7 +25,6 @@ function createOrderHandler(ss, data) {
     var gpsLocation = data.gpsLocation || '';
     var addressDetails = data.addressDetails || '';
     var totalPrice = Number(data.totalPrice || 0);
-    var slipImage = data.slipImage || '';
     var items = data.items || [];
     
     // สร้าง Order ID แบบไม่ซ้ำกัน (เช่น ORD-20260601-153012-123)
@@ -34,11 +33,7 @@ function createOrderHandler(ss, data) {
     var rand = Math.floor(Math.random() * 1000);
     var orderId = "ORD-" + formattedDate + "-" + rand;
     
-    // อัปโหลดสลิปเงินโอนลง Google Drive (ถ้ามี)
-    var slipUrl = "";
-    if (slipImage) {
-      slipUrl = saveImageToDrive(slipImage, "Slip-" + orderId + ".jpg");
-    }
+
     
     // ปรับแต่งค่า URL เป็น Hyperlink แบบกดได้สำหรับ Google Sheets
     var gpsFormula = gpsLocation;
@@ -46,10 +41,7 @@ function createOrderHandler(ss, data) {
       gpsFormula = '=HYPERLINK("' + gpsLocation + '", "📌 เปิดแผนที่ Google Maps")';
     }
     
-    var slipFormula = slipUrl;
-    if (slipUrl && slipUrl.indexOf("http") === 0) {
-      slipFormula = '=HYPERLINK("' + slipUrl + '", "📄 ดูรูปสลิป")';
-    }
+    var slipFormula = "";
     
     // ดึงหรือสร้างชีต "Orders"
     var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status"];
@@ -66,7 +58,7 @@ function createOrderHandler(ss, data) {
       addressDetails,
       slipFormula,
       totalPrice,
-      "Pending Verification" // สถานะเริ่มต้น: รอการตรวจสอบสลิป
+      "รอตรวจสอบ" // สถานะเริ่มต้น
     ]);
     
     // ตั้งค่าฟอร์แมตเบอร์โทรศัพท์ในคอลัมน์ Phone (คอลัมน์ที่ 5)
@@ -100,8 +92,7 @@ function createOrderHandler(ss, data) {
     
     return ContentService.createTextOutput(JSON.stringify({ 
       status: 'success', 
-      orderId: orderId,
-      slipUrl: slipUrl
+      orderId: orderId
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
@@ -158,41 +149,6 @@ function registerMemberHandler(ss, data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ฟังก์ชันช่วยเหลือสำหรับบันทึกรูปภาพ Base64 ลงใน Google Drive
-function saveImageToDrive(base64Data, filename) {
-  try {
-    var split = base64Data.split(',');
-    var contentType = "image/jpeg";
-    var rawData = base64Data;
-    
-    if (split.length > 1) {
-      var match = split[0].match(/:(.*?);/);
-      if (match) {
-        contentType = match[1];
-      }
-      rawData = split[1];
-    }
-    
-    var decoded = Utilities.base64Decode(rawData);
-    var blob = Utilities.newBlob(decoded, contentType, filename);
-    
-    // บันทึกไฟล์ภาพลงในโฟลเดอร์ Google Drive เฉพาะเจาะจงที่คุณกำหนดไว้ (ID: 1OdGA3FG0h9f6Xz1invt8dD30nQCqrZ3G)
-    var file;
-    try {
-      var folder = DriveApp.getFolderById("1OdGA3FG0h9f6Xz1invt8dD30nQCqrZ3G");
-      file = folder.createFile(blob);
-    } catch (e) {
-      // หากเกิดปัญหาการเข้าถึงโฟลเดอร์ให้บันทึกในหน้าหลัก (Root) ของ Google Drive แทนเพื่อไม่ให้ออเดอร์พัง
-      file = DriveApp.createFile(blob);
-    }
-    
-    // ตั้งค่าการแชร์ให้ทุกคนที่มีลิงก์สามารถเปิดดูรูปภาพสลิปได้ (สะดวกสำหรับทางร้านเข้าตรวจสอบสลิป)
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return file.getUrl();
-  } catch (err) {
-    return "Error saving image: " + err.message;
-  }
-}
 
 // ฟังก์ชันช่วยเหลือสำหรับค้นหาหรือสร้างชีตใหม่พร้อมกำหนดหัวตาราง (Headers)
 function getOrCreateSheet(ss, name, headers) {
@@ -272,6 +228,36 @@ function doGet(e) {
         status: 'success', 
         products: activeProducts 
       })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Action 1.5: ดึงข้อมูลประวัติการสั่งซื้อของลูกค้า
+    if (action === 'getMyOrders') {
+      var userIdParam = e.parameter.userId;
+      if (!userIdParam) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Missing userId' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      var ordersSheet = ss.getSheetByName("Orders");
+      if (!ordersSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: [] }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      var values = ordersSheet.getDataRange().getValues();
+      var myOrders = [];
+      // วนลูปจากแถวล่างสุดไปบนสุด เพื่อให้เห็นออเดอร์ล่าสุดก่อน
+      for (var i = values.length - 1; i >= 1; i--) {
+        var row = values[i];
+        if (row[2] && row[2].toString().trim() === userIdParam.toString().trim()) {
+          myOrders.push({
+            timestamp: row[0],
+            orderId: row[1],
+            totalPrice: row[8],
+            status: row[9] || 'รอตรวจสอบ'
+          });
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: myOrders }))
+        .setMimeType(ContentService.MimeType.JSON);
     }
     
     // Action 2: ดึงข้อมูลสมาชิก
