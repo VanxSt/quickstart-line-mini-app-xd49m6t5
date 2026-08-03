@@ -123,7 +123,7 @@ const btnSubmitOrder = document.getElementById('btnSubmitOrder');
 // Initialize LIFF
 async function initLiff() {
   try {
-    await liff.init({ liffId: '2010951632-J4qPI7BA' });
+    await liff.init({ liffId: '2010951634-lg8G4wUA' });
     console.log('LIFF Initialized in catalog page');
     if (liff.isLoggedIn()) {
       try {
