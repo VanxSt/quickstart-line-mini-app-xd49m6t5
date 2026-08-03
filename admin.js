@@ -50,6 +50,17 @@ function renderOrders() {
   const tbody = document.getElementById('ordersBody');
   tbody.innerHTML = '';
 
+  if (!allOrders || allOrders.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+          📦 ยังไม่มีรายการคำสั่งซื้อในระบบ (เมื่อลูกค้าทดลองสั่งซื้อ รายการจะมาปรากฏที่นี่)
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
   allOrders.forEach(order => {
     const tr = document.createElement('tr');
 
