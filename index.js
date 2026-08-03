@@ -37,7 +37,7 @@ const friendShip = document.querySelector('#friendShip');
 
 async function main() {
   // Initialize LIFF SDK
-  await liff.init({ liffId: '2010169713-ao0dtP3R' });
+  await liff.init({ liffId: '2010951632-J4qPI7BA' });
   getUserProfile();
 }
 main();

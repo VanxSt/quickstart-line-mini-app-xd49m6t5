@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZgKqGr24nr4u4ZSh-oaWm-xogWbVu6BHmbG1VyNGYLTgUMGpvd6QQ_chyfnn5IIKx/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzSCJP8qYQ8Lr4PXZZn3tZfI46Hu4JNYE-t_sbs0YBOy1OcmsLyLKrDoHBeODfM1Eb/exec';
 
 let PRODUCTS = [];
 
@@ -123,7 +123,7 @@ const btnSubmitOrder = document.getElementById('btnSubmitOrder');
 // Initialize LIFF
 async function initLiff() {
   try {
-    await liff.init({ liffId: '2010169713-ao0dtP3R' });
+    await liff.init({ liffId: '2010951632-J4qPI7BA' });
     console.log('LIFF Initialized in catalog page');
     if (liff.isLoggedIn()) {
       try {
