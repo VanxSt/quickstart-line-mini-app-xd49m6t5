@@ -19,7 +19,7 @@ const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
 let userProfileData = null;
 
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWJzbFePEBpgz0Vfp1t7bdosRkKLWKU5BifWXdt1mN7Zg9efpqAZrnRLYiHbOUm2VF/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzSCJP8qYQ8Lr4PXZZn3tZfI46Hu4JNYE-t_sbs0YBOy1OcmsLyLKrDoHBeODfM1Eb/exec';
 
 // Profile elements
 const email = document.querySelector('#email');
