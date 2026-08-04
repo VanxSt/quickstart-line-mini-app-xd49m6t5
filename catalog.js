@@ -90,6 +90,18 @@ let visibleLimit = 20; // จำกัดจำนวนการแสดงผ
 let cart = [];
 let currentMemberInfo = { displayName: '', phone: '' };
 
+// โหลดข้อมูลสมาชิกจาก Cache ทันทีตั้งแต่ตอนเริ่มแอป (ก่อน LIFF init เสร็จ)
+// ทำให้เบอร์โทรและชื่อปรากฏในฟอร์มได้ทันทีตั้งแต่ครั้งที่ 2 ที่ใช้งาน
+try {
+  const _cached = localStorage.getItem('member_info_cache');
+  if (_cached) {
+    const _info = JSON.parse(_cached);
+    if (_info && _info.phone) {
+      currentMemberInfo = { displayName: _info.displayName || '', phone: _info.phone || '' };
+    }
+  }
+} catch (e) { }
+
 // Elements
 const productsGrid = document.getElementById('productsGrid');
 const searchInput = document.getElementById('searchInput');
