@@ -456,7 +456,7 @@ function updateOrderStatusNative(orderId, newStatus) {
              "text": "แอดมินยืนยันออเดอร์แล้วครับ\nโอนเงินแล้วส่งสลิปได้เลยนะครับ!"
            });
            
-           var staticQrUrl = "https://i.postimg.cc/L6VsTLyR/qr-(2).png";
+           var staticQrUrl = "https://i.postimg.cc/zDFp1Dpk/Screenshot-10.png";
            messages.push({
              "type": "image",
              "originalContentUrl": staticQrUrl,

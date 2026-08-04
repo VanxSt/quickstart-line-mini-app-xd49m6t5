@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzR8hqcSO5VKQPDRslack8vUTRvLemd2Wv-BTiH9C6xL1sqnVY8CaIs5_mLbXSwyBUI/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxfqLTRqKcapmJUvwn7kES_VRE11lPhLxQlmM4j1xk2iVy8HkXYaBtwTljANOWpJtK/exec';
 
 let allOrders = [];
 let currentViewingOrderId = null;

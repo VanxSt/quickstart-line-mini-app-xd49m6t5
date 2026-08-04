@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzR8hqcSO5VKQPDRslack8vUTRvLemd2Wv-BTiH9C6xL1sqnVY8CaIs5_mLbXSwyBUI/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxfqLTRqKcapmJUvwn7kES_VRE11lPhLxQlmM4j1xk2iVy8HkXYaBtwTljANOWpJtK/exec';
 
 let PRODUCTS = [];
 
@@ -888,7 +888,7 @@ async function loadMyOrders() {
         hasCache = true;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (!hasCache) {
     ordersBody.innerHTML = `
@@ -1069,7 +1069,7 @@ if (btnSubmitOrder) {
           status: 'รอตรวจสอบ'
         });
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
-      } catch (e) {}
+      } catch (e) { }
 
       // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
       alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}`);
@@ -1086,7 +1086,7 @@ if (btnSubmitOrder) {
 
       btnSubmitOrder.disabled = false;
       btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
-      
+
       // เปิดหน้าต่างประวัติคำสั่งซื้ออัตโนมัติ (หน่วงเวลาเล็กน้อยเพื่อให้ระบบส่งข้อมูลเสร็จก่อน)
       setTimeout(() => {
         openOrdersModal();
