@@ -218,28 +218,34 @@ function openProductDetail(id) {
     <img class="modal-img" src="${productImg}" alt="${product.name}">
     <h2 class="modal-title">${product.name}</h2>
     <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
-    <p class="modal-desc">${product.desc}</p>
     <div class="modal-footer">
       <div>
         <p class="modal-price-label">ราคา</p>
         <span class="modal-price">฿${product.price}</span>
       </div>
-      <div class="modal-buttons">
-        <button class="btn-outline" id="btnShareProduct" style="padding: 10px;" title="แชร์">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
-        <button class="btn-outline" id="btnOrderProduct">
-          สอบถาม
-        </button>
-        <button class="btn-primary" id="btnAddToCart">
-          🛒 ใส่ตะกร้า
-        </button>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f5f5f5); border-radius: 12px; padding: 4px 8px;">
+          <button id="btnQtyMinus" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--primary, #388BC2); color: white; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">−</button>
+          <span id="modalQty" style="font-size: 18px; font-weight: bold; min-width: 28px; text-align: center;">1</span>
+          <button id="btnQtyPlus" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--primary, #388BC2); color: white; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">+</button>
+        </div>
+        <div class="modal-buttons">
+          <button class="btn-outline" id="btnShareProduct" style="padding: 10px;" title="แชร์">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </button>
+          <button class="btn-outline" id="btnOrderProduct">
+            สอบถาม
+          </button>
+          <button class="btn-primary" id="btnAddToCart">
+            🛒 ใส่ตะกร้า
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -255,9 +261,21 @@ function openProductDetail(id) {
     orderProduct(product);
   });
 
+  // ควบคุมจำนวนสินค้า
+  let modalQtyVal = 1;
+  const modalQtyEl = document.getElementById('modalQty');
+  document.getElementById('btnQtyMinus').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (modalQtyVal > 1) { modalQtyVal--; modalQtyEl.textContent = modalQtyVal; }
+  });
+  document.getElementById('btnQtyPlus').addEventListener('click', (e) => {
+    e.stopPropagation();
+    modalQtyVal++; modalQtyEl.textContent = modalQtyVal;
+  });
+
   document.getElementById('btnAddToCart').addEventListener('click', (e) => {
     e.stopPropagation();
-    addToCart(product);
+    for (let i = 0; i < modalQtyVal; i++) addToCart(product);
     closeModal();
   });
 
