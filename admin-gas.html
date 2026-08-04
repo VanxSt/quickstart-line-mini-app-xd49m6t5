@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - จัดการคำสั่งซื้อ</title>
+  <title>Admin Dashboard - จัดการคำสั่งซื้อ & สมาชิก</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
     .logo-icon { font-size: 26px; background: var(--primary-light); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
     .logo h2 { font-size: 18px; font-weight: 700; }
     .nav-menu { display: flex; flex-direction: column; gap: 6px; }
-    .nav-item { padding: 12px 16px; text-decoration: none; color: var(--text-muted); border-radius: 10px; font-weight: 500; font-size: 14px; transition: all 0.2s ease; }
+    .nav-item { padding: 12px 16px; text-decoration: none; color: var(--text-muted); border-radius: 10px; font-weight: 500; font-size: 14px; transition: all 0.2s ease; cursor: pointer; }
     .nav-item:hover, .nav-item.active { background-color: var(--primary-light); color: var(--primary); font-weight: 600; }
     
     .main-content { flex: 1; padding: 32px 40px; overflow-y: auto; }
@@ -126,91 +126,156 @@
         <h2>Admin Panel</h2>
       </div>
       <nav class="nav-menu">
-        <a href="#" class="nav-item active">คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item active" id="navOrders" onclick="switchTab('orders')">📦 คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item" id="navMembers" onclick="switchTab('members')">👥 สมาชิก (Members)</a>
       </nav>
     </aside>
 
     <main class="main-content">
-      <header class="header">
-        <div>
-          <h1>จัดการคำสั่งซื้อ</h1>
-          <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
-        </div>
-        <button id="refreshBtn" class="btn-primary" onclick="fetchOrders(true)">
-          <span class="icon">🔄</span> รีเฟรชข้อมูล
-        </button>
-      </header>
+      <!-- Orders View -->
+      <div id="viewOrders">
+        <header class="header">
+          <div>
+            <h1>จัดการคำสั่งซื้อ</h1>
+            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
+          </div>
+          <button id="refreshBtn" class="btn-primary" onclick="fetchOrders(true)">
+            <span class="icon">🔄</span> รีเฟรชข้อมูล
+          </button>
+        </header>
 
-      <!-- Stats Summary -->
-      <section class="stats-grid">
-        <div class="stat-card pending">
-          <div class="stat-icon">⏳</div>
-          <div class="stat-info">
-            <h3>รอตรวจสอบ</h3>
-            <p id="stat-pending">0</p>
+        <!-- Stats Summary -->
+        <section class="stats-grid">
+          <div class="stat-card pending">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-info">
+              <h3>รอตรวจสอบ</h3>
+              <p id="stat-pending">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card payment">
-          <div class="stat-icon">💳</div>
-          <div class="stat-info">
-            <h3>รอชำระเงิน</h3>
-            <p id="stat-payment">0</p>
+          <div class="stat-card payment">
+            <div class="stat-icon">💳</div>
+            <div class="stat-info">
+              <h3>รอชำระเงิน</h3>
+              <p id="stat-payment">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card shipping">
-          <div class="stat-icon">🚚</div>
-          <div class="stat-info">
-            <h3>กำลังจัดส่ง / ยืนยัน</h3>
-            <p id="stat-confirmed">0</p>
+          <div class="stat-card shipping">
+            <div class="stat-icon">🚚</div>
+            <div class="stat-info">
+              <h3>กำลังจัดส่ง / ยืนยัน</h3>
+              <p id="stat-confirmed">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card sales">
-          <div class="stat-icon">💰</div>
-          <div class="stat-info">
-            <h3>ยอดขายรวม (ยืนยัน)</h3>
-            <p id="stat-sales">฿0</p>
+          <div class="stat-card sales">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <h3>ยอดขายรวม (ยืนยัน)</h3>
+              <p id="stat-sales">฿0</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- Filter Controls & Search -->
-      <section class="table-card">
-        <div class="table-header-toolbar">
-          <div class="filter-tabs" id="filterTabs">
-            <button class="tab-btn active" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
-            <button class="tab-btn" onclick="setFilter('รอตรวจสอบ', this)">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
-            <button class="tab-btn" onclick="setFilter('รอชำระเงิน', this)">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
-            <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
-            <button class="tab-btn" onclick="setFilter('ยืนยันแล้ว', this)">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
-            <button class="tab-btn" onclick="setFilter('ยกเลิก', this)">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+        <!-- Filter Controls & Search -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <div class="filter-tabs" id="filterTabs">
+              <button class="tab-btn active" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
+              <button class="tab-btn" onclick="setFilter('รอตรวจสอบ', this)">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
+              <button class="tab-btn" onclick="setFilter('รอชำระเงิน', this)">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
+              <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
+              <button class="tab-btn" onclick="setFilter('ยืนยันแล้ว', this)">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
+              <button class="tab-btn" onclick="setFilter('ยกเลิก', this)">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+            </div>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="adminSearchInput" oninput="onSearch(this.value)" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+            </div>
           </div>
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="adminSearchInput" oninput="onSearch(this.value)" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
-          </div>
-        </div>
 
-        <div class="table-responsive">
-          <table id="ordersTable">
-            <thead>
-              <tr>
-                <th>รหัสออเดอร์ / ช่องทาง</th>
-                <th>วันที่ / เวลา</th>
-                <th>ข้อมูลลูกค้า</th>
-                <th>ยอดรวม</th>
-                <th>สถานะ</th>
-                <th style="text-align: right;">การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="ordersBody">
-            </tbody>
-          </table>
-        </div>
-        <div id="loadingIndicator" class="loading-state">
-          <div class="spinner"></div>
-          <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
-        </div>
-      </section>
+          <div class="table-responsive">
+            <table id="ordersTable">
+              <thead>
+                <tr>
+                  <th>รหัสออเดอร์ / ช่องทาง</th>
+                  <th>วันที่ / เวลา</th>
+                  <th>ข้อมูลลูกค้า</th>
+                  <th>ยอดรวม</th>
+                  <th>สถานะ</th>
+                  <th style="text-align: right;">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody">
+              </tbody>
+            </table>
+          </div>
+          <div id="loadingIndicator" class="loading-state">
+            <div class="spinner"></div>
+            <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Members View -->
+      <div id="viewMembers" style="display: none;">
+        <header class="header">
+          <div>
+            <h1>รายชื่อสมาชิก</h1>
+            <p class="subtitle">ลูกค้าที่เข้าใช้งาน LINE Mini App และสมาชิกร้าน</p>
+          </div>
+          <button id="refreshMembersBtn" class="btn-primary" onclick="fetchMembers(true)">
+            <span class="icon">🔄</span> รีเฟรชข้อมูลสมาชิก
+          </button>
+        </header>
+
+        <!-- Member Stats Summary -->
+        <section class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-card shipping">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <h3>สมาชิกทั้งหมด</h3>
+              <p id="stat-total-members">0</p>
+            </div>
+          </div>
+          <div class="stat-card sales">
+            <div class="stat-icon">📞</div>
+            <div class="stat-info">
+              <h3>สมาชิกที่มีเบอร์โทรศัพท์</h3>
+              <p id="stat-phone-members">0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Members Table Card -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <h3 style="font-size: 16px; font-weight: 700;">รายชื่อลูกค้าทั้งหมด</h3>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="memberSearchInput" oninput="onMemberSearch(this.value)" placeholder="ค้นหา ชื่อสมาชิก, เบอร์โทร, LINE ID..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="membersTable">
+              <thead>
+                <tr>
+                  <th>รูปโปรไฟล์ / ชื่อ</th>
+                  <th>เบอร์โทรศัพท์</th>
+                  <th>LINE User ID</th>
+                  <th>วันที่ลงทะเบียนล่าสุด</th>
+                </tr>
+              </thead>
+              <tbody id="membersBody">
+              </tbody>
+            </table>
+          </div>
+          <div id="membersLoadingIndicator" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลสมาชิก...</p>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 
@@ -256,14 +321,42 @@
 
   <script>
     let allOrders = [];
+    let allMembers = [];
     let activeFilter = 'all';
     let searchQuery = '';
+    let memberSearchQuery = '';
     let currentViewingOrderId = null;
+    let currentTab = 'orders';
 
     document.addEventListener('DOMContentLoaded', () => {
       fetchOrders(true);
-      setInterval(() => fetchOrders(false), 15000);
+      setInterval(() => {
+        if (currentTab === 'orders') fetchOrders(false);
+        else if (currentTab === 'members') fetchMembers(false);
+      }, 15000);
     });
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const navOrders = document.getElementById('navOrders');
+      const navMembers = document.getElementById('navMembers');
+      const viewOrders = document.getElementById('viewOrders');
+      const viewMembers = document.getElementById('viewMembers');
+
+      if (tab === 'orders') {
+        navOrders.classList.add('active');
+        navMembers.classList.remove('active');
+        viewOrders.style.display = 'block';
+        viewMembers.style.display = 'none';
+        fetchOrders(false);
+      } else {
+        navMembers.classList.add('active');
+        navOrders.classList.remove('active');
+        viewMembers.style.display = 'block';
+        viewOrders.style.display = 'none';
+        fetchMembers(true);
+      }
+    }
 
     function setFilter(status, el) {
       activeFilter = status;
@@ -275,6 +368,11 @@
     function onSearch(val) {
       searchQuery = val.toLowerCase().trim();
       renderOrders();
+    }
+
+    function onMemberSearch(val) {
+      memberSearchQuery = val.toLowerCase().trim();
+      renderMembers();
     }
 
     function fetchOrders(showLoading = true) {
@@ -293,10 +391,7 @@
         })
         .withFailureHandler(function(err) {
           console.error(err);
-          if (showLoading) {
-            alert("เกิดข้อผิดพลาดในการดึงข้อมูล: " + err.message);
-            loading.style.display = 'none';
-          }
+          if (showLoading) loading.style.display = 'none';
         })
         .getAllOrdersNative();
     }
@@ -381,12 +476,7 @@
     }
 
     function updateStats() {
-      let pendingCount = 0;
-      let paymentCount = 0;
-      let shippingCount = 0;
-      let confirmedCount = 0;
-      let cancelledCount = 0;
-      let totalSales = 0;
+      let pendingCount = 0, paymentCount = 0, shippingCount = 0, confirmedCount = 0, cancelledCount = 0, totalSales = 0;
 
       allOrders.forEach(o => {
         if (o.status === 'รอตรวจสอบ') pendingCount++;
@@ -413,6 +503,97 @@
       document.getElementById('count-cancelled').textContent = cancelledCount;
     }
 
+    function fetchMembers(showLoading = true) {
+      const loading = document.getElementById('membersLoadingIndicator');
+      if (showLoading && loading) {
+        loading.style.display = 'flex';
+        document.getElementById('membersBody').innerHTML = '';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(members) {
+          allMembers = members || [];
+          renderMembers();
+          updateMemberStats();
+          if (showLoading && loading) loading.style.display = 'none';
+        })
+        .withFailureHandler(function(err) {
+          console.error(err);
+          if (showLoading && loading) loading.style.display = 'none';
+        })
+        .getAllMembersNative();
+    }
+
+    function renderMembers() {
+      const tbody = document.getElementById('membersBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const filtered = allMembers.filter(m => {
+        if (!memberSearchQuery) return true;
+        return (m.displayName && m.displayName.toLowerCase().includes(memberSearchQuery)) ||
+               (m.phone && m.phone.includes(memberSearchQuery)) ||
+               (m.userId && m.userId.toLowerCase().includes(memberSearchQuery)) ||
+               (m.email && m.email.toLowerCase().includes(memberSearchQuery));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+              <div style="font-size: 32px; margin-bottom: 8px;">👥</div>
+              <p style="font-weight: 500;">ยังไม่มีสมาชิกในระบบหรือหาไม่พบ</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(m => {
+        const tr = document.createElement('tr');
+        let dateStr = m.registeredAt || '-';
+        try {
+          if (m.registeredAt) {
+            const d = new Date(m.registeredAt);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+            }
+          }
+        } catch(e){}
+
+        const avatarHtml = m.pictureUrl
+          ? `<img src="${m.pictureUrl}" alt="${m.displayName}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />`
+          : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">${(m.displayName || 'U').charAt(0)}</div>`;
+
+        const cleanPhone = m.phone ? m.phone.replace(/'/g, "") : '-';
+
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              ${avatarHtml}
+              <div>
+                <strong style="font-size: 14px; color: var(--text-main);">${m.displayName || 'ไม่ระบุชื่อ'}</strong>
+                <div style="font-size: 12px; color: var(--text-muted);">${m.email || 'ไม่มีอีเมล'}</div>
+              </div>
+            </div>
+          </td>
+          <td><span style="font-weight: 600; color: #1e293b;">${cleanPhone}</span></td>
+          <td><code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">${m.userId || '-'}</code></td>
+          <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateMemberStats() {
+      const elTotal = document.getElementById('stat-total-members');
+      const elPhone = document.getElementById('stat-phone-members');
+      if (elTotal) elTotal.textContent = allMembers.length;
+      let phoneCount = 0;
+      allMembers.forEach(m => { if (m.phone && m.phone.trim() !== '') phoneCount++; });
+      if (elPhone) elPhone.textContent = phoneCount;
+    }
+
     function viewOrder(orderId) {
       currentViewingOrderId = orderId;
       const order = allOrders.find(o => o.orderId === orderId);
@@ -425,9 +606,7 @@
       let gpsText = order.gpsLocation;
       if (gpsText && gpsText.includes('HYPERLINK')) {
         const match = gpsText.match(/HYPERLINK\("([^"]+)"/);
-        if (match) {
-          gpsText = `<a href="${match[1]}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
-        }
+        if (match) gpsText = `<a href="${match[1]}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
       } else if (gpsText && gpsText.startsWith('http')) {
         gpsText = `<a href="${gpsText}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
       }
@@ -492,7 +671,6 @@
 
       const btnConfirm = document.getElementById('btnConfirmOrder');
       const btnCancel = document.getElementById('btnCancelOrder');
-      
       if (btnConfirm) { btnConfirm.disabled = true; btnConfirm.textContent = "กำลังบันทึก..."; }
       if (btnCancel) btnCancel.disabled = true;
 

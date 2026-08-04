@@ -17,93 +17,159 @@
         <h2>Admin Panel</h2>
       </div>
       <nav class="nav-menu">
-        <a href="#" class="nav-item active">คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item active" id="navOrders">📦 คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item" id="navMembers">👥 สมาชิก (Members)</a>
       </nav>
     </aside>
 
     <main class="main-content">
-      <header class="header">
-        <div>
-          <h1>จัดการคำสั่งซื้อ</h1>
-          <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
-        </div>
-        <button id="refreshBtn" class="btn-primary">
-          <span class="icon">🔄</span> รีเฟรชข้อมูล
-        </button>
-      </header>
+      <!-- Orders View -->
+      <div id="viewOrders">
+        <header class="header">
+          <div>
+            <h1>จัดการคำสั่งซื้อ</h1>
+            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
+          </div>
+          <button id="refreshBtn" class="btn-primary">
+            <span class="icon">🔄</span> รีเฟรชข้อมูล
+          </button>
+        </header>
 
-      <!-- Stats Summary -->
-      <section class="stats-grid">
-        <div class="stat-card pending">
-          <div class="stat-icon">⏳</div>
-          <div class="stat-info">
-            <h3>รอตรวจสอบ</h3>
-            <p id="stat-pending">0</p>
+        <!-- Stats Summary -->
+        <section class="stats-grid">
+          <div class="stat-card pending">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-info">
+              <h3>รอตรวจสอบ</h3>
+              <p id="stat-pending">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card payment">
-          <div class="stat-icon">💳</div>
-          <div class="stat-info">
-            <h3>รอชำระเงิน</h3>
-            <p id="stat-payment">0</p>
+          <div class="stat-card payment">
+            <div class="stat-icon">💳</div>
+            <div class="stat-info">
+              <h3>รอชำระเงิน</h3>
+              <p id="stat-payment">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card shipping">
-          <div class="stat-icon">🚚</div>
-          <div class="stat-info">
-            <h3>กำลังจัดส่ง / ยืนยัน</h3>
-            <p id="stat-confirmed">0</p>
+          <div class="stat-card shipping">
+            <div class="stat-icon">🚚</div>
+            <div class="stat-info">
+              <h3>กำลังจัดส่ง / ยืนยัน</h3>
+              <p id="stat-confirmed">0</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card sales">
-          <div class="stat-icon">💰</div>
-          <div class="stat-info">
-            <h3>ยอดขายรวม (ยืนยัน)</h3>
-            <p id="stat-sales">฿0</p>
+          <div class="stat-card sales">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <h3>ยอดขายรวม (ยืนยัน)</h3>
+              <p id="stat-sales">฿0</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- Filter Controls & Search -->
-      <section class="table-card">
-        <div class="table-header-toolbar">
-          <div class="filter-tabs" id="filterTabs">
-            <button class="tab-btn active" data-status="all">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
-            <button class="tab-btn" data-status="รอตรวจสอบ">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
-            <button class="tab-btn" data-status="รอชำระเงิน">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
-            <button class="tab-btn" data-status="กำลังจัดส่ง">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
-            <button class="tab-btn" data-status="ยืนยันแล้ว">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
-            <button class="tab-btn" data-status="ยกเลิก">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+        <!-- Filter Controls & Search -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <div class="filter-tabs" id="filterTabs">
+              <button class="tab-btn active" data-status="all">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
+              <button class="tab-btn" data-status="รอตรวจสอบ">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
+              <button class="tab-btn" data-status="รอชำระเงิน">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
+              <button class="tab-btn" data-status="กำลังจัดส่ง">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
+              <button class="tab-btn" data-status="ยืนยันแล้ว">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
+              <button class="tab-btn" data-status="ยกเลิก">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+            </div>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="adminSearchInput" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+            </div>
           </div>
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="adminSearchInput" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
-          </div>
-        </div>
 
-        <!-- Orders Table -->
-        <div class="table-responsive">
-          <table id="ordersTable">
-            <thead>
-              <tr>
-                <th>รหัสออเดอร์ / ช่องทาง</th>
-                <th>วันที่ / เวลา</th>
-                <th>ข้อมูลลูกค้า</th>
-                <th>ยอดรวม</th>
-                <th>สถานะ</th>
-                <th style="text-align: right;">การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="ordersBody">
-              <!-- Data populated here -->
-            </tbody>
-          </table>
-        </div>
-        <div id="loadingIndicator" class="loading-state">
-          <div class="spinner"></div>
-          <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
-        </div>
-      </section>
+          <!-- Orders Table -->
+          <div class="table-responsive">
+            <table id="ordersTable">
+              <thead>
+                <tr>
+                  <th>รหัสออเดอร์ / ช่องทาง</th>
+                  <th>วันที่ / เวลา</th>
+                  <th>ข้อมูลลูกค้า</th>
+                  <th>ยอดรวม</th>
+                  <th>สถานะ</th>
+                  <th style="text-align: right;">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody">
+                <!-- Data populated here -->
+              </tbody>
+            </table>
+          </div>
+          <div id="loadingIndicator" class="loading-state">
+            <div class="spinner"></div>
+            <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Members View -->
+      <div id="viewMembers" style="display: none;">
+        <header class="header">
+          <div>
+            <h1>รายชื่อสมาชิก</h1>
+            <p class="subtitle">ลูกค้าที่เข้าใช้งาน LINE Mini App และสมาชิกร้าน</p>
+          </div>
+          <button id="refreshMembersBtn" class="btn-primary">
+            <span class="icon">🔄</span> รีเฟรชข้อมูลสมาชิก
+          </button>
+        </header>
+
+        <!-- Member Stats Summary -->
+        <section class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-card shipping">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <h3>สมาชิกทั้งหมด</h3>
+              <p id="stat-total-members">0</p>
+            </div>
+          </div>
+          <div class="stat-card sales">
+            <div class="stat-icon">📞</div>
+            <div class="stat-info">
+              <h3>สมาชิกที่มีเบอร์โทรศัพท์</h3>
+              <p id="stat-phone-members">0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Members Table Card -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <h3 style="font-size: 16px; font-weight: 700;">รายชื่อลูกค้าทั้งหมด</h3>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="memberSearchInput" placeholder="ค้นหา ชื่อสมาชิก, เบอร์โทร, LINE ID..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="membersTable">
+              <thead>
+                <tr>
+                  <th>รูปโปรไฟล์ / ชื่อ</th>
+                  <th>เบอร์โทรศัพท์</th>
+                  <th>LINE User ID</th>
+                  <th>วันที่ลงทะเบียนล่าสุด</th>
+                </tr>
+              </thead>
+              <tbody id="membersBody">
+                <!-- Data populated here -->
+              </tbody>
+            </table>
+          </div>
+          <div id="membersLoadingIndicator" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลสมาชิก...</p>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 

@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxfqLTRqKcapmJUvwn7kES_VRE11lPhLxQlmM4j1xk2iVy8HkXYaBtwTljANOWpJtK/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznFcP2d0XXEuEfpMrmpNSHup4LMENY1WvAGm_kKMIFkj3eS8ZI5KQnv4RdVee-1WFg/exec';
 
 let PRODUCTS = [];
 
@@ -1226,7 +1226,7 @@ async function loadProducts() {
         hasValidCache = true;
         renderProducts(); // แสดงผลทันทีจาก cache
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // 2. ถ้ายังไม่มี cache ให้แสดง loading
@@ -1281,7 +1281,7 @@ async function start() {
   loadCart();
 
   // รัน loadProducts() และ initLiff() พร้อมกันทันที ไม่รอกัน
-  const [, ] = await Promise.all([
+  const [,] = await Promise.all([
     loadProducts(),
     initLiff()
   ]);

@@ -290,6 +290,32 @@ function doGet(e) {
       
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: orders })).setMimeType(ContentService.MimeType.JSON);
     }
+
+    // Action 1.7: ดึงข้อมูลสมาชิกทั้งหมด (สำหรับ Admin)
+    if (action === 'getAllMembers') {
+      var membersSheet = ss.getSheetByName("Members");
+      if (!membersSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', members: [] })).setMimeType(ContentService.MimeType.JSON);
+      }
+      var mValues = membersSheet.getDataRange().getValues();
+      var members = [];
+      for (var m = mValues.length - 1; m >= 1; m--) {
+        var mRow = mValues[m];
+        if (!mRow[1]) continue;
+        var mTs = mRow[0];
+        if (mTs instanceof Date) mTs = mTs.toISOString();
+        members.push({
+          registeredAt: mTs,
+          userId: mRow[1],
+          displayName: mRow[2] || '',
+          statusMessage: mRow[3] || '',
+          email: mRow[4] || '',
+          pictureUrl: mRow[5] || '',
+          phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : ''
+        });
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', members: members })).setMimeType(ContentService.MimeType.JSON);
+    }
     
     // Action 1.8: แอดมินยืนยันออเดอร์จาก LINE
     if (action === 'confirmOrder') {
@@ -525,5 +551,29 @@ function sendLinePushMessage(userId, messages) {
   } catch (error) {
     return 'Fetch Error: ' + error.message + "\n[Payload]: " + JSON.stringify(payload);
   }
+}
+
+function getAllMembersNative() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var membersSheet = ss.getSheetByName("Members");
+  if (!membersSheet) return [];
+  var mValues = membersSheet.getDataRange().getValues();
+  var members = [];
+  for (var m = mValues.length - 1; m >= 1; m--) {
+    var mRow = mValues[m];
+    if (!mRow[1]) continue;
+    var mTs = mRow[0];
+    if (mTs instanceof Date) mTs = mTs.toISOString();
+    members.push({
+      registeredAt: mTs,
+      userId: mRow[1],
+      displayName: mRow[2] || '',
+      statusMessage: mRow[3] || '',
+      email: mRow[4] || '',
+      pictureUrl: mRow[5] || '',
+      phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : ''
+    });
+  }
+  return members;
 }
 

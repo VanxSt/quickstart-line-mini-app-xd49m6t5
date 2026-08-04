@@ -1,20 +1,61 @@
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznFcP2d0XXEuEfpMrmpNSHup4LMENY1WvAGm_kKMIFkj3eS8ZI5KQnv4RdVee-1WFg/exec';
+
 let allOrders = [];
+let allMembers = [];
 let activeFilter = 'all';
 let searchQuery = '';
+let memberSearchQuery = '';
 let currentViewingOrderId = null;
+let currentTab = 'orders'; // 'orders' | 'members'
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchOrders(true); // โหลดครั้งแรกแบบมี Spinner
 
   // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 15 วินาที
   setInterval(() => {
-    fetchOrders(false);
+    if (currentTab === 'orders') {
+      fetchOrders(false);
+    } else if (currentTab === 'members') {
+      fetchMembers(false);
+    }
   }, 15000);
 
   document.getElementById('refreshBtn').addEventListener('click', () => fetchOrders(true));
+  const btnRefreshMembers = document.getElementById('refreshMembersBtn');
+  if (btnRefreshMembers) {
+    btnRefreshMembers.addEventListener('click', () => fetchMembers(true));
+  }
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 
-  // Tab Filtering
+  // Navigation Switcher
+  const navOrders = document.getElementById('navOrders');
+  const navMembers = document.getElementById('navMembers');
+  const viewOrders = document.getElementById('viewOrders');
+  const viewMembers = document.getElementById('viewMembers');
+
+  if (navOrders && navMembers) {
+    navOrders.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentTab = 'orders';
+      navOrders.classList.add('active');
+      navMembers.classList.remove('active');
+      viewOrders.style.display = 'block';
+      viewMembers.style.display = 'none';
+      fetchOrders(false);
+    });
+
+    navMembers.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentTab = 'members';
+      navMembers.classList.add('active');
+      navOrders.classList.remove('active');
+      viewMembers.style.display = 'block';
+      viewOrders.style.display = 'none';
+      fetchMembers(true);
+    });
+  }
+
+  // Tab Filtering for Orders
   const filterTabs = document.getElementById('filterTabs');
   if (filterTabs) {
     filterTabs.addEventListener('click', (e) => {
@@ -27,12 +68,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Search Input
+  // Search Input for Orders
   const searchInput = document.getElementById('adminSearchInput');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.toLowerCase().trim();
       renderOrders();
+    });
+  }
+
+  // Search Input for Members
+  const memberSearchInput = document.getElementById('memberSearchInput');
+  if (memberSearchInput) {
+    memberSearchInput.addEventListener('input', (e) => {
+      memberSearchQuery = e.target.value.toLowerCase().trim();
+      renderMembers();
     });
   }
 });
@@ -310,11 +360,11 @@ async function updateStatus(newStatus) {
       closeModal();
       fetchOrders(); // Refresh table
     } else {
-      alert("Error: " + result.message);
+      alert("Error updating order: " + result.message);
     }
   } catch (error) {
-    console.error(error);
-    alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    console.error("Update error:", error);
+    alert("Connection error: ไม่สามารถบันทึกสถานะได้");
   } finally {
     if (btnConfirm) {
       btnConfirm.disabled = false;
@@ -324,4 +374,112 @@ async function updateStatus(newStatus) {
       btnCancel.disabled = false;
     }
   }
+}
+
+async function fetchMembers(showLoading = true) {
+  const loading = document.getElementById('membersLoadingIndicator');
+
+  if (showLoading && loading) {
+    loading.style.display = 'flex';
+    document.getElementById('membersBody').innerHTML = '';
+  }
+
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllMembers`);
+    const result = await response.json();
+
+    if (result.status === 'success') {
+      allMembers = result.members || [];
+      renderMembers();
+      updateMemberStats();
+    } else {
+      console.error("Error fetching members");
+    }
+  } catch (error) {
+    console.error("Fetch members error:", error);
+  } finally {
+    if (showLoading && loading) {
+      loading.style.display = 'none';
+    }
+  }
+}
+
+function renderMembers() {
+  const tbody = document.getElementById('membersBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const filtered = allMembers.filter(m => {
+    if (!memberSearchQuery) return true;
+    return (m.displayName && m.displayName.toLowerCase().includes(memberSearchQuery)) ||
+           (m.phone && m.phone.includes(memberSearchQuery)) ||
+           (m.userId && m.userId.toLowerCase().includes(memberSearchQuery)) ||
+           (m.email && m.email.toLowerCase().includes(memberSearchQuery));
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">👥</div>
+          <p style="font-weight: 500;">ยังไม่มีสมาชิกในระบบหรือหาไม่พบ</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach(m => {
+    const tr = document.createElement('tr');
+
+    let dateStr = m.registeredAt || '-';
+    try {
+      if (m.registeredAt) {
+        const d = new Date(m.registeredAt);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+        }
+      }
+    } catch (e) { }
+
+    const avatarHtml = m.pictureUrl
+      ? `<img src="${m.pictureUrl}" alt="${m.displayName}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />`
+      : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">${(m.displayName || 'U').charAt(0)}</div>`;
+
+    const cleanPhone = m.phone ? m.phone.replace(/'/g, "") : '-';
+
+    tr.innerHTML = `
+      <td>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          ${avatarHtml}
+          <div>
+            <strong style="font-size: 14px; color: var(--text-main);">${m.displayName || 'ไม่ระบุชื่อ'}</strong>
+            <div style="font-size: 12px; color: var(--text-muted);">${m.email || 'ไม่มีอีเมล'}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span style="font-weight: 600; color: #1e293b;">${cleanPhone}</span>
+      </td>
+      <td>
+        <code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">${m.userId || '-'}</code>
+      </td>
+      <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateMemberStats() {
+  const elTotal = document.getElementById('stat-total-members');
+  const elPhone = document.getElementById('stat-phone-members');
+
+  if (elTotal) elTotal.textContent = allMembers.length;
+
+  let phoneCount = 0;
+  allMembers.forEach(m => {
+    if (m.phone && m.phone.trim() !== '') phoneCount++;
+  });
+
+  if (elPhone) elPhone.textContent = phoneCount;
 }
