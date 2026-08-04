@@ -1032,7 +1032,7 @@ if (btnSubmitOrder) {
       }).catch(e => console.error("Fetch background error:", e));
 
       // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
-      alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}\n\nคุณสามารถตรวจสอบสถานะได้ที่ปุ่ม 'ประวัติการสั่งซื้อ'`);
+      alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}`);
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
@@ -1046,6 +1046,11 @@ if (btnSubmitOrder) {
 
       btnSubmitOrder.disabled = false;
       btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+      
+      // เปิดหน้าต่างประวัติคำสั่งซื้ออัตโนมัติ (หน่วงเวลาเล็กน้อยเพื่อให้ระบบส่งข้อมูลเสร็จก่อน)
+      setTimeout(() => {
+        openOrdersModal();
+      }, 500);
 
     } catch (error) {
       console.error('Checkout error:', error);
