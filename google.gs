@@ -254,7 +254,6 @@ function doGet(e) {
     // Action 1.6: ดึงข้อมูลออเดอร์ทั้งหมด (สำหรับ Admin)
     if (action === 'getAllOrders') {
       var ordersSheet = ss.getSheetByName("Orders");
-      var detailsSheet = ss.getSheetByName("OrderDetails");
       
       if (!ordersSheet) {
         return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: [] })).setMimeType(ContentService.MimeType.JSON);
@@ -262,24 +261,6 @@ function doGet(e) {
       
       var orderValues = ordersSheet.getDataRange().getValues();
       var orders = [];
-      
-      // ดึงรายละเอียดออเดอร์ (Items) ล่วงหน้าเพื่อนำไปเชื่อมโยง
-      var detailsMap = {};
-      if (detailsSheet) {
-        var detailValues = detailsSheet.getDataRange().getValues();
-        for (var j = 1; j < detailValues.length; j++) {
-          var dRow = detailValues[j];
-          var dOrderId = dRow[0];
-          if (!detailsMap[dOrderId]) detailsMap[dOrderId] = [];
-          detailsMap[dOrderId].push({
-            id: dRow[3],
-            name: dRow[4],
-            price: dRow[5],
-            qty: dRow[6],
-            subtotal: dRow[7]
-          });
-        }
-      }
       
       // วนลูปจากใหม่ไปเก่า (ล่างสุดไปบนสุด)
       for (var k = orderValues.length - 1; k >= 1; k--) {
@@ -291,7 +272,7 @@ function doGet(e) {
           if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
         } catch(e) {}
         
-        var orderItems = parsedItems.length > 0 ? parsedItems : (detailsMap[oRow[1]] || []);
+        var orderItems = parsedItems;
         
         orders.push({
           timestamp: oRow[0],
@@ -395,29 +376,11 @@ function triggerAuthorization() {
 function getAllOrdersNative() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ordersSheet = ss.getSheetByName("Orders");
-  var detailsSheet = ss.getSheetByName("OrderDetails");
   
   if (!ordersSheet) return [];
   
   var orderValues = ordersSheet.getDataRange().getValues();
   var orders = [];
-  
-  var detailsMap = {};
-  if (detailsSheet) {
-    var detailValues = detailsSheet.getDataRange().getValues();
-    for (var j = 1; j < detailValues.length; j++) {
-      var dRow = detailValues[j];
-      var dOrderId = dRow[0];
-      if (!detailsMap[dOrderId]) detailsMap[dOrderId] = [];
-      detailsMap[dOrderId].push({
-        id: dRow[3],
-        name: dRow[4],
-        price: dRow[5],
-        qty: dRow[6],
-        subtotal: dRow[7]
-      });
-    }
-  }
   
   for (var k = orderValues.length - 1; k >= 1; k--) {
     var oRow = orderValues[k];
@@ -434,7 +397,7 @@ function getAllOrdersNative() {
       if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
     } catch(e) {}
     
-    var orderItems = parsedItems.length > 0 ? parsedItems : (detailsMap[oRow[1]] || []);
+    var orderItems = parsedItems;
     
     orders.push({
       timestamp: ts,

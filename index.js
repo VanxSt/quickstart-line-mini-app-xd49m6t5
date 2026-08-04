@@ -19,7 +19,7 @@ const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
 let userProfileData = null;
 
 // Replace with your deployed Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzSCJP8qYQ8Lr4PXZZn3tZfI46Hu4JNYE-t_sbs0YBOy1OcmsLyLKrDoHBeODfM1Eb/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgKdPSGHim1G_FhbEiHoRN-_PvlUJbR5PjhhaV13x1D1sIGvs7x7_-4Z4mg-pnSP0n/exec';
 
 // Profile elements
 const email = document.querySelector('#email');
@@ -123,12 +123,12 @@ async function getUserProfile() {
         if (dbData.status === 'success') {
           if (dbData.found) {
             const savedPhone = dbData.phone || '';
-            
+
             // หากเบอร์ที่ดึงมาไม่ตรงกับที่แสดงผลอยู่ ให้ปรับปรุงใน UI และอัปเดตแคช
             if (savedPhone !== initialPhone) {
               phone.value = savedPhone;
               userProfileData.phone = savedPhone;
-              
+
               if (savedPhone) {
                 setPhoneInputState(true);
                 localStorage.setItem('user_phone_' + profile.userId, savedPhone);
@@ -139,7 +139,7 @@ async function getUserProfile() {
             }
 
             // ตรวจสอบว่าโปรไฟล์ใน Sheets มีการเปลี่ยนจาก LINE หรือไม่เพื่อหลีกเลี่ยงการ POST บันทึกซ้ำโดยไม่จำเป็น
-            const isProfileChanged = 
+            const isProfileChanged =
               dbData.displayName !== profile.displayName ||
               dbData.statusMessage !== (profile.statusMessage || 'ยินดีต้อนรับสมาชิกใหม่') ||
               dbData.email !== userEmail ||
