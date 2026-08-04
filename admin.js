@@ -1,18 +1,40 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxfqLTRqKcapmJUvwn7kES_VRE11lPhLxQlmM4j1xk2iVy8HkXYaBtwTljANOWpJtK/exec';
-
 let allOrders = [];
+let activeFilter = 'all';
+let searchQuery = '';
 let currentViewingOrderId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchOrders(true); // โหลดครั้งแรกแบบมี Spinner
 
-  // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 15 วินาที (แบบเงียบๆ ไม่โชว์ Spinner)
+  // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 15 วินาที
   setInterval(() => {
     fetchOrders(false);
   }, 15000);
 
   document.getElementById('refreshBtn').addEventListener('click', () => fetchOrders(true));
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+  // Tab Filtering
+  const filterTabs = document.getElementById('filterTabs');
+  if (filterTabs) {
+    filterTabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.status;
+      renderOrders();
+    });
+  }
+
+  // Search Input
+  const searchInput = document.getElementById('adminSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      renderOrders();
+    });
+  }
 });
 
 async function fetchOrders(showLoading = true) {
@@ -20,7 +42,7 @@ async function fetchOrders(showLoading = true) {
 
   if (showLoading) {
     loading.style.display = 'flex';
-    document.getElementById('ordersBody').innerHTML = ''; // ล้างตารางเฉพาะตอนโหลดแบบมีหน้าโหลด
+    document.getElementById('ordersBody').innerHTML = '';
   }
 
   try {
@@ -28,7 +50,7 @@ async function fetchOrders(showLoading = true) {
     const result = await response.json();
 
     if (result.status === 'success') {
-      allOrders = result.orders;
+      allOrders = result.orders || [];
       renderOrders();
       updateStats();
     } else {
@@ -37,7 +59,7 @@ async function fetchOrders(showLoading = true) {
   } catch (error) {
     console.error("Fetch error:", error);
     if (showLoading) {
-      alert("Connection error: กรุณาตรวจสอบว่าได้ Deploy Google Script ล่าสุดหรือยัง");
+      alert("Connection error: กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือ Google Apps Script");
     }
   } finally {
     if (showLoading) {
@@ -50,42 +72,82 @@ function renderOrders() {
   const tbody = document.getElementById('ordersBody');
   tbody.innerHTML = '';
 
-  if (!allOrders || allOrders.length === 0) {
+  // Filter & Search Logic
+  const filtered = allOrders.filter(order => {
+    const statusMatch = (activeFilter === 'all') || (order.status === activeFilter);
+    const searchMatch = !searchQuery ||
+      (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
+      (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
+      (order.phone && order.phone.includes(searchQuery)) ||
+      (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery));
+    return statusMatch && searchMatch;
+  });
+
+  if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
-          📦 ยังไม่มีรายการคำสั่งซื้อในระบบ (เมื่อลูกค้าทดลองสั่งซื้อ รายการจะมาปรากฏที่นี่)
+        <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+          <p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>
         </td>
       </tr>
     `;
     return;
   }
 
-  allOrders.forEach(order => {
+  filtered.forEach(order => {
     const tr = document.createElement('tr');
 
     let statusClass = 'status-pending';
-    if (order.status === 'ยืนยันแล้ว' || order.status === 'กำลังจัดส่ง') statusClass = 'status-confirmed';
-    if (order.status === 'รอชำระเงิน') statusClass = 'status-pending'; // Or a new style, but pending is orange
-    if (order.status === 'ยกเลิก') statusClass = 'status-cancelled';
+    let statusIcon = '⏳';
+
+    if (order.status === 'รอชำระเงิน') {
+      statusClass = 'status-payment';
+      statusIcon = '💳';
+    } else if (order.status === 'กำลังจัดส่ง') {
+      statusClass = 'status-shipping';
+      statusIcon = '🚚';
+    } else if (order.status === 'ยืนยันแล้ว') {
+      statusClass = 'status-confirmed';
+      statusIcon = '✅';
+    } else if (order.status === 'ยกเลิก') {
+      statusClass = 'status-cancelled';
+      statusIcon = '❌';
+    }
+
+    // Payment Method Badge Class
+    const isTransfer = order.paymentMethod === 'โอนจ่าย';
+    const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
 
     // Format Date
-    let dateStr = order.timestamp;
+    let dateStr = order.timestamp || '-';
     try {
       if (order.timestamp) {
         const d = new Date(order.timestamp);
-        dateStr = d.toLocaleString('th-TH');
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+        }
       }
     } catch (e) { }
 
+    const cleanPhone = (order.phone || '').replace(/'/g, "");
+
     tr.innerHTML = `
-      <td><strong>${order.orderId}</strong><br><small style="color:#666;">${order.paymentMethod}</small></td>
-      <td>${dateStr}</td>
-      <td>${order.customerName}</td>
-      <td>฿${order.totalPrice.toLocaleString()}</td>
-      <td><span class="status-badge ${statusClass}">${order.status}</span></td>
       <td>
-        <button class="btn-view" onclick="viewOrder('${order.orderId}')">เปิดดูรายการ</button>
+        <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
+        <div style="margin-top: 4px;">
+          <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
+        </div>
+      </td>
+      <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
+      <td>
+        <div style="font-weight: 600;">${order.customerName || 'ลูกค้า'}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">${cleanPhone}</div>
+      </td>
+      <td><strong style="font-size: 15px; color: #1e293b;">฿${Number(order.totalPrice || 0).toLocaleString()}</strong></td>
+      <td><span class="status-badge ${statusClass}">${statusIcon} ${order.status}</span></td>
+      <td style="text-align: right;">
+        <button class="btn-view" onclick="viewOrder('${order.orderId}')">📋 ดูรายละเอียด</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -94,20 +156,49 @@ function renderOrders() {
 
 function updateStats() {
   let pendingCount = 0;
+  let paymentCount = 0;
+  let shippingCount = 0;
   let confirmedCount = 0;
+  let cancelledCount = 0;
   let totalSales = 0;
 
   allOrders.forEach(o => {
     if (o.status === 'รอตรวจสอบ') pendingCount++;
-    if (o.status === 'ยืนยันแล้ว') {
-      confirmedCount++;
+    else if (o.status === 'รอชำระเงิน') paymentCount++;
+    else if (o.status === 'กำลังจัดส่ง') shippingCount++;
+    else if (o.status === 'ยืนยันแล้ว') confirmedCount++;
+    else if (o.status === 'ยกเลิก') cancelledCount++;
+
+    if (o.status === 'ยืนยันแล้ว' || o.status === 'กำลังจัดส่ง') {
       totalSales += Number(o.totalPrice || 0);
     }
   });
 
-  document.getElementById('stat-pending').textContent = pendingCount;
-  document.getElementById('stat-confirmed').textContent = confirmedCount;
-  document.getElementById('stat-sales').textContent = `฿${totalSales.toLocaleString()}`;
+  // Header Cards
+  const elPending = document.getElementById('stat-pending');
+  const elPayment = document.getElementById('stat-payment');
+  const elConfirmed = document.getElementById('stat-confirmed');
+  const elSales = document.getElementById('stat-sales');
+
+  if (elPending) elPending.textContent = pendingCount;
+  if (elPayment) elPayment.textContent = paymentCount;
+  if (elConfirmed) elConfirmed.textContent = shippingCount + confirmedCount;
+  if (elSales) elSales.textContent = `฿${totalSales.toLocaleString()}`;
+
+  // Filter Tab Badges
+  const cAll = document.getElementById('count-all');
+  const cPending = document.getElementById('count-pending');
+  const cPayment = document.getElementById('count-payment');
+  const cShipping = document.getElementById('count-shipping');
+  const cConfirmed = document.getElementById('count-confirmed');
+  const cCancelled = document.getElementById('count-cancelled');
+
+  if (cAll) cAll.textContent = allOrders.length;
+  if (cPending) cPending.textContent = pendingCount;
+  if (cPayment) cPayment.textContent = paymentCount;
+  if (cShipping) cShipping.textContent = shippingCount;
+  if (cConfirmed) cConfirmed.textContent = confirmedCount;
+  if (cCancelled) cCancelled.textContent = cancelledCount;
 }
 
 function viewOrder(orderId) {
