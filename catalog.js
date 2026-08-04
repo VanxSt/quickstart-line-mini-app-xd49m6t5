@@ -635,10 +635,9 @@ function closeCheckoutModal() {
 function validateCheckoutForm() {
   const name = document.getElementById('checkoutName').value.trim();
   const phone = document.getElementById('checkoutPhone').value.trim();
-  const address = document.getElementById('checkoutAddressDetails').value.trim();
 
-  // Valid if Name, Phone, Address details are filled
-  const isValid = name !== "" && phone !== "" && address !== "";
+  // Valid if Name and Phone are filled (address is optional)
+  const isValid = name !== "" && phone !== "";
   btnSubmitOrder.disabled = !isValid;
 }
 
