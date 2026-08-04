@@ -642,6 +642,22 @@ function validateCheckoutForm() {
 }
 
 async function fetchMemberInfo(userId) {
+  // 1. โหลดจาก Cache ก่อนทันที (0ms) เพื่อ prefill ฟอร์มโดยไม่รอ server
+  try {
+    const cached = localStorage.getItem('member_info_cache');
+    if (cached) {
+      const cachedInfo = JSON.parse(cached);
+      if (cachedInfo && cachedInfo.userId === userId) {
+        currentMemberInfo = { displayName: cachedInfo.displayName || '', phone: cachedInfo.phone || '' };
+        const nameInput = document.getElementById('checkoutName');
+        const phoneInput = document.getElementById('checkoutPhone');
+        if (nameInput && !nameInput.value) nameInput.value = currentMemberInfo.displayName;
+        if (phoneInput && !phoneInput.value) phoneInput.value = currentMemberInfo.phone;
+      }
+    }
+  } catch (e) { }
+
+  // 2. ดึงข้อมูลจริงจาก Server เบื้องหลัง แล้วอัปเดต cache
   try {
     const res = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${userId}`);
     const data = await res.json();
@@ -651,11 +667,19 @@ async function fetchMemberInfo(userId) {
         phone: data.phone || ''
       };
 
-      // Update form fields if elements exist
+      // บันทึก cache ใหม่
+      localStorage.setItem('member_info_cache', JSON.stringify({
+        userId,
+        displayName: currentMemberInfo.displayName,
+        phone: currentMemberInfo.phone
+      }));
+
+      // อัปเดต form fields
       const nameInput = document.getElementById('checkoutName');
       const phoneInput = document.getElementById('checkoutPhone');
       if (nameInput) nameInput.value = currentMemberInfo.displayName;
       if (phoneInput) phoneInput.value = currentMemberInfo.phone;
+      validateCheckoutForm();
     }
   } catch (e) {
     console.error('Error fetching member info:', e);
