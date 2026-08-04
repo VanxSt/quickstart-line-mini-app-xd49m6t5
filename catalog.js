@@ -838,36 +838,17 @@ async function loadMyOrders() {
   const ordersBody = document.getElementById('ordersModalBody');
   if (!ordersBody) return;
 
-  ordersBody.innerHTML = `
-    <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
-      กำลังโหลดประวัติการสั่งซื้อ...
-    </div>
-  `;
-
-  let userId = 'web-test-user';
-  if (liff.isLoggedIn()) {
-    try {
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}`);
-    const data = await res.json();
-
-    if (data.status === 'success' && data.orders && data.orders.length > 0) {
+  // ฟังก์ชันแยกสำหรับวาด UI
+  const renderOrdersUI = (orders) => {
+    if (orders && orders.length > 0) {
       ordersBody.innerHTML = '';
-      data.orders.forEach(order => {
-        // Status formatting
+      orders.forEach(order => {
         let statusColor = '#aaaaaa';
         if (order.status === 'รอตรวจสอบ') statusColor = '#f59e0b';
-        else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว') statusColor = '#10b981';
+        else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว' || order.status === 'กำลังจัดส่ง') statusColor = '#10b981';
+        else if (order.status === 'รอชำระเงิน') statusColor = '#3b82f6';
         else if (order.status === 'ยกเลิก') statusColor = '#ef4444';
 
-        // Format date
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
 
@@ -894,12 +875,58 @@ async function loadMyOrders() {
         </div>
       `;
     }
-  } catch (error) {
+  };
+
+  // 1. โหลดจาก Cache ขึ้นมาแสดงก่อนทันที (0 วินาที)
+  let hasCache = false;
+  try {
+    const cachedStr = localStorage.getItem('myOrdersCache');
+    if (cachedStr) {
+      const cachedOrders = JSON.parse(cachedStr);
+      if (cachedOrders && cachedOrders.length > 0) {
+        renderOrdersUI(cachedOrders);
+        hasCache = true;
+      }
+    }
+  } catch (e) {}
+
+  if (!hasCache) {
     ordersBody.innerHTML = `
-      <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
-        เกิดข้อผิดพลาดในการโหลดข้อมูล
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
+        กำลังโหลดประวัติการสั่งซื้อ...
       </div>
     `;
+  }
+
+  // 2. ดึงข้อมูลจริงจาก Server เบื้องหลังเพื่ออัปเดตสถานะ
+  let userId = 'web-test-user';
+  if (liff.isLoggedIn()) {
+    try {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}`);
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      // เซฟทับ Cache ด้วยข้อมูลใหม่สุด
+      localStorage.setItem('myOrdersCache', JSON.stringify(data.orders || []));
+      // วาด UI ใหม่อีกรอบ
+      renderOrdersUI(data.orders);
+    }
+  } catch (error) {
+    if (!hasCache) {
+      ordersBody.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: #ef4444;">
+          เกิดข้อผิดพลาดในการโหลดข้อมูล
+        </div>
+      `;
+    }
     console.error('Error fetching orders:', error);
   }
 }
@@ -1030,6 +1057,19 @@ if (btnSubmitOrder) {
         },
         body: JSON.stringify(orderPayload)
       }).catch(e => console.error("Fetch background error:", e));
+
+      // Cache ออเดอร์ใหม่ลง LocalStorage ทันที เพื่อให้หน้าประวัติโหลดไว 0 วินาที
+      try {
+        const cachedStr = localStorage.getItem('myOrdersCache');
+        let cachedOrders = cachedStr ? JSON.parse(cachedStr) : [];
+        cachedOrders.unshift({
+          timestamp: new Date().toISOString(),
+          orderId: orderId,
+          totalPrice: totalAmount,
+          status: 'รอตรวจสอบ'
+        });
+        localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
+      } catch (e) {}
 
       // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
       alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}`);
