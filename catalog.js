@@ -1090,7 +1090,8 @@ if (btnSubmitOrder) {
         id: item.id,
         name: item.name,
         price: item.price,
-        qty: item.qty
+        qty: item.qty,
+        subtotal: (Number(item.price || 0) * Number(item.qty || 1))
       }))
     };
 

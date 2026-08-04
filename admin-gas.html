@@ -618,12 +618,16 @@
       
       if (order.items) {
         order.items.forEach(item => {
+          const itemPrice = Number(item.price || 0);
+          const itemQty = Number(item.qty || 1);
+          const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
+
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${item.id}</td>
-            <td><strong>${item.name}</strong></td>
-            <td>x${item.qty}</td>
-            <td>฿${Number(item.subtotal).toLocaleString()}</td>
+            <td>${item.id || '-'}</td>
+            <td><strong>${item.name || '-'}</strong></td>
+            <td>x${itemQty}</td>
+            <td>฿${itemSubtotal.toLocaleString()}</td>
           `;
           itemsBody.appendChild(tr);
         });
@@ -650,6 +654,12 @@
       } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
         actionsDiv.innerHTML = `
           <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมจัดส่ง</button>
+          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+        `;
+        actionsDiv.style.display = 'flex';
+      } else if (order.status === 'กำลังจัดส่ง') {
+        actionsDiv.innerHTML = `
+          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ (ย้ายไป "ยืนยันแล้ว")</button>
           <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
         `;
         actionsDiv.style.display = 'flex';

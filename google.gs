@@ -495,6 +495,12 @@ function updateOrderStatusNative(orderId, newStatus) {
              "text": "📦 แอดมินตรวจสอบยอดเงินเรียบร้อยแล้ว!\nขณะนี้ร้านกำลังเตรียมสินค้าและจัดส่งให้คุณสำหรับออเดอร์ " + orderId + "\nขอบคุณที่อุดหนุนครับ 😊"
            });
         }
+        else if (newStatus === "ยืนยันแล้ว") {
+           messages.push({
+             "type": "text",
+             "text": "🎉 ออเดอร์ " + orderId + " จัดส่งเรียบร้อยแล้ว!\nขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰"
+           });
+        }
         else if (newStatus === "ยกเลิก") {
            messages.push({
              "type": "text",

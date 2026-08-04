@@ -278,17 +278,22 @@ function viewOrder(orderId) {
   itemsBody.innerHTML = '';
 
   order.items.forEach(item => {
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.qty || 1);
+    const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${item.id}</td>
-      <td><strong>${item.name}</strong></td>
-      <td>x${item.qty}</td>
-      <td>฿${item.subtotal.toLocaleString()}</td>
+      <td>${item.id || '-'}</td>
+      <td><strong>${item.name || '-'}</strong></td>
+      <td>x${itemQty}</td>
+      <td>฿${itemSubtotal.toLocaleString()}</td>
     `;
     itemsBody.appendChild(tr);
   });
 
-  document.getElementById('modalTotalPrice').textContent = `฿${order.totalPrice.toLocaleString()}`;
+  const grandTotal = Number(order.totalPrice || 0);
+  document.getElementById('modalTotalPrice').textContent = `฿${grandTotal.toLocaleString()}`;
 
   // Dynamic action buttons
   const actionsDiv = document.getElementById('modalActions');
@@ -310,6 +315,12 @@ function viewOrder(orderId) {
   } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
     actionsDiv.innerHTML = `
       <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมสินค้ากำลังจัดส่ง</button>
+      <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
+    `;
+    actionsDiv.style.display = 'flex';
+  } else if (order.status === 'กำลังจัดส่ง') {
+    actionsDiv.innerHTML = `
+      <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ (ยืนยันแล้ว)</button>
       <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
     `;
     actionsDiv.style.display = 'flex';
