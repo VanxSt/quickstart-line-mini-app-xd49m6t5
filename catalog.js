@@ -275,7 +275,7 @@ function openProductDetail(id) {
 
   document.getElementById('btnAddToCart').addEventListener('click', (e) => {
     e.stopPropagation();
-    for (let i = 0; i < modalQtyVal; i++) addToCart(product);
+    addToCart(product, modalQtyVal);
     closeModal();
   });
 
@@ -503,7 +503,7 @@ function addToCart(product, quantity = 1) {
     });
   }
   saveCart();
-  alert(`เพิ่ม "${product.name}" ลงในตะกร้าเรียบร้อย!`);
+  alert(`เพิ่ม "${product.name}" x${quantity} ลงในตะกร้าเรียบร้อย!`);
 }
 
 function updateCartItemQty(id, delta) {
