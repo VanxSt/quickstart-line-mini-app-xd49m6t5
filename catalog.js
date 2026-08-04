@@ -1173,30 +1173,27 @@ btnBack.addEventListener('click', () => {
   window.location.href = 'index.html';
 });
 
-// Start application
-async function start() {
-  await initLiff();
-  loadCart();
 
-  // 1. ตรวจสอบข้อมูลจาก Cache เพื่อการโหลดที่เร็วที่สุดในหลักมิลลิวินาที (Stale-While-Revalidate)
+// ===== โหลดสินค้าแยกออกมา ทำงานได้ทันทีโดยไม่ต้องรอ LIFF =====
+async function loadProducts() {
+  // 1. โชว์สินค้าจาก Cache ทันที (0ms) ถ้ามี
   const cachedData = localStorage.getItem('catalog_products_cache');
   const cachedTime = localStorage.getItem('catalog_products_cache_time');
-  const cacheDuration = 3 * 60 * 1000; // ตั้งค่า Cache ให้มีอายุ 3 นาที
+  const cacheDuration = 15 * 60 * 1000; // Cache นาน 15 นาที (เพิ่มจาก 3 นาที)
 
   let hasValidCache = false;
   if (cachedData && cachedTime) {
     try {
-      PRODUCTS = JSON.parse(cachedData);
-      if (PRODUCTS.length > 0) {
+      const parsed = JSON.parse(cachedData);
+      if (parsed && parsed.length > 0) {
+        PRODUCTS = parsed;
         hasValidCache = true;
-        renderProducts(); // เรนเดอร์สินค้าจากแคชทันทีโดยไม่ต้องรอโหลดจากอินเทอร์เน็ต
+        renderProducts(); // แสดงผลทันทีจาก cache
       }
-    } catch (e) {
-      console.warn('Failed to parse cached products:', e);
-    }
+    } catch (e) {}
   }
 
-  // 2. หากยังไม่มีข้อมูลในแคชเลย ให้แสดงตัวหมุนโหลดก่อน
+  // 2. ถ้ายังไม่มี cache ให้แสดง loading
   if (!hasValidCache && productsGrid) {
     productsGrid.innerHTML = `
       <div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-light);">
@@ -1210,45 +1207,48 @@ async function start() {
           <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
           <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
         </svg>
-        <span>กำลังโหลดเมนูสินค้าสุดพิเศษ...</span>
+        <span>กำลังโหลดเมนูสินค้า...</span>
       </div>
     `;
   }
 
-  // 3. ดึงข้อมูลจริงจาก Google Sheets เบื้องหลัง (หรือดึงหลักหากไม่มีแคช)
+  // 3. ดึงข้อมูลใหม่จาก Google Sheets ถ้า cache หมดอายุหรือยังไม่มี
   const shouldFetchFresh = !hasValidCache || (Date.now() - Number(cachedTime) > cacheDuration);
-
   if (shouldFetchFresh) {
     try {
       const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
       const data = await response.json();
       if (data.status === 'success') {
         const freshProducts = data.products || [];
-
-        // เปรียบเทียบข้อมูลแคชเดิมและข้อมูลใหม่ หากต่างกันค่อยเรนเดอร์ใหม่ป้องกันหน้าจอกระตุก
         if (JSON.stringify(freshProducts) !== JSON.stringify(PRODUCTS)) {
           PRODUCTS = freshProducts;
           renderProducts();
         }
-
-        // บันทึกลงใน Cache
         localStorage.setItem('catalog_products_cache', JSON.stringify(PRODUCTS));
         localStorage.setItem('catalog_products_cache_time', String(Date.now()));
-      } else {
-        console.warn('Google Sheets error, using fallback:', data.message);
-        if (PRODUCTS.length === 0) {
-          PRODUCTS = getMockProducts();
-          renderProducts();
-        }
+      } else if (PRODUCTS.length === 0) {
+        PRODUCTS = getMockProducts();
+        renderProducts();
       }
     } catch (error) {
-      console.error('Fetch error, using fallback:', error);
+      console.error('Fetch error:', error);
       if (PRODUCTS.length === 0) {
         PRODUCTS = getMockProducts();
         renderProducts();
       }
     }
   }
+}
+
+// Start application — โหลดสินค้าและ LIFF พร้อมกัน ไม่รอกัน
+async function start() {
+  loadCart();
+
+  // รัน loadProducts() และ initLiff() พร้อมกันทันที ไม่รอกัน
+  const [, ] = await Promise.all([
+    loadProducts(),
+    initLiff()
+  ]);
 
   // Check if URL has a specific product query param (deep link)
   const urlParams = new URLSearchParams(window.location.search);
@@ -1259,3 +1259,4 @@ async function start() {
 }
 
 start();
+
