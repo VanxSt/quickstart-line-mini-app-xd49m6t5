@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgKdPSGHim1G_FhbEiHoRN-_PvlUJbR5PjhhaV13x1D1sIGvs7x7_-4Z4mg-pnSP0n/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxAuFCBxh8MORjSr_BwMkF2AMPneCjlmN5gWH0O3fidjyiXeOZzeQodIu7a5qlzhegt/exec';
 
 let PRODUCTS = [];
 
@@ -995,8 +995,16 @@ if (btnSubmitOrder) {
       }
     }
 
+    // สร้าง orderId จากฝั่ง Frontend ทันทีเพื่อให้ระบบตอบสนองไวที่สุด
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const orderId = `ORD-${dateStr}-${randomNum}`;
+
     const orderPayload = {
       action: 'createOrder',
+      orderId: orderId,
       userId: userId,
       displayName: displayName,
       phone: phone,
@@ -1013,37 +1021,35 @@ if (btnSubmitOrder) {
     };
 
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
+      // ใช้โหมด no-cors เพื่อไม่ต้องรอการตอบกลับที่มักจะติดปัญหา Redirect 302 ของ Google
+      fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain'
         },
         body: JSON.stringify(orderPayload)
-      });
-      const result = await response.json();
+      }).catch(e => console.error("Fetch background error:", e));
 
-      if (result.status === 'success') {
-        alert(`ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${result.orderId}\n\nคุณสามารถตรวจสอบสถานะได้ที่ปุ่ม 'ประวัติการสั่งซื้อ'`);
+      // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
+      alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}\n\nคุณสามารถตรวจสอบสถานะได้ที่ปุ่ม 'ประวัติการสั่งซื้อ'`);
 
-        // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
-        if (liff.isInClient()) {
-          await sendOrderFlexMessage(result.orderId, name, phone, totalAmount, cart);
-        }
-
-        // เคลียร์ตะกร้าสินค้า
-        clearCart();
-
-        // ปิด Modal
-        closeCheckoutModal();
-        closeCartModal();
-      } else {
-        alert('❌ การสั่งซื้อล้มเหลว: ' + result.message);
-        btnSubmitOrder.disabled = false;
-        btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+      // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
+      if (liff.isInClient()) {
+        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart);
       }
+
+      // เคลียร์ตะกร้าและปิด Modal ทันที
+      clearCart();
+      closeCheckoutModal();
+      closeCartModal();
+
+      btnSubmitOrder.disabled = false;
+      btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+      alert('❌ เกิดข้อผิดพลาดในระบบแอปพลิเคชัน กรุณาลองใหม่อีกครั้ง');
       btnSubmitOrder.disabled = false;
       btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
     }

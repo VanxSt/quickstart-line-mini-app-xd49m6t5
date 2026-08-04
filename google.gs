@@ -56,11 +56,11 @@ function createOrderHandler(ss, data) {
     var totalPrice = Number(data.totalPrice || 0);
     var items = data.items || [];
     
-    // สร้าง Order ID แบบไม่ซ้ำกัน
+    // สร้าง Order ID แบบไม่ซ้ำกัน (หรือรับค่ามาจาก Frontend ถ้ามีการส่งมา)
     var timestamp = new Date();
     var formattedDate = Utilities.formatDate(timestamp, "GMT+7", "yyyyMMdd-HHmmss");
     var rand = Math.floor(Math.random() * 1000);
-    var orderId = "ORD-" + formattedDate + "-" + rand;
+    var orderId = data.orderId || ("ORD-" + formattedDate + "-" + rand);
     
     // ปรับแต่งค่า URL เป็น Hyperlink แบบกดได้สำหรับ Google Sheets
     var gpsFormula = gpsLocation;
