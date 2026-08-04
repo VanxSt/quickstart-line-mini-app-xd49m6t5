@@ -455,13 +455,13 @@ function updateOrderStatusNative(orderId, newStatus) {
              "type": "text",
              "text": "แอดมินยืนยันออเดอร์แล้วครับ\nโอนเงินแล้วส่งสลิปได้เลยนะครับ!"
            });
-           // ชั่วคราว ปิดการส่งรูปภาพเพื่อทดสอบว่าข้อความส่งผ่านหรือไม่
-           // var staticQrUrl = "https://i.postimg.cc/rwqW0Prh/Screenshot-10.png";
-           // messages.push({
-           //   "type": "image",
-           //   "originalContentUrl": staticQrUrl,
-           //   "previewImageUrl": staticQrUrl
-           // });
+           
+           var staticQrUrl = "https://i.postimg.cc/L6VsTLyR/qr-(2).png";
+           messages.push({
+             "type": "image",
+             "originalContentUrl": staticQrUrl,
+             "previewImageUrl": staticQrUrl
+           });
         }
         else if (newStatus === "กำลังจัดส่ง" && paymentMethod === "โอนจ่าย") {
            messages.push({
