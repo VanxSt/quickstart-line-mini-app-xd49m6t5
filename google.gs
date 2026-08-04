@@ -71,8 +71,16 @@ function createOrderHandler(ss, data) {
     var slipFormula = "";
     
     // ดึงหรือสร้างชีต "Orders"
-    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method"];
+    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON"];
     var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
+    
+    // สร้างข้อความรายการสินค้าให้อ่านง่ายสำหรับมนุษย์
+    var itemsText = items.map(function(item) {
+      return item.name + " x" + item.qty;
+    }).join(", ");
+    
+    // สร้าง JSON string สำหรับระบบ API
+    var itemsJson = JSON.stringify(items);
     
     // บันทึกคำสั่งซื้อลงชีต Orders (1 API Call)
     ordersSheet.appendRow([
@@ -86,36 +94,10 @@ function createOrderHandler(ss, data) {
       slipFormula,
       totalPrice,
       "รอตรวจสอบ", // สถานะเริ่มต้น
-      paymentMethod
+      paymentMethod,
+      itemsText,
+      itemsJson
     ]);
-    
-    // ดึงหรือสร้างชีต "OrderDetails"
-    var detailsHeaders = ["Order ID", "Customer Name", "Phone", "Product ID", "Product Name", "Unit Price", "Quantity", "Subtotal", "GPS Location"];
-    var detailsSheet = getFastSheet(ss, "OrderDetails", detailsHeaders);
-    
-    // เตรียมข้อมูลสินค้าทั้งหมดเพื่อบันทึกรวดเดียว (Batch Insert)
-    var detailsData = [];
-    for (var i = 0; i < items.length; i++) {
-      var item = items[i];
-      var subtotal = Number(item.price || 0) * Number(item.qty || 1);
-      detailsData.push([
-        orderId,
-        displayName,
-        phone,
-        item.id,
-        item.name,
-        item.price,
-        item.qty,
-        subtotal,
-        gpsFormula
-      ]);
-    }
-    
-    // บันทึกรายการสินค้าทั้งหมดในครั้งเดียว (1 API Call) ประหยัดเวลามาก
-    if (detailsData.length > 0) {
-      var lastRow = detailsSheet.getLastRow();
-      detailsSheet.getRange(lastRow + 1, 1, detailsData.length, detailsData[0].length).setValues(detailsData);
-    }
     
     return ContentService.createTextOutput(JSON.stringify({ 
       status: 'success', 
@@ -304,6 +286,13 @@ function doGet(e) {
         var oRow = orderValues[k];
         if (!oRow[1]) continue; // ข้ามแถวว่าง
         
+        var parsedItems = [];
+        try {
+          if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
+        } catch(e) {}
+        
+        var orderItems = parsedItems.length > 0 ? parsedItems : (detailsMap[oRow[1]] || []);
+        
         orders.push({
           timestamp: oRow[0],
           orderId: oRow[1],
@@ -314,7 +303,7 @@ function doGet(e) {
           addressDetails: oRow[6],
           totalPrice: oRow[8],
           status: oRow[9] || 'รอตรวจสอบ',
-          items: detailsMap[oRow[1]] || []
+          items: orderItems
         });
       }
       
@@ -440,6 +429,13 @@ function getAllOrdersNative() {
       ts = ts.toISOString();
     }
     
+    var parsedItems = [];
+    try {
+      if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
+    } catch(e) {}
+    
+    var orderItems = parsedItems.length > 0 ? parsedItems : (detailsMap[oRow[1]] || []);
+    
     orders.push({
       timestamp: ts,
       orderId: oRow[1],
@@ -451,7 +447,7 @@ function getAllOrdersNative() {
       totalPrice: oRow[8],
       status: oRow[9] || 'รอตรวจสอบ',
       paymentMethod: oRow[10] || 'ไม่ระบุ',
-      items: detailsMap[oRow[1]] || []
+      items: orderItems
     });
   }
   
