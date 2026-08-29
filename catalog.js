@@ -873,9 +873,119 @@ document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
   setTimeout(() => { initMapPicker(); }, 450);
 });
 
+// ตั้งค่าระยะทางจัดส่งตามปุ่ม preset
+function setDeliveryDistance(km) {
+  const input = document.getElementById('deliveryDistance');
+  if (input) {
+    input.value = km;
+    calculateCheckoutTotal();
+  }
+}
+
+// ควบคุมการแสดงผลฟิลด์ตามช่องทางการรับสินค้า
+function toggleShippingFields() {
+  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+  const savedSection = document.getElementById('savedAddressesSection');
+  const newSection = document.getElementById('newAddressSection');
+  const distanceSection = document.getElementById('deliveryDistanceSection');
+
+  if (shippingOption === 'รับหน้าร้าน') {
+    if (savedSection) savedSection.style.display = 'none';
+    if (newSection) newSection.style.display = 'none';
+    if (distanceSection) distanceSection.style.display = 'none';
+  } else {
+    if (distanceSection) distanceSection.style.display = 'block';
+    const savedAddresses = getSavedAddresses();
+    if (savedAddresses.length > 0 && typeof selectedSavedAddressIndex !== 'undefined' && selectedSavedAddressIndex !== -1) {
+      if (savedSection) savedSection.style.display = 'block';
+      if (newSection) newSection.style.display = 'none';
+    } else {
+      if (savedSection) savedSection.style.display = savedAddresses.length > 0 ? 'block' : 'none';
+      if (newSection) newSection.style.display = 'block';
+    }
+  }
+  calculateCheckoutTotal();
+  validateCheckoutForm();
+}
+
+// คำนวณค่าจัดส่งและยอดสุทธิทั้งหมด
+function calculateCheckoutTotal() {
+  const subtotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+  
+  let shippingFee = 0;
+  let discountNote = '';
+  let distKm = 0;
+
+  const distanceInput = document.getElementById('deliveryDistance');
+  if (distanceInput) {
+    distKm = parseFloat(distanceInput.value) || 0;
+    if (distKm < 0) distKm = 0;
+  }
+
+  const distanceLabel = document.getElementById('checkoutDistanceLabel');
+  if (distanceLabel) {
+    distanceLabel.textContent = `${distKm} กม.`;
+  }
+
+  if (shippingOption === 'รับหน้าร้าน') {
+    shippingFee = 0;
+    discountNote = '🏪 รับสินค้าเองที่หน้าร้าน (ฟรีค่าจัดส่ง ฿0)';
+  } else {
+    if (subtotal >= 1000) {
+      if (distKm <= 10) {
+        shippingFee = 0;
+        discountNote = '🎉 ยอดซื้อครบ ฿1,000 ฟรีค่าจัดส่ง 10 กิโลเมตรแรก!';
+      } else {
+        const extraKm = distKm - 10;
+        shippingFee = Math.ceil(extraKm * 50);
+        discountNote = `🎉 ยอดเกิน ฿1,000 ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+      }
+    } else if (subtotal >= 500) {
+      if (distKm <= 5) {
+        shippingFee = 0;
+        discountNote = '🎉 ยอดซื้อครบ ฿500 ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
+      } else {
+        const extraKm = distKm - 5;
+        shippingFee = Math.ceil(extraKm * 50);
+        discountNote = `🎉 ยอดเกิน ฿500 ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+      }
+    } else {
+      shippingFee = Math.ceil(distKm * 50);
+      discountNote = `💡 ยอดไม่ถึง ฿500 คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+    }
+  }
+
+  const grandTotal = subtotal + shippingFee;
+
+  const subtotalEl = document.getElementById('checkoutSubtotalText');
+  if (subtotalEl) subtotalEl.textContent = `฿${subtotal.toLocaleString()}`;
+
+  const feeEl = document.getElementById('checkoutShippingFeeText');
+  if (feeEl) {
+    if (shippingFee === 0) {
+      feeEl.innerHTML = '<span style="color: #4ade80;">ฟรี ฿0</span>';
+    } else {
+      feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+    }
+  }
+
+  const discountEl = document.getElementById('checkoutDiscountNote');
+  if (discountEl) discountEl.textContent = discountNote;
+
+  const totalEl = document.getElementById('checkoutTotalText');
+  if (totalEl) totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
+
+  return {
+    subtotal: subtotal,
+    shippingFee: shippingFee,
+    grandTotal: grandTotal,
+    distanceKm: distKm
+  };
+}
+
 function openCheckoutModal() {
-  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  document.getElementById('checkoutTotalText').textContent = `฿${totalAmount}`;
+  calculateCheckoutTotal();
 
   // Prefill default info from member profile
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
@@ -1091,7 +1201,7 @@ async function fetchMemberInfo(userId) {
 }
 
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง') {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0) {
   // สร้างรายการสินค้าสำหรับ Flex Message
   const itemBoxes = cartItems.map(item => ({
     type: "box",
@@ -1206,9 +1316,27 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
               {
                 type: "box",
                 layout: "horizontal",
-                margin: "md",
+                margin: "xs",
                 contents: [
-                  { type: "text", text: "ยอดเงินรวม", size: "md", color: "#1a202c", weight: "bold", flex: 3 },
+                  { type: "text", text: "รวมสินค้า", size: "sm", color: "#666666", flex: 3 },
+                  { type: "text", text: `฿${subtotal || totalPrice}`, size: "sm", color: "#1a202c", align: "right", flex: 3 }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                margin: "xs",
+                contents: [
+                  { type: "text", text: "ค่าจัดส่ง", size: "sm", color: "#666666", flex: 3 },
+                  { type: "text", text: shippingFee > 0 ? `฿${shippingFee}` : "ฟรี (฿0)", size: "sm", color: shippingFee > 0 ? "#1a202c" : "#16a34a", weight: "bold", align: "right", flex: 3 }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                margin: "sm",
+                contents: [
+                  { type: "text", text: "ยอดเงินรวมสุทธิ", size: "md", color: "#1a202c", weight: "bold", flex: 3 },
                   { type: "text", text: `฿${totalPrice}`, size: "md", color: "#388BC2", weight: "bold", align: "right", flex: 3 }
                 ]
               }
@@ -1562,7 +1690,12 @@ if (preorderDateInput) {
   preorderDateInput.value = localTodayStr;
 }
 
-// จัดการการสลับรูปแบบการจัดส่ง (จัดส่ง / รับหน้าร้าน)
+const distInputEl = document.getElementById('deliveryDistance');
+if (distInputEl) {
+  distInputEl.addEventListener('input', () => {
+    calculateCheckoutTotal();
+  });
+}
 document.querySelectorAll('input[name="shippingOption"]').forEach(radio => {
   radio.addEventListener('change', () => {
     toggleShippingFields();
@@ -1639,7 +1772,8 @@ if (btnSubmitOrder) {
 
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
 
-    const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const totals = calculateCheckoutTotal();
+    const totalAmount = totals.grandTotal;
 
     btnSubmitOrder.disabled = true;
     btnSubmitOrder.textContent = '⏳ กำลังบันทึกคำสั่งซื้อ...';
@@ -1684,7 +1818,10 @@ if (btnSubmitOrder) {
       addressDetails: addressDetails,
       addressLabel: addressLabel,
       paymentMethod: paymentMethod,
-      totalPrice: totalAmount,
+      totalPrice: totals.grandTotal,
+      subtotalPrice: totals.subtotal,
+      shippingFee: totals.shippingFee,
+      distanceKm: totals.distanceKm,
       deliveryType: deliveryType,
       preorderTime: preorderTimeStr,
       shippingOption: shippingOption,
@@ -1716,7 +1853,7 @@ if (btnSubmitOrder) {
         cachedOrders.unshift({
           timestamp: new Date().toISOString(),
           orderId: orderId,
-          totalPrice: totalAmount,
+          totalPrice: totals.grandTotal,
           status: 'รอตรวจสอบ'
         });
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
@@ -1739,7 +1876,7 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart, deliveryType, preorderTimeStr, shippingOption);
+        await sendOrderFlexMessage(orderId, name, phone, totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee);
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที

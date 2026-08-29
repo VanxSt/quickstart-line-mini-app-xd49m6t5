@@ -1299,3 +1299,21 @@ body {
   font-weight: 600;
   box-shadow: none;
 }
+
+.btn-dist-preset {
+  background: var(--bg-card, #f1f5f9);
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: var(--text-color, #1e293b);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-dist-preset:hover, .btn-dist-preset:active {
+  background: var(--primary, #388BC2);
+  border-color: var(--primary, #388BC2);
+  color: #ffffff;
+}

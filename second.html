@@ -252,6 +252,37 @@
               <span style="font-size: 15px;">รับเองที่หน้าร้าน</span>
             </label>
           </div>
+
+          <!-- Shipping Fee Conditions Info Box -->
+          <div id="shippingConditionsBox" style="background: var(--bg-card, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; padding: 12px 14px; margin-top: 8px;">
+            <div style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
+            </div>
+            <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
+              <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 50 บาท)</li>
+              <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
+              <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
+              <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
+            </ul>
+          </div>
+
+          <!-- Distance Input Section (shows when shippingOption is 'จัดส่ง') -->
+          <div id="deliveryDistanceSection" style="margin-top: 14px; display: block; background: var(--bg-card, #ffffff); border: 1px dashed var(--primary, #388BC2); border-radius: 12px; padding: 14px;">
+            <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 8px;">
+              📏 ระยะทางจัดส่งโดยประมาณ (กิโลเมตร) <span style="color: #ef4444;">*</span>
+            </label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="number" id="deliveryDistance" min="0.1" max="100" step="0.1" value="1" style="width: 110px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color, #cbd5e1); font-size: 16px; font-weight: bold; text-align: center;">
+              <span style="font-size: 14px; font-weight: 600;">กิโลเมตร (กม.)</span>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(1)">1 กม.</button>
+              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(3)">3 กม.</button>
+              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(5)">5 กม.</button>
+              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(7)">7 กม.</button>
+              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(10)">10 กม.</button>
+            </div>
+          </div>
         </div>
 
         <!-- Saved Addresses Section -->
@@ -314,7 +345,7 @@
         <!-- Payment Method Selection -->
         <div class="checkout-section">
           <h3>💰 เลือกช่องทางการชำระเงิน</h3>
-          <div class="payment-method-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: 24px;">
+          <div class="payment-method-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: 20px;">
             <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <input type="radio" name="paymentMethod" value="โอนจ่าย" checked
                 style="width: 18px; height: 18px; accent-color: var(--primary);">
@@ -342,8 +373,21 @@
             </label>
           </div>
 
-          <div class="checkout-total-banner">
-            ยอดรวมที่ต้องชำระ: <strong id="checkoutTotalText">฿0</strong>
+          <!-- Checkout Total Summary Card -->
+          <div class="checkout-total-banner" style="padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
+              <span style="color: #cbd5e1;">ยอดรวมสินค้า:</span>
+              <strong id="checkoutSubtotalText" style="color: #ffffff;">฿0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
+              <span style="color: #38bdf8;">🚚 ค่าจัดส่ง (<span id="checkoutDistanceLabel">1 กม.</span>):</span>
+              <strong id="checkoutShippingFeeText" style="color: #38bdf8;">฿0</strong>
+            </div>
+            <div id="checkoutDiscountNote" style="font-size: 12px; color: #4ade80; margin-bottom: 8px; font-weight: 500;"></div>
+            <div style="border-top: 1px dashed rgba(255,255,255,0.25); padding-top: 10px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 15px; font-weight: 600;">สุทธิที่ต้องชำระ:</span>
+              <strong id="checkoutTotalText" style="font-size: 22px; color: #facc15;">฿0</strong>
+            </div>
           </div>
         </div>
 
