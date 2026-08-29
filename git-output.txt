@@ -1,16 +1,1 @@
-ABORTED MERGE:
-
-
-NEW STATUS:
-On branch main
-Your branch and 'origin/main' have diverged,
-and have 3 and 10 different commits each, respectively.
-  (use "git pull" if you want to integrate the remote branch with yours)
-
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git restore <file>..." to discard changes in working directory)
-	modified:   git-output.txt
-	modified:   vite.config.js
-
-no changes added to commit (use "git add" and/or "git commit -a")
+SUCCESS
