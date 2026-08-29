@@ -207,18 +207,17 @@ function renderProducts() {
       </div>
     `;
 
-    // Click on product image specifically opens the fullscreen lightbox
+    // Click on product image or card opens product detail modal
     const imgWrapper = card.querySelector('.product-img-wrapper');
     if (imgWrapper) {
       imgWrapper.addEventListener('click', (e) => {
-        e.stopPropagation(); // Don't trigger the card's click event (which opens the detail modal)
-        openLightbox(productImg, product.name);
+        e.stopPropagation();
+        openProductDetail(product.id);
       });
     }
 
     // Click on card to open detail modal
     card.addEventListener('click', (e) => {
-      // Don't open detail if clicking action button directly (though we can open detail for both)
       openProductDetail(product.id);
     });
 
