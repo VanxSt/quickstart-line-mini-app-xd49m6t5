@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWNEVJwJUpdk9BZZq7Z_bY4CR80sNHHYTUgZpwYYUVFjVxjxnSI8rSkmvFUP1yiBtm/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpGmtRnbiNOrpz6z4qt61MsjsWW9DRsKfvUFy8v1HHLG7h2oIW2j51iTe1HmYXC8d4/exec';
 
 let PRODUCTS = [];
 
@@ -880,6 +880,8 @@ function openCheckoutModal() {
     if (currentMemberInfo.gpsLocation) {
       document.getElementById('gpsLocationLink').value = currentMemberInfo.gpsLocation;
       document.getElementById('checkoutAddressDetails').value = currentMemberInfo.addressDetails || '';
+      const addressLabelInput = document.getElementById('addressLabel');
+      if (addressLabelInput) addressLabelInput.value = currentMemberInfo.addressLabel || '';
       
       const gpsLocation = currentMemberInfo.gpsLocation;
       const match = gpsLocation.match(/q=([\d.]+),([\d.]+)/);
@@ -898,6 +900,8 @@ function openCheckoutModal() {
       document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
       document.getElementById('locationStatus').className = 'location-status-badge';
       document.getElementById('checkoutAddressDetails').value = '';
+      const addressLabelInput = document.getElementById('addressLabel');
+      if (addressLabelInput) addressLabelInput.value = '';
     }
     renderSavedAddresses();
   }
@@ -945,7 +949,8 @@ async function fetchMemberInfo(userId) {
           displayName: cachedInfo.displayName || '', 
           phone: cachedInfo.phone || '',
           gpsLocation: cachedInfo.gpsLocation || '',
-          addressDetails: cachedInfo.addressDetails || ''
+          addressDetails: cachedInfo.addressDetails || '',
+          addressLabel: cachedInfo.addressLabel || ''
         };
         const nameInput = document.getElementById('checkoutName');
         const phoneInput = document.getElementById('checkoutPhone');
@@ -964,7 +969,8 @@ async function fetchMemberInfo(userId) {
         displayName: data.displayName || '',
         phone: data.phone || '',
         gpsLocation: data.gpsLocation || '',
-        addressDetails: data.addressDetails || ''
+        addressDetails: data.addressDetails || '',
+        addressLabel: data.addressLabel || ''
       };
 
       // บันทึก cache ใหม่
@@ -973,7 +979,8 @@ async function fetchMemberInfo(userId) {
         displayName: currentMemberInfo.displayName,
         phone: currentMemberInfo.phone,
         gpsLocation: currentMemberInfo.gpsLocation,
-        addressDetails: currentMemberInfo.addressDetails
+        addressDetails: currentMemberInfo.addressDetails,
+        addressLabel: currentMemberInfo.addressLabel
       }));
 
       // อัปเดต form fields
@@ -1490,13 +1497,24 @@ if (btnSubmitOrder) {
     const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
     let addressDetails = '';
     let gpsLocation = '';
+    let addressLabel = '';
 
     if (shippingOption === 'รับหน้าร้าน') {
       addressDetails = 'รับสินค้าเองที่หน้าร้าน';
       gpsLocation = 'รับสินค้าเองที่หน้าร้าน';
+      addressLabel = 'รับสินค้าเองที่หน้าร้าน';
     } else {
       addressDetails = checkoutAddressDetails.value.trim();
       gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+      if (selectedSavedAddressIndex !== -1) {
+        const saved = getSavedAddresses();
+        if (saved[selectedSavedAddressIndex]) {
+          addressLabel = saved[selectedSavedAddressIndex].label || 'ที่อยู่ของฉัน';
+        }
+      } else {
+        const addressLabelInput = document.getElementById('addressLabel');
+        addressLabel = (addressLabelInput ? addressLabelInput.value.trim() : '') || 'ที่อยู่ของฉัน';
+      }
     }
 
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
@@ -1542,6 +1560,7 @@ if (btnSubmitOrder) {
       phone: phone,
       gpsLocation: gpsLocation,
       addressDetails: addressDetails,
+      addressLabel: addressLabel,
       paymentMethod: paymentMethod,
       totalPrice: totalAmount,
       deliveryType: deliveryType,

@@ -52,6 +52,7 @@ function createOrderHandler(ss, data) {
     var phone = data.phone ? "'" + data.phone : "";
     var gpsLocation = data.gpsLocation || '';
     var addressDetails = data.addressDetails || '';
+    var addressLabel = data.addressLabel || '';
     var paymentMethod = data.paymentMethod || 'ปลายทาง'; // รับค่า Payment Method
     var totalPrice = Number(data.totalPrice || 0);
     var items = data.items || [];
@@ -118,6 +119,13 @@ function createOrderHandler(ss, data) {
       try {
         var membersSheet = ss.getSheetByName("Members") || ss.getSheets()[0];
         if (membersSheet) {
+          // ตรวจสอบและสร้างหัวข้อตารางคอลัมน์ H, I, J ของชีต Members ถ้ายังไม่มี
+          if (membersSheet.getLastColumn() < 10 || !membersSheet.getRange(1, 10).getValue()) {
+            membersSheet.getRange(1, 8).setValue("GPS Location");
+            membersSheet.getRange(1, 9).setValue("Address Details");
+            membersSheet.getRange(1, 10).setValue("Address Label");
+          }
+          
           var mValues = membersSheet.getDataRange().getValues();
           var mRow = -1;
           for (var idx = 1; idx < mValues.length; idx++) {
@@ -137,6 +145,8 @@ function createOrderHandler(ss, data) {
               membersSheet.getRange(mRow, 8).setValue(gpsLocation || "");
               // คอลัมน์ 9 (I) = Address Details
               membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
+              // คอลัมน์ 10 (J) = Address Label (ตั้งชื่อที่อยู่)
+              membersSheet.getRange(mRow, 10).setValue(addressLabel || "");
             }
           }
         }
@@ -361,7 +371,10 @@ function doGet(e) {
           statusMessage: mRow[3] || '',
           email: mRow[4] || '',
           pictureUrl: mRow[5] || '',
-          phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : ''
+          phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : '',
+          gpsLocation: mRow[7] || '',
+          addressDetails: mRow[8] || '',
+          addressLabel: mRow[9] || ''
         });
       }
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', members: members })).setMimeType(ContentService.MimeType.JSON);
@@ -426,7 +439,8 @@ function doGet(e) {
           pictureUrl: values[i][5],
           phone: values[i][6],
           gpsLocation: values[i][7] || '',
-          addressDetails: values[i][8] || ''
+          addressDetails: values[i][8] || '',
+          addressLabel: values[i][9] || ''
         };
         return ContentService.createTextOutput(JSON.stringify(userData))
           .setMimeType(ContentService.MimeType.JSON);
@@ -632,7 +646,10 @@ function getAllMembersNative() {
       statusMessage: mRow[3] || '',
       email: mRow[4] || '',
       pictureUrl: mRow[5] || '',
-      phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : ''
+      phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : '',
+      gpsLocation: mRow[7] || '',
+      addressDetails: mRow[8] || '',
+      addressLabel: mRow[9] || ''
     });
   }
   return members;
