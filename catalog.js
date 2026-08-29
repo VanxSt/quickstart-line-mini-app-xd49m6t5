@@ -634,6 +634,20 @@ function closeCartModal() {
 // === SAVED ADDRESSES SYSTEM ===
 let selectedSavedAddressIndex = -1; // -1 = ใช้ที่อยู่ใหม่
 
+// ฟังก์ชันดึงค่าละติจูดและลองจิจูดจากข้อความพิกัดรูปแบบต่างๆ อย่างปลอดภัย
+function parseCoords(gpsString) {
+  if (!gpsString) return null;
+  const match = gpsString.match(/([\d.-]+)\s*,\s*([\d.-]+)/);
+  if (match) {
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+  return null;
+}
+
 function getSavedAddresses() {
   try {
     const data = localStorage.getItem('saved_addresses');
@@ -717,8 +731,8 @@ function renderSavedAddresses() {
     // ดึงพิกัดจาก GPS URL
     let coordsText = '';
     if (addr.gpsLocation) {
-      const match = addr.gpsLocation.match(/q=([\d.]+),([\d.]+)/);
-      if (match) coordsText = `📍 ${parseFloat(match[1]).toFixed(4)}, ${parseFloat(match[2]).toFixed(4)}`;
+      const coords = parseCoords(addr.gpsLocation);
+      if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
     }
 
     card.innerHTML = `
@@ -781,14 +795,22 @@ function selectSavedAddress(idx) {
   document.getElementById('checkoutAddressDetails').value = addr.addressDetails || '';
 
   const statusBadge = document.getElementById('locationStatus');
-  if (addr.gpsLocation) {
-    const match = addr.gpsLocation.match(/q=([\d.]+),([\d.]+)/);
-    if (match) {
-      statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${parseFloat(match[1]).toFixed(5)}, ${parseFloat(match[2]).toFixed(5)})`;
-      statusBadge.className = 'location-status-badge success';
-      // อัปเดตแผนที่
-      updateMapPin(parseFloat(match[1]), parseFloat(match[2]), true);
+  const coords = parseCoords(addr.gpsLocation);
+  if (coords) {
+    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
+    statusBadge.className = 'location-status-badge success';
+    // อัปเดตแผนที่
+    updateMapPin(coords.lat, coords.lng, true);
+  } else {
+    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (ไม่มีพิกัดแผนที่)`;
+    statusBadge.className = 'location-status-badge success';
+    // เคลียร์หมุดแผนที่ถ้าไม่มีพิกัด
+    if (mapMarker && mapInstance) {
+      mapInstance.removeLayer(mapMarker);
+      mapMarker = null;
     }
+    const instructionOverlay = document.getElementById('mapInstructionOverlay');
+    if (instructionOverlay) instructionOverlay.classList.remove('hidden');
   }
 
   // ซ่อนฟอร์มที่อยู่ใหม่
@@ -884,16 +906,17 @@ function openCheckoutModal() {
       if (addressLabelInput) addressLabelInput.value = currentMemberInfo.addressLabel || '';
       
       const gpsLocation = currentMemberInfo.gpsLocation;
-      const match = gpsLocation.match(/q=([\d.]+),([\d.]+)/);
-      if (match) {
-        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${parseFloat(match[1]).toFixed(5)}, ${parseFloat(match[2]).toFixed(5)})`;
+      const coords = parseCoords(gpsLocation);
+      if (coords) {
+        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
         document.getElementById('locationStatus').className = 'location-status-badge success';
         // เติมพิกัดลงแผนที่หลังจากแผนที่โหลดเสร็จ
         setTimeout(() => {
-          if (match) {
-            updateMapPin(parseFloat(match[1]), parseFloat(match[2]), true);
-          }
+          updateMapPin(coords.lat, coords.lng, true);
         }, 500);
+      } else {
+        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (ไม่มีพิกัดแผนที่)`;
+        document.getElementById('locationStatus').className = 'location-status-badge success';
       }
     } else {
       document.getElementById('gpsLocationLink').value = '';
