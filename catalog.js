@@ -665,12 +665,14 @@ function addSavedAddress(address) {
   const addresses = getSavedAddresses();
   // ป้องกันซ้ำ: เช็คว่ามีที่อยู่เดียวกันอยู่แล้วหรือไม่
   const isDuplicate = addresses.some(a =>
-    a.gpsLocation === address.gpsLocation && a.addressDetails === address.addressDetails
+    (address.gpsLocation && a.gpsLocation === address.gpsLocation) ||
+    (address.addressDetails && a.addressDetails === address.addressDetails)
   );
   if (!isDuplicate) {
     addresses.unshift(address); // เพิ่มล่าสุดไว้ด้านบน
     if (addresses.length > 5) addresses.pop(); // เก็บสูงสุด 5 ที่อยู่
     saveSavedAddresses(addresses);
+    renderSavedAddresses();
   }
 }
 
@@ -914,11 +916,13 @@ function openCheckoutModal() {
     const instructionOverlay = document.getElementById('mapInstructionOverlay');
     if (instructionOverlay) instructionOverlay.classList.remove('hidden');
 
-    // โหลดที่อยู่ที่บันทึกไว้
+    // โหลดและแสดงที่อยู่ที่บันทึกไว้ทันที
     const savedAddresses = getSavedAddresses();
+    renderSavedAddresses();
+
     if (savedAddresses.length > 0) {
-      selectedSavedAddressIndex = 0; // Default to first saved address
-      setTimeout(() => { selectSavedAddress(0); }, 50);
+      selectedSavedAddressIndex = 0;
+      selectSavedAddress(0);
     } else {
       selectedSavedAddressIndex = -1;
       const gpsInput = document.getElementById('gpsLocationLink');
@@ -1048,6 +1052,7 @@ async function fetchMemberInfo(userId) {
               merged.splice(5);
             }
             localStorage.setItem('saved_addresses', JSON.stringify(merged));
+            renderSavedAddresses();
           }
         } catch(err) {
           console.error("Error parsing remote saved addresses:", err);
