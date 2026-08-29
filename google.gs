@@ -130,10 +130,14 @@ function createOrderHandler(ss, data) {
             // คอลัมน์ 7 (G) = Phone (ดึงตัวนำหน้า quote ออก)
             var cleanPhone = phone ? phone.toString().replace(/'/g, "") : "";
             membersSheet.getRange(mRow, 7).setNumberFormat('@').setValue(cleanPhone);
-            // คอลัมน์ 8 (H) = GPS Location
-            membersSheet.getRange(mRow, 8).setValue(gpsLocation || "");
-            // คอลัมน์ 9 (I) = Address Details
-            membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
+            
+            // อัปเดตพิกัดและที่อยู่ลงประวัติสมาชิกเฉพาะเมื่อเป็นออเดอร์แบบ "จัดส่ง" เท่านั้น
+            if (shippingOption !== 'รับหน้าร้าน') {
+              // คอลัมน์ 8 (H) = GPS Location
+              membersSheet.getRange(mRow, 8).setValue(gpsLocation || "");
+              // คอลัมน์ 9 (I) = Address Details
+              membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
+            }
           }
         }
       } catch (memErr) {
