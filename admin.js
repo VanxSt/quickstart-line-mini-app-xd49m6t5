@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyxWAvFyaJs8mu7EolH4ziXCByqrNKjhrW97A8RLsnEha2oyufuC7PuYPpGmWRFnr7/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdPwvYWymgprxMqGYY2YPEJZmtTUzzo4r-NRfJbQVNpMh9I0MnRYhK3zDZ8KCQUIlU/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -271,34 +271,24 @@ function viewOrder(orderId) {
   if (noteInput) noteInput.value = '';
 
   // === GPS / Map Section ===
-  let gpsUrl = '';
-  let gpsRaw = order.gpsLocation || '';
-
-  // Extract URL from HYPERLINK formula or raw URL
-  if (gpsRaw.includes('HYPERLINK')) {
-    const match = gpsRaw.match(/HYPERLINK\("([^"]+)"/);
-    if (match) gpsUrl = match[1];
-  } else if (gpsRaw.startsWith('http')) {
-    gpsUrl = gpsRaw;
-  }
+  let gpsUrl = extractGpsUrl(order.gpsLocation, order.addressDetails, order.customerName);
 
   const gpsEl = document.getElementById('modalGps');
   const mapContainer = document.getElementById('modalMapContainer');
   const mapFrame = document.getElementById('modalMapFrame');
 
   // Hide map by default on open
-  mapContainer.style.display = 'none';
-  mapFrame.innerHTML = '';
+  if (mapContainer) mapContainer.style.display = 'none';
+  if (mapFrame) mapFrame.innerHTML = '';
 
   if (gpsUrl) {
-    // Store GPS URL in data attribute for later use
-    mapContainer.dataset.gpsUrl = gpsUrl;
+    if (mapContainer) mapContainer.dataset.gpsUrl = gpsUrl;
     gpsEl.innerHTML = `
-      <a href="${gpsUrl}" target="_blank" class="gps-link">📍 เปิดแผนที่บน Google Maps</a>
+      <a href="${gpsUrl}" target="_blank" rel="noopener noreferrer" class="gps-link">📌 เปิดแผนที่ Google Maps</a>
       <button class="btn-open-map" onclick="toggleMapEmbed(true)">🗺️ ดูแผนที่ในหน้านี้</button>
     `;
   } else {
-    gpsEl.textContent = gpsRaw || '-';
+    gpsEl.textContent = order.gpsLocation || '-';
   }
 
   document.getElementById('modalAddress').textContent = order.addressDetails || '-';
@@ -830,4 +820,33 @@ function updateMemberStats() {
   });
 
   if (elPhone) elPhone.textContent = phoneCount;
+}
+
+// Helper: robustly extract Google Maps URL from HYPERLINK formula, plain text URL, coordinates, or search fallback
+function extractGpsUrl(gpsRaw, addressDetails, customerName) {
+  let str = (gpsRaw || '').toString().trim();
+
+  // 1. Extract URL from HYPERLINK formula e.g. HYPERLINK("https://...", "...") or HYPERLINK('https://...', '...')
+  if (str.includes('HYPERLINK')) {
+    const match = str.match(/HYPERLINK\(\s*["']([^"']+)["']/i);
+    if (match && match[1]) return match[1];
+  }
+
+  // 2. Extract URL starting with http:// or https:// anywhere in the string
+  const urlMatch = str.match(/(https?:\/\/[^\s"'>]+)/i);
+  if (urlMatch && urlMatch[1]) return urlMatch[1];
+
+  // 3. Match coordinates (lat, lng) e.g. 13.7563, 100.5018
+  const coordMatch = str.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
+  if (coordMatch) {
+    return `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`;
+  }
+
+  // 4. Fallback: Search Google Maps by address or customer name if no URL was embedded
+  const query = (addressDetails || '').trim() || (customerName || '').trim();
+  if (query && query !== '-') {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }
+
+  return '';
 }

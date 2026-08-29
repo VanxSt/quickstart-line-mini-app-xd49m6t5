@@ -434,11 +434,13 @@ function doGet(e) {
       }
       
       var orderValues = ordersSheet.getDataRange().getValues();
+      var orderFormulas = ordersSheet.getDataRange().getFormulas();
       var orders = [];
       
       // วนลูปจากใหม่ไปเก่า (ล่างสุดไปบนสุด)
       for (var k = orderValues.length - 1; k >= 1; k--) {
         var oRow = orderValues[k];
+        var fRow = (orderFormulas && orderFormulas[k]) ? orderFormulas[k] : [];
         if (!oRow[1]) continue; // ข้ามแถวว่าง
         
         var parsedItems = [];
@@ -447,6 +449,9 @@ function doGet(e) {
         } catch(e) {}
         
         var orderItems = parsedItems;
+        var gpsVal = oRow[5] ? oRow[5].toString() : '';
+        var gpsForm = fRow[5] ? fRow[5].toString() : '';
+        var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
         
         orders.push({
           timestamp: oRow[0],
@@ -454,7 +459,7 @@ function doGet(e) {
           userId: oRow[2],
           customerName: oRow[3],
           phone: oRow[4],
-          gpsLocation: oRow[5],
+          gpsLocation: finalGps,
           addressDetails: oRow[6],
           totalPrice: oRow[8],
           status: oRow[9] || 'รอตรวจสอบ',
