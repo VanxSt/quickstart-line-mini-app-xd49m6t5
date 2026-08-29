@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHFQJ5a4gc5znOkRlKCRm6cvkJTs1OzvdrxTx6isv9lXot_UUk8-rQfKf-cVTQ5thb/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyHGXKDcOjUlZCDURAVLAvkJYr5pnyzncESDTow1qse7QiMNhlp8iTQfYlogxBDTMuV/exec';
 
 let PRODUCTS = [];
 

@@ -1788,35 +1788,9 @@
           buttonsHtml += nextStepBtn;
         }
 
-        const statuses = isCod ? [
-          { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
-          { val: 'เตรียมออเดอร์', label: '👨‍🍳 2. เตรียมออเดอร์' },
-          { val: 'เตรียมจัดส่ง', label: '🛍️ 3. เตรียมจัดส่ง' },
-          { val: 'กำลังจัดส่ง', label: '🚚 4. กำลังจัดส่ง' },
-          { val: 'จัดส่งสำเร็จ', label: '✅ 5. จัดส่งสำเร็จ' },
-          { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
-        ] : [
-          { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
-          { val: 'ชำระเงิน', label: '💳 2. ชำระเงิน (ส่ง QR)' },
-          { val: 'เตรียมออเดอร์', label: '👨‍🍳 3. เตรียมออเดอร์' },
-          { val: 'เตรียมจัดส่ง', label: '🛍️ 4. เตรียมจัดส่ง' },
-          { val: 'กำลังจัดส่ง', label: '🚚 5. กำลังจัดส่ง' },
-          { val: 'จัดส่งสำเร็จ', label: '✅ 6. จัดส่งสำเร็จ' },
-          { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
-        ];
-
-        let optionsHtml = statuses.map(s => `
-          <option value="${s.val}" ${currentMeta.name === s.val ? 'selected' : ''}>${s.label}</option>
-        `).join('');
-
-        buttonsHtml += `
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <label style="font-weight: 600; font-size: 13px;">เลือกสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
-            <select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">
-              ${optionsHtml}
-            </select>
-          </div>
-        `;
+        if (isEditable) {
+          buttonsHtml += `<button class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>`;
+        }
 
         actionsDiv.innerHTML = buttonsHtml;
         actionsDiv.style.display = 'flex';
