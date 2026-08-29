@@ -615,6 +615,113 @@
         width: 100%;
       }
     }
+
+    /* Embedded Map */
+    .modal-map-container {
+      margin: 12px 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+      animation: mapSlideIn 0.3s ease;
+    }
+    @keyframes mapSlideIn {
+      from { opacity: 0; max-height: 0; }
+      to { opacity: 1; max-height: 350px; }
+    }
+    .modal-map-frame {
+      width: 100%;
+      height: 280px;
+      background: #e2e8f0;
+    }
+    .modal-map-frame iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .btn-close-map {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(15, 23, 42, 0.75);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+    .btn-close-map:hover {
+      background: rgba(15, 23, 42, 0.9);
+    }
+    .btn-open-map {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 8px;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+      transition: all 0.2s;
+    }
+    .btn-open-map:hover {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      transform: translateY(-1px);
+    }
+    .gps-link {
+      color: #3b82f6;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .gps-link:hover { color: #1d4ed8; }
+
+    /* Delete item button */
+    .btn-delete-item {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 0;
+    }
+    .btn-delete-item:hover {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+      transform: scale(1.1);
+    }
+    .btn-delete-item:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .item-row-deleting {
+      animation: itemFadeOut 0.35s ease forwards;
+    }
+    @keyframes itemFadeOut {
+      to {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    }
   </style>
 </head>
 
@@ -799,6 +906,10 @@
           <p><strong>ชื่อผู้รับ:</strong> <span id="modalCustomerName"></span></p>
           <p><strong>เบอร์ติดต่อ:</strong> <span id="modalPhone"></span></p>
           <p><strong>พิกัดจัดส่ง:</strong> <span id="modalGps"></span></p>
+          <div id="modalMapContainer" class="modal-map-container" style="display:none;">
+            <div id="modalMapFrame" class="modal-map-frame"></div>
+            <button class="btn-close-map" id="btnCloseMap" onclick="toggleMapEmbed(false)">✕ ปิดแผนที่</button>
+          </div>
           <p><strong>ที่อยู่เพิ่มเติม:</strong> <span id="modalAddress"></span></p>
         </div>
         <div class="order-items">
@@ -810,6 +921,7 @@
                 <th>รายการ</th>
                 <th>จำนวน</th>
                 <th>รวม</th>
+                <th style="text-align:center; width:60px;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="modalItemsBody">
@@ -1112,38 +1224,38 @@
       document.getElementById('modalCustomerName').textContent = order.customerName;
       document.getElementById('modalPhone').textContent = (order.phone || '').replace(/'/g, "");
 
-      let gpsText = order.gpsLocation;
-      if (gpsText && gpsText.includes('HYPERLINK')) {
-        const match = gpsText.match(/HYPERLINK\("([^"]+)"/);
-        if (match) gpsText = `<a href="${match[1]}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
-      } else if (gpsText && gpsText.startsWith('http')) {
-        gpsText = `<a href="${gpsText}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
+      // === GPS / Map Section ===
+      let gpsUrl = '';
+      let gpsRaw = order.gpsLocation || '';
+      if (gpsRaw.includes('HYPERLINK')) {
+        const match = gpsRaw.match(/HYPERLINK\("([^"]+)"/);
+        if (match) gpsUrl = match[1];
+      } else if (gpsRaw.startsWith('http')) {
+        gpsUrl = gpsRaw;
       }
-      document.getElementById('modalGps').innerHTML = gpsText || '-';
+
+      const gpsEl = document.getElementById('modalGps');
+      const mapContainer = document.getElementById('modalMapContainer');
+      const mapFrame = document.getElementById('modalMapFrame');
+      mapContainer.style.display = 'none';
+      mapFrame.innerHTML = '';
+
+      if (gpsUrl) {
+        mapContainer.dataset.gpsUrl = gpsUrl;
+        gpsEl.innerHTML = `
+          <a href="${gpsUrl}" target="_blank" class="gps-link">📍 เปิดแผนที่บน Google Maps</a>
+          <button class="btn-open-map" onclick="toggleMapEmbed(true)">🗺️ ดูแผนที่ในหน้านี้</button>
+        `;
+      } else {
+        gpsEl.textContent = gpsRaw || '-';
+      }
+
       document.getElementById('modalAddress').textContent = order.addressDetails || '-';
 
-      const itemsBody = document.getElementById('modalItemsBody');
-      itemsBody.innerHTML = '';
+      // === Render Items (with delete buttons) ===
+      renderModalItems(order);
 
-      if (order.items) {
-        order.items.forEach(item => {
-          const itemPrice = Number(item.price || 0);
-          const itemQty = Number(item.qty || 1);
-          const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${item.id || '-'}</td>
-            <td><strong>${item.name || '-'}</strong></td>
-            <td>x${itemQty}</td>
-            <td>฿${itemSubtotal.toLocaleString()}</td>
-          `;
-          itemsBody.appendChild(tr);
-        });
-      }
-
-      document.getElementById('modalTotalPrice').textContent = `฿${Number(order.totalPrice || 0).toLocaleString()}`;
-
+      // Dynamic action buttons
       const actionsDiv = document.getElementById('modalActions');
       actionsDiv.innerHTML = '';
 
@@ -1168,7 +1280,7 @@
         actionsDiv.style.display = 'flex';
       } else if (order.status === 'กำลังจัดส่ง') {
         actionsDiv.innerHTML = `
-          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ (ย้ายไป "ยืนยันแล้ว")</button>
+          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ</button>
           <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
         `;
         actionsDiv.style.display = 'flex';
@@ -1179,8 +1291,112 @@
       document.getElementById('orderModal').classList.add('active');
     }
 
+    // === Render Items in Modal (with delete button per row) ===
+    function renderModalItems(order) {
+      const itemsBody = document.getElementById('modalItemsBody');
+      itemsBody.innerHTML = '';
+      const isEditable = order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
+
+      if (order.items) {
+        order.items.forEach((item, index) => {
+          const itemPrice = Number(item.price || 0);
+          const itemQty = Number(item.qty || 1);
+          const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
+
+          const tr = document.createElement('tr');
+          tr.dataset.index = index;
+          tr.innerHTML = `
+            <td>${item.id || '-'}</td>
+            <td><strong>${item.name || '-'}</strong></td>
+            <td>x${itemQty}</td>
+            <td>฿${itemSubtotal.toLocaleString()}</td>
+            <td style="text-align:center;">
+              ${isEditable && order.items.length > 1
+                ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+                : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+              }
+            </td>
+          `;
+          itemsBody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('modalTotalPrice').textContent = `฿${Number(order.totalPrice || 0).toLocaleString()}`;
+    }
+
+    // === Delete a single item from the order ===
+    function deleteOrderItem(orderId, itemIndex) {
+      const order = allOrders.find(o => o.orderId === orderId);
+      if (!order || !order.items) return;
+      const itemToDelete = order.items[itemIndex];
+      if (!itemToDelete) return;
+
+      const itemName = itemToDelete.name || 'รายการนี้';
+      if (!confirm(`ต้องการลบ "${itemName}" ออกจากออเดอร์นี้หรือไม่?\n\n⚠️ ยอดรวมจะถูกคำนวณใหม่อัตโนมัติ`)) return;
+
+      // Animate
+      const row = document.querySelector(`#modalItemsBody tr[data-index="${itemIndex}"]`);
+      if (row) row.classList.add('item-row-deleting');
+
+      setTimeout(() => {
+        const newItems = order.items.filter((_, i) => i !== itemIndex);
+        let newTotal = 0;
+        newItems.forEach(item => {
+          newTotal += Number(item.subtotal || (Number(item.price || 0) * Number(item.qty || 1)));
+        });
+
+        // Save via google.script.run
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result.status === 'success') {
+              order.items = newItems;
+              order.totalPrice = newTotal;
+              renderModalItems(order);
+              renderOrders();
+              updateStats();
+            } else {
+              alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
+            }
+          })
+          .withFailureHandler(function(err) {
+            console.error('Delete item error:', err);
+            alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+          })
+          .updateOrderItemsNative(orderId, newItems, newTotal);
+      }, 350);
+    }
+
+    // === Toggle Embedded Map ===
+    function toggleMapEmbed(show) {
+      const mapContainer = document.getElementById('modalMapContainer');
+      const mapFrame = document.getElementById('modalMapFrame');
+      if (show) {
+        const gpsUrl = mapContainer.dataset.gpsUrl || '';
+        if (!gpsUrl) return;
+        let lat = '', lng = '';
+        const atMatch = gpsUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        const qMatch = gpsUrl.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/) || gpsUrl.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        if (atMatch) { lat = atMatch[1]; lng = atMatch[2]; }
+        else if (qMatch) { lat = qMatch[1]; lng = qMatch[2]; }
+
+        if (lat && lng) {
+          mapFrame.innerHTML = `<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" allowfullscreen loading="lazy"></iframe>`;
+        } else {
+          mapFrame.innerHTML = `<iframe src="https://maps.google.com/maps?q=${encodeURIComponent(gpsUrl)}&z=15&output=embed" allowfullscreen loading="lazy"></iframe>`;
+        }
+        mapContainer.style.display = 'block';
+      } else {
+        mapContainer.style.display = 'none';
+        mapFrame.innerHTML = '';
+      }
+    }
+
     function closeModal() {
       document.getElementById('orderModal').classList.remove('active');
+      const mapContainer = document.getElementById('modalMapContainer');
+      const mapFrame = document.getElementById('modalMapFrame');
+      if (mapContainer) mapContainer.style.display = 'none';
+      if (mapFrame) mapFrame.innerHTML = '';
       currentViewingOrderId = null;
     }
 
