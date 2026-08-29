@@ -77,7 +77,19 @@ function updateSoundButtonUI() {
 
 document.addEventListener('DOMContentLoaded', () => {
   updateSoundButtonUI();
-  fetchOrders(true); // โหลดครั้งแรกแบบมี Spinner
+
+  // โหลดข้อมูล Cache เดิมก่อนทันที (0ms) หน้าเว็บจะได้ไม่ค้างหมุน
+  try {
+    const cached = localStorage.getItem('cached_admin_orders');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        processIncomingOrders(parsed);
+      }
+    }
+  } catch (e) {}
+
+  fetchOrders(true);
 
   // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 12 วินาที
   setInterval(() => {
@@ -157,6 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function processIncomingOrders(orders) {
   allOrders = orders || [];
+  try {
+    localStorage.setItem('cached_admin_orders', JSON.stringify(allOrders));
+  } catch (e) {}
 
   let newCount = 0;
   allOrders.forEach(o => {
@@ -179,27 +194,45 @@ function processIncomingOrders(orders) {
 async function fetchOrders(showLoading = true) {
   const loading = document.getElementById('loadingIndicator');
 
-  if (showLoading) {
-    loading.style.display = 'flex';
+  // ถ้ามีข้อมูลใน Cache แล้ว ให้ซ่อน spinner เพื่อความลื่นไหล
+  if (showLoading && allOrders.length === 0) {
+    if (loading) loading.style.display = 'flex';
     document.getElementById('ordersBody').innerHTML = '';
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders`);
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     const result = await response.json();
 
     if (result.status === 'success') {
       processIncomingOrders(result.orders || []);
     } else {
-      alert("Error fetching orders");
+      console.error("Error fetching orders:", result);
     }
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error("Fetch error:", error);
-    if (showLoading) {
-      alert("Connection error: กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือ Google Apps Script");
+    const tbody = document.getElementById('ordersBody');
+    if (allOrders.length === 0 && tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+            <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
+            <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถดึงข้อมูลจาก Google Apps Script ได้</p>
+            <p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบว่าตั้งค่า 'Who has access' เป็น 'Anyone' ใน Web App Deployment หรือยัง</p>
+            <button onclick="fetchOrders(true)" style="padding: 8px 16px; border-radius: 8px; background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer;">🔄 ลองใหม่อีกครั้ง</button>
+          </td>
+        </tr>
+      `;
     }
   } finally {
-    if (showLoading) {
+    if (loading) {
       loading.style.display = 'none';
     }
   }
