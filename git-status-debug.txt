@@ -1,0 +1,64 @@
+STATUS:
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   vite.config.js
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+
+LOG:
+commit 4df242b91e23a67b2bd8711859951d97a21f55d2
+Author: To-do-lish <noperfecf@gmail.com>
+Date:   Sat Aug 29 19:57:35 2026 +0700
+
+    chore: update Google Script URL reference across application modules
+
+commit 06bdbbee7ee842839bf5311e2fcdf8149340df26
+Author: To-do-lish <noperfecf@gmail.com>
+Date:   Sat Aug 29 19:51:00 2026 +0700
+
+    chore: update Google Apps Script deployment URL across application files
+
+commit 2dd6f7388da2376ed9d2907d5434c82537b6652e
+Author: To-do-lish <noperfecf@gmail.com>
+Date:   Sat Aug 29 19:43:38 2026 +0700
+
+    chore: update Google Apps Script deployment URL across admin and application modules
+
+commit f7d22be967781fc7b94fc3deaba4293e13b0c63d
+Author: To-do-lish <noperfecf@gmail.com>
+Date:   Sat Aug 29 19:23:01 2026 +0700
+
+    refactor: simplify catalog data structure for improved item lookup efficiency
+
+commit ae1ac4eec7e12fa9cdd83cd6bdf10a6841694e7d
+Author: To-do-lish <noperfecf@gmail.com>
+Date:   Sat Aug 29 19:19:11 2026 +0700
+
+    feat: add product category filtering and inventory status display to catalog.js
+
+
+DIFF:
+diff --git a/vite.config.js b/vite.config.js
+index 357bf7e..6d17fca 100644
+--- a/vite.config.js
++++ b/vite.config.js
+@@ -1,3 +1,14 @@
++import { execSync } from 'child_process';
++import { writeFileSync } from 'fs';
++try {
++  const status = execSync('git status', { encoding: 'utf8' });
++  const diff = execSync('git diff', { encoding: 'utf8' });
++  const log = execSync('git log -n 5', { encoding: 'utf8' });
++  writeFileSync('git-status-debug.txt', `STATUS:\n${status}\n\nLOG:\n${log}\n\nDIFF:\n${diff}`);
++} catch (e) {
++  writeFileSync('git-status-debug.txt', `ERROR: ${e.message}`);
++}
++
+ import { defineConfig } from 'vite';
+ import { resolve } from 'path';
+ 
