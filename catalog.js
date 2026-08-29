@@ -679,26 +679,7 @@ function deleteSavedAddress(index) {
   saveSavedAddresses(addresses);
 }
 
-function toggleShippingFields() {
-  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
-  const savedAddressesSection = document.getElementById('savedAddressesSection');
-  const newAddressSection = document.getElementById('newAddressSection');
 
-  if (shippingOption === 'รับหน้าร้าน') {
-    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-    if (newAddressSection) newAddressSection.style.display = 'none';
-  } else {
-    const savedAddresses = getSavedAddresses();
-    if (savedAddresses.length > 0 && selectedSavedAddressIndex !== -1) {
-      if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-      if (newAddressSection) newAddressSection.style.display = 'none';
-    } else {
-      if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-      if (newAddressSection) newAddressSection.style.display = 'block';
-    }
-  }
-  validateCheckoutForm();
-}
 
 function getAddressIcon(label) {
   const l = (label || '').toLowerCase();
@@ -2195,7 +2176,7 @@ async function start() {
   loadCart();
 
   // รัน loadProducts() และ initLiff() พร้อมกันทันที ไม่รอกัน
-  const [,] = await Promise.all([
+  await Promise.all([
     loadProducts(),
     initLiff()
   ]);
