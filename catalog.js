@@ -1581,7 +1581,7 @@ if (btnSubmitOrder) {
       }
     }
 
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'โอนเงิน';
 
     const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
