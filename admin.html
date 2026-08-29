@@ -21,7 +21,9 @@
         <h2>Admin Panel</h2>
       </div>
       <nav class="nav-menu">
-        <a href="#" class="nav-item active" id="navOrders">📦 คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item active" id="navOrders">
+          📦 คำสั่งซื้อ <span id="navUnreadBadge" class="unread-count-tag" style="display:none;">0</span>
+        </a>
         <a href="#" class="nav-item" id="navMembers">👥 สมาชิก (Members)</a>
       </nav>
     </aside>
@@ -34,9 +36,14 @@
             <h1>จัดการคำสั่งซื้อ</h1>
             <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
           </div>
-          <button id="refreshBtn" class="btn-primary">
-            <span class="icon">🔄</span> รีเฟรชข้อมูล
-          </button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="soundToggleBtn" class="btn-sound-toggle active" onclick="toggleSound()">
+              🔔 เสียงแจ้งเตือน: เปิด
+            </button>
+            <button id="refreshBtn" class="btn-primary">
+              <span class="icon">🔄</span> รีเฟรชข้อมูล
+            </button>
+          </div>
         </header>
 
         <!-- Stats Summary -->

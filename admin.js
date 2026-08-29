@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz80m6Wy4MCtAj5nlHgpDTo1oyeaa-V8GKjceKnGJZSrz0m3Kl3kbPm4uX8Co4jrwUj/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1oqnqzPttUhkMZKKaWRoEP667daKkTjHDyIbqXqDLFEPpImcphyqBgjR-sVsZJIQn/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -8,17 +8,79 @@ let memberSearchQuery = '';
 let currentViewingOrderId = null;
 let currentTab = 'orders'; // 'orders' | 'members'
 
+let soundEnabled = localStorage.getItem('admin_sound_enabled') !== 'false';
+let readOrderIds = JSON.parse(localStorage.getItem('admin_read_orders') || '[]');
+let knownOrderIds = new Set();
+let isInitialOrdersLoad = true;
+
+function playNotificationChime() {
+  if (!soundEnabled) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    // Note 1 (E5)
+    const osc1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+    g1.gain.setValueAtTime(0.35, ctx.currentTime);
+    g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc1.connect(g1);
+    g1.connect(ctx.destination);
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.4);
+
+    // Note 2 (A5 - High Chime)
+    const osc2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    g2.gain.setValueAtTime(0.45, ctx.currentTime + 0.12);
+    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.12);
+    osc2.stop(ctx.currentTime + 0.8);
+  } catch (e) {
+    console.error("Audio playback error:", e);
+  }
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('admin_sound_enabled', soundEnabled);
+  updateSoundButtonUI();
+  if (soundEnabled) {
+    playNotificationChime();
+  }
+}
+
+function updateSoundButtonUI() {
+  const btn = document.getElementById('soundToggleBtn');
+  if (!btn) return;
+  if (soundEnabled) {
+    btn.classList.add('active');
+    btn.innerHTML = '🔔 เสียงแจ้งเตือน: เปิด';
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = '🔕 เสียงแจ้งเตือน: ปิด';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  updateSoundButtonUI();
   fetchOrders(true); // โหลดครั้งแรกแบบมี Spinner
 
-  // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 15 วินาที
+  // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 12 วินาที
   setInterval(() => {
     if (currentTab === 'orders') {
       fetchOrders(false);
     } else if (currentTab === 'members') {
       fetchMembers(false);
     }
-  }, 15000);
+  }, 12000);
 
   document.getElementById('refreshBtn').addEventListener('click', () => fetchOrders(true));
   const btnRefreshMembers = document.getElementById('refreshMembersBtn');
@@ -87,6 +149,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+function processIncomingOrders(orders) {
+  allOrders = orders || [];
+
+  let hasNewUnreadOrder = false;
+  allOrders.forEach(o => {
+    if (o.orderId && !knownOrderIds.has(o.orderId)) {
+      if (!isInitialOrdersLoad) {
+        hasNewUnreadOrder = true;
+      }
+      knownOrderIds.add(o.orderId);
+    }
+  });
+
+  if (hasNewUnreadOrder && !isInitialOrdersLoad) {
+    playNotificationChime();
+  }
+  isInitialOrdersLoad = false;
+
+  renderOrders();
+  updateStats();
+}
+
 async function fetchOrders(showLoading = true) {
   const loading = document.getElementById('loadingIndicator');
 
@@ -100,9 +184,7 @@ async function fetchOrders(showLoading = true) {
     const result = await response.json();
 
     if (result.status === 'success') {
-      allOrders = result.orders || [];
-      renderOrders();
-      updateStats();
+      processIncomingOrders(result.orders || []);
     } else {
       alert("Error fetching orders");
     }
@@ -181,13 +263,20 @@ function renderOrders() {
     } catch (e) { }
 
     const cleanPhone = (order.phone || '').replace(/'/g, "");
+    const isUnread = !readOrderIds.includes(order.orderId);
+    const unreadDot = isUnread ? `<span class="unread-badge" title="ยังไม่ได้เปิดดู"></span>` : '';
 
     tr.innerHTML = `
       <td>
-        <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
-        <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
-          <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
-          ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
+        <div style="display: flex; align-items: center;">
+          ${unreadDot}
+          <div>
+            <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
+            <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
+              <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
+              ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
+            </div>
+          </div>
         </div>
       </td>
       <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
@@ -212,6 +301,7 @@ function updateStats() {
   let confirmedCount = 0;
   let cancelledCount = 0;
   let totalSales = 0;
+  let unreadCount = 0;
 
   allOrders.forEach(o => {
     if (o.status === 'รอตรวจสอบ') pendingCount++;
@@ -222,6 +312,10 @@ function updateStats() {
 
     if (o.status === 'ยืนยันแล้ว' || o.status === 'กำลังจัดส่ง') {
       totalSales += Number(o.totalPrice || 0);
+    }
+
+    if (o.orderId && !readOrderIds.includes(o.orderId)) {
+      unreadCount++;
     }
   });
 
@@ -250,6 +344,16 @@ function updateStats() {
   if (cShipping) cShipping.textContent = shippingCount;
   if (cConfirmed) cConfirmed.textContent = confirmedCount;
   if (cCancelled) cCancelled.textContent = cancelledCount;
+
+  const navBadge = document.getElementById('navUnreadBadge');
+  if (navBadge) {
+    if (unreadCount > 0) {
+      navBadge.style.display = 'inline-block';
+      navBadge.textContent = unreadCount;
+    } else {
+      navBadge.style.display = 'none';
+    }
+  }
 }
 
 let isModalEditMode = false;
@@ -259,6 +363,14 @@ function viewOrder(orderId) {
   isModalEditMode = false; // Reset edit mode on view
   const order = allOrders.find(o => o.orderId === orderId);
   if (!order) return;
+
+  // Mark order as read (remove red dot)
+  if (!readOrderIds.includes(orderId)) {
+    readOrderIds.push(orderId);
+    localStorage.setItem('admin_read_orders', JSON.stringify(readOrderIds));
+    renderOrders();
+    updateStats();
+  }
 
   document.getElementById('modalOrderId').textContent = order.orderId;
   document.getElementById('modalCustomerName').textContent = order.customerName;
