@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1oqnqzPttUhkMZKKaWRoEP667daKkTjHDyIbqXqDLFEPpImcphyqBgjR-sVsZJIQn/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxR5toMbSCIsuXa53XttPvonmWewTGQ-ECOVI8xb4wHAlFsBvpmE7WEqmYQTBDIOLWb/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -12,49 +12,55 @@ let soundEnabled = localStorage.getItem('admin_sound_enabled') !== 'false';
 let readOrderIds = JSON.parse(localStorage.getItem('admin_read_orders') || '[]');
 let knownOrderIds = new Set();
 let isInitialOrdersLoad = true;
+let audioCtx = null;
 
-function playNotificationChime() {
-  if (!soundEnabled) return;
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    // Note 1 (E5)
-    const osc1 = ctx.createOscillator();
-    const g1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
-    g1.gain.setValueAtTime(0.35, ctx.currentTime);
-    g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc1.connect(g1);
-    g1.connect(ctx.destination);
-    osc1.start();
-    osc1.stop(ctx.currentTime + 0.4);
-
-    // Note 2 (A5 - High Chime)
-    const osc2 = ctx.createOscillator();
-    const g2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
-    g2.gain.setValueAtTime(0.45, ctx.currentTime + 0.12);
-    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-    osc2.connect(g2);
-    g2.connect(ctx.destination);
-    osc2.start(ctx.currentTime + 0.12);
-    osc2.stop(ctx.currentTime + 0.8);
-  } catch (e) {
-    console.error("Audio playback error:", e);
+function getAudioContext() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
   }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playNotificationChime(isTest) {
+  if (!soundEnabled && !isTest) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    [{freq:1047,s:0,d:0.25},{freq:1319,s:0.15,d:0.25},{freq:1568,s:0.3,d:0.5}].forEach(n => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n.freq, now + n.s);
+      g.gain.setValueAtTime(0.8, now + n.s);
+      g.gain.exponentialRampToValueAtTime(0.001, now + n.s + n.d);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(now + n.s); osc.stop(now + n.s + n.d);
+    });
+  } catch (e) { console.error('Audio error:', e); }
+}
+
+function showNewOrderToast(count) {
+  document.querySelectorAll('.toast-notification').forEach(el => el.remove());
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+  toast.innerHTML = `<span class="toast-icon">🛒</span> มีออเดอร์ใหม่เข้ามา ${count} รายการ!`;
+  document.body.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 4200);
 }
 
 function toggleSound() {
   soundEnabled = !soundEnabled;
   localStorage.setItem('admin_sound_enabled', soundEnabled);
   updateSoundButtonUI();
-  if (soundEnabled) {
-    playNotificationChime();
-  }
+  if (soundEnabled) { playNotificationChime(true); showNewOrderToast(0); }
+}
+
+function testSound() {
+  playNotificationChime(true);
+  showNewOrderToast(1);
 }
 
 function updateSoundButtonUI() {
@@ -62,10 +68,10 @@ function updateSoundButtonUI() {
   if (!btn) return;
   if (soundEnabled) {
     btn.classList.add('active');
-    btn.innerHTML = '🔔 เสียงแจ้งเตือน: เปิด';
+    btn.innerHTML = '🔔 เสียงเตือน: เปิด';
   } else {
     btn.classList.remove('active');
-    btn.innerHTML = '🔕 เสียงแจ้งเตือน: ปิด';
+    btn.innerHTML = '🔕 เสียงเตือน: ปิด';
   }
 }
 
@@ -152,18 +158,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function processIncomingOrders(orders) {
   allOrders = orders || [];
 
-  let hasNewUnreadOrder = false;
+  let newCount = 0;
   allOrders.forEach(o => {
     if (o.orderId && !knownOrderIds.has(o.orderId)) {
-      if (!isInitialOrdersLoad) {
-        hasNewUnreadOrder = true;
-      }
+      if (!isInitialOrdersLoad) newCount++;
       knownOrderIds.add(o.orderId);
     }
   });
 
-  if (hasNewUnreadOrder && !isInitialOrdersLoad) {
-    playNotificationChime();
+  if (newCount > 0 && !isInitialOrdersLoad) {
+    playNotificationChime(false);
+    showNewOrderToast(newCount);
   }
   isInitialOrdersLoad = false;
 
@@ -364,11 +369,14 @@ function viewOrder(orderId) {
   const order = allOrders.find(o => o.orderId === orderId);
   if (!order) return;
 
-  // Mark order as read (remove red dot)
+  // Mark order as read - lightweight, no full re-render
   if (!readOrderIds.includes(orderId)) {
     readOrderIds.push(orderId);
     localStorage.setItem('admin_read_orders', JSON.stringify(readOrderIds));
-    renderOrders();
+    document.querySelectorAll('.unread-badge').forEach(dot => {
+      const row = dot.closest('tr');
+      if (row && row.innerHTML.includes(orderId)) dot.remove();
+    });
     updateStats();
   }
 
