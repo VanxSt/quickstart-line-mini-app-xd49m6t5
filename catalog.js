@@ -709,6 +709,27 @@ function getAddressIcon(label) {
   return '📍';
 }
 
+window.selectSavedAddress = function(idx) {
+  selectSavedAddress(idx);
+};
+
+window.handleDeleteSavedAddress = function(e, idx) {
+  if (e) e.stopPropagation();
+  deleteSavedAddress(idx).then(deleted => {
+    if (deleted) {
+      if (selectedSavedAddressIndex === idx) {
+        selectedSavedAddressIndex = -1;
+        const newAddressSection = document.getElementById('newAddressSection');
+        if (newAddressSection) newAddressSection.style.display = 'block';
+      } else if (selectedSavedAddressIndex > idx) {
+        selectedSavedAddressIndex--;
+      }
+      renderSavedAddresses();
+      validateCheckoutForm();
+    }
+  });
+};
+
 function renderSavedAddresses() {
   const addresses = getSavedAddresses();
   const section = document.getElementById('savedAddressesSection');
@@ -716,70 +737,51 @@ function renderSavedAddresses() {
   const newAddressSection = document.getElementById('newAddressSection');
 
   if (addresses.length === 0) {
-    section.style.display = 'none';
-    newAddressSection.style.display = 'block';
+    if (section) section.style.display = 'none';
+    if (newAddressSection) newAddressSection.style.display = 'block';
     return;
   }
 
-  section.style.display = 'block';
-  listEl.innerHTML = '';
+  if (section) section.style.display = 'block';
+  if (listEl) {
+    listEl.innerHTML = '';
 
-  addresses.forEach((addr, idx) => {
-    const card = document.createElement('div');
-    card.className = 'saved-address-card' + (selectedSavedAddressIndex === idx ? ' selected' : '');
-    
-    // ดึงพิกัดจาก GPS URL
-    let coordsText = '';
-    if (addr.gpsLocation) {
-      const coords = parseCoords(addr.gpsLocation);
-      if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
-    }
-
-    card.innerHTML = `
-      <div class="address-label">
-        <span class="address-icon">${getAddressIcon(addr.label)}</span>
-        ${addr.label || 'ที่อยู่ #' + (idx + 1)}
-      </div>
-      <div class="address-detail">${addr.addressDetails || '-'}</div>
-      ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
-      <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-      <div class="address-check">✓</div>
-    `;
-
-    // คลิกเลือกที่อยู่
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-delete-address')) return;
-      selectSavedAddress(idx);
-    });
-
-    // ปุ่มลบ
-    const deleteBtn = card.querySelector('.btn-delete-address');
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteSavedAddress(idx);
-      if (selectedSavedAddressIndex === idx) {
-        selectedSavedAddressIndex = -1;
-        newAddressSection.style.display = 'block';
-      } else if (selectedSavedAddressIndex > idx) {
-        selectedSavedAddressIndex--;
+    addresses.forEach((addr, idx) => {
+      const isSelected = selectedSavedAddressIndex === idx;
+      const card = document.createElement('div');
+      card.className = 'saved-address-card' + (isSelected ? ' selected' : '');
+      card.setAttribute('onclick', `window.selectSavedAddress(${idx})`);
+      
+      let coordsText = '';
+      if (addr.gpsLocation) {
+        const coords = parseCoords(addr.gpsLocation);
+        if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
       }
-      renderSavedAddresses();
-      validateCheckoutForm();
+
+      card.innerHTML = `
+        <div class="address-label">
+          <span class="address-icon">${getAddressIcon(addr.label)}</span>
+          ${addr.label || 'ที่อยู่ #' + (idx + 1)}
+        </div>
+        <div class="address-detail">${addr.addressDetails || '-'}</div>
+        ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
+        <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้" onclick="window.handleDeleteSavedAddress(event, ${idx})">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="address-check">${isSelected ? '✓' : ''}</div>
+      `;
+
+      listEl.appendChild(card);
     });
+  }
 
-    listEl.appendChild(card);
-  });
-
-  // ถ้ายังไม่ได้เลือกที่อยู่เก่า → แสดงฟอร์มที่อยู่ใหม่
   if (selectedSavedAddressIndex === -1) {
-    newAddressSection.style.display = 'block';
+    if (newAddressSection) newAddressSection.style.display = 'block';
   } else {
-    newAddressSection.style.display = 'none';
+    if (newAddressSection) newAddressSection.style.display = 'none';
   }
 }
 
