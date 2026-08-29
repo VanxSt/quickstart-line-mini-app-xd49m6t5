@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - จัดการคำสั่งซื้อ & สมาชิก</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #eff6ff;
+      --success: #10b981; --success-hover: #059669;
+      --danger: #ef4444; --danger-hover: #dc2626;
+      --bg-color: #f1f5f9; --card-bg: #ffffff;
+      --text-main: #0f172a; --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Prompt', 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; }
+    .dashboard-container { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background-color: var(--card-bg); border-right: 1px solid var(--border); padding: 28px 20px; display: flex; flex-direction: column; }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; padding: 0 8px; }
+    .logo-icon { font-size: 26px; background: var(--primary-light); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+    .logo h2 { font-size: 18px; font-weight: 700; }
+    .nav-menu { display: flex; flex-direction: column; gap: 6px; }
+    .nav-item { padding: 12px 16px; text-decoration: none; color: var(--text-muted); border-radius: 10px; font-weight: 500; font-size: 14px; transition: all 0.2s ease; cursor: pointer; }
+    .nav-item:hover, .nav-item.active { background-color: var(--primary-light); color: var(--primary); font-weight: 600; }
+    
+    .main-content { flex: 1; padding: 32px 40px; overflow-y: auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+    .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .header .subtitle { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px; }
+    .stat-card { background-color: var(--card-bg); padding: 20px 24px; border-radius: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-icon { font-size: 24px; width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .stat-card.pending .stat-icon { background: #fef3c7; }
+    .stat-card.payment .stat-icon { background: #e0f2fe; }
+    .stat-card.shipping .stat-icon { background: #e0e7ff; }
+    .stat-card.sales .stat-icon { background: #dcfce7; }
+    .stat-info h3 { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 4px; }
+    .stat-info p { font-size: 24px; font-weight: 700; color: var(--text-main); }
+    
+    .table-card { background-color: var(--card-bg); border-radius: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; }
+    .table-header-toolbar { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .filter-tabs { display: flex; gap: 6px; background: var(--bg-color); padding: 4px; border-radius: 12px; overflow-x: auto; }
+    .tab-btn { border: none; background: transparent; padding: 8px 14px; font-size: 13px; font-weight: 500; color: var(--text-muted); border-radius: 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .tab-btn.active { background: var(--card-bg); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+    .tab-count { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--border); color: var(--text-muted); }
+    .tab-btn.active .tab-count { background: var(--primary-light); color: var(--primary); }
+    
+    .search-box { position: relative; min-width: 280px; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.5; }
+    .search-box input { width: 100%; padding: 9px 16px 9px 38px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; outline: none; transition: all 0.2s; background: #f8fafc; }
+    .search-box input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 16px 24px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background-color: #f8fafc; font-weight: 600; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { font-size: 14px; vertical-align: middle; }
+    tbody tr:hover { background-color: #f8fafc; }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .status-pending { background-color: #fef3c7; color: #b45309; }
+    .status-payment { background-color: #e0f2fe; color: #0369a1; }
+    .status-shipping { background-color: #e0e7ff; color: #4338ca; }
+    .status-confirmed { background-color: #dcfce7; color: #15803d; }
+    .status-cancelled { background-color: #fee2e2; color: #b91c1c; }
+    
+    .pay-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+    .pay-badge.transfer { background: #f3e8ff; color: #6b21a8; }
+    .pay-badge.cod { background: #ffedd5; color: #c2410c; }
+    
+    button { cursor: pointer; border: none; font-family: inherit; font-weight: 500; border-radius: 10px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--primary); color: white; padding: 10px 18px; font-size: 14px; font-weight: 600; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; }
+    .btn-success:hover { background: var(--success-hover); }
+    .btn-danger { background: var(--danger); color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-view { background: white; color: var(--primary); border: 1px solid var(--primary); padding: 7px 14px; font-size: 13px; border-radius: 8px; font-weight: 600; }
+    .btn-view:hover { background: var(--primary); color: white; }
+    
+    .loading-state { display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--text-muted); }
+    .spinner { border: 3px solid #f1f5f9; border-top: 3px solid var(--primary); border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: var(--card-bg); width: 100%; max-width: 650px; border-radius: 20px; overflow: hidden; }
+    .modal-header { padding: 24px 28px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .close-btn { background: transparent; font-size: 24px; color: var(--text-muted); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .modal-body { padding: 28px; max-height: 65vh; overflow-y: auto; }
+    .customer-info { background: #f8fafc; padding: 20px; border-radius: 14px; margin-bottom: 24px; border: 1px solid var(--border); }
+    .customer-info h3 { margin-bottom: 14px; font-size: 15px; font-weight: 700; }
+    .customer-info p { margin-bottom: 10px; font-size: 14px; color: var(--text-muted); }
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th, .items-table td { padding: 12px; font-size: 14px; }
+    .modal-total { text-align: right; margin-top: 24px; font-size: 22px; color: var(--primary); font-weight: 700; }
+    .modal-footer { padding: 20px 28px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; background: #f8fafc; }
+
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px) {
+      .dashboard-container { flex-direction: column; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .main-content { padding: 20px 16px; }
+      .header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .table-header-toolbar { flex-direction: column; align-items: stretch; }
+      .search-box { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">📦</div>
+        <h2>Admin Panel</h2>
+      </div>
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active" id="navOrders" onclick="switchTab('orders')">📦 คำสั่งซื้อ (Orders)</a>
+        <a href="#" class="nav-item" id="navMembers" onclick="switchTab('members')">👥 สมาชิก (Members)</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <!-- Orders View -->
+      <div id="viewOrders">
+        <header class="header">
+          <div>
+            <h1>จัดการคำสั่งซื้อ</h1>
+            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
+          </div>
+          <button id="refreshBtn" class="btn-primary" onclick="fetchOrders(true)">
+            <span class="icon">🔄</span> รีเฟรชข้อมูล
+          </button>
+        </header>
+
+        <!-- Stats Summary -->
+        <section class="stats-grid">
+          <div class="stat-card pending">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-info">
+              <h3>รอตรวจสอบ</h3>
+              <p id="stat-pending">0</p>
+            </div>
+          </div>
+          <div class="stat-card payment">
+            <div class="stat-icon">💳</div>
+            <div class="stat-info">
+              <h3>รอชำระเงิน</h3>
+              <p id="stat-payment">0</p>
+            </div>
+          </div>
+          <div class="stat-card shipping">
+            <div class="stat-icon">🚚</div>
+            <div class="stat-info">
+              <h3>กำลังจัดส่ง / ยืนยัน</h3>
+              <p id="stat-confirmed">0</p>
+            </div>
+          </div>
+          <div class="stat-card sales">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <h3>ยอดขายรวม (ยืนยัน)</h3>
+              <p id="stat-sales">฿0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Filter Controls & Search -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <div class="filter-tabs" id="filterTabs">
+              <button class="tab-btn active" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
+              <button class="tab-btn" onclick="setFilter('รอตรวจสอบ', this)">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
+              <button class="tab-btn" onclick="setFilter('รอชำระเงิน', this)">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
+              <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
+              <button class="tab-btn" onclick="setFilter('ยืนยันแล้ว', this)">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
+              <button class="tab-btn" onclick="setFilter('ยกเลิก', this)">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+            </div>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="adminSearchInput" oninput="onSearch(this.value)" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="ordersTable">
+              <thead>
+                <tr>
+                  <th>รหัสออเดอร์ / ช่องทาง</th>
+                  <th>วันที่ / เวลา</th>
+                  <th>ข้อมูลลูกค้า</th>
+                  <th>ยอดรวม</th>
+                  <th>สถานะ</th>
+                  <th style="text-align: right;">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody">
+              </tbody>
+            </table>
+          </div>
+          <div id="loadingIndicator" class="loading-state">
+            <div class="spinner"></div>
+            <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Members View -->
+      <div id="viewMembers" style="display: none;">
+        <header class="header">
+          <div>
+            <h1>รายชื่อสมาชิก</h1>
+            <p class="subtitle">ลูกค้าที่เข้าใช้งาน LINE Mini App และสมาชิกร้าน</p>
+          </div>
+          <button id="refreshMembersBtn" class="btn-primary" onclick="fetchMembers(true)">
+            <span class="icon">🔄</span> รีเฟรชข้อมูลสมาชิก
+          </button>
+        </header>
+
+        <!-- Member Stats Summary -->
+        <section class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-card shipping">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <h3>สมาชิกทั้งหมด</h3>
+              <p id="stat-total-members">0</p>
+            </div>
+          </div>
+          <div class="stat-card sales">
+            <div class="stat-icon">📞</div>
+            <div class="stat-info">
+              <h3>สมาชิกที่มีเบอร์โทรศัพท์</h3>
+              <p id="stat-phone-members">0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Members Table Card -->
+        <section class="table-card">
+          <div class="table-header-toolbar">
+            <h3 style="font-size: 16px; font-weight: 700;">รายชื่อลูกค้าทั้งหมด</h3>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="memberSearchInput" oninput="onMemberSearch(this.value)" placeholder="ค้นหา ชื่อสมาชิก, เบอร์โทร, LINE ID..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="membersTable">
+              <thead>
+                <tr>
+                  <th>รูปโปรไฟล์ / ชื่อ</th>
+                  <th>เบอร์โทรศัพท์</th>
+                  <th>LINE User ID</th>
+                  <th>วันที่ลงทะเบียนล่าสุด</th>
+                </tr>
+              </thead>
+              <tbody id="membersBody">
+              </tbody>
+            </table>
+          </div>
+          <div id="membersLoadingIndicator" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลสมาชิก...</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="orderModal" class="modal-overlay">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>รายละเอียด <span id="modalOrderId" style="color:var(--primary)"></span></h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </header>
+      <div class="modal-body">
+        <div class="customer-info">
+          <h3>ข้อมูลจัดส่ง</h3>
+          <p><strong>ชื่อผู้รับ:</strong> <span id="modalCustomerName"></span></p>
+          <p><strong>เบอร์ติดต่อ:</strong> <span id="modalPhone"></span></p>
+          <p><strong>พิกัดจัดส่ง:</strong> <span id="modalGps"></span></p>
+          <p><strong>ที่อยู่เพิ่มเติม:</strong> <span id="modalAddress"></span></p>
+        </div>
+        <div class="order-items">
+          <h3>รายการสินค้า</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th>รายการ</th>
+                <th>จำนวน</th>
+                <th>รวม</th>
+              </tr>
+            </thead>
+            <tbody id="modalItemsBody">
+            </tbody>
+          </table>
+          <h3 class="modal-total">ยอดสุทธิ: <span id="modalTotalPrice"></span></h3>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <div id="modalActions">
+          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">✅ ยืนยันคำสั่งซื้อ</button>
+          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    let allOrders = [];
+    let allMembers = [];
+    let activeFilter = 'all';
+    let searchQuery = '';
+    let memberSearchQuery = '';
+    let currentViewingOrderId = null;
+    let currentTab = 'orders';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchOrders(true);
+      setInterval(() => {
+        if (currentTab === 'orders') fetchOrders(false);
+        else if (currentTab === 'members') fetchMembers(false);
+      }, 15000);
+    });
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const navOrders = document.getElementById('navOrders');
+      const navMembers = document.getElementById('navMembers');
+      const viewOrders = document.getElementById('viewOrders');
+      const viewMembers = document.getElementById('viewMembers');
+
+      if (tab === 'orders') {
+        navOrders.classList.add('active');
+        navMembers.classList.remove('active');
+        viewOrders.style.display = 'block';
+        viewMembers.style.display = 'none';
+        fetchOrders(false);
+      } else {
+        navMembers.classList.add('active');
+        navOrders.classList.remove('active');
+        viewMembers.style.display = 'block';
+        viewOrders.style.display = 'none';
+        fetchMembers(true);
+      }
+    }
+
+    function setFilter(status, el) {
+      activeFilter = status;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderOrders();
+    }
+
+    function onSearch(val) {
+      searchQuery = val.toLowerCase().trim();
+      renderOrders();
+    }
+
+    function onMemberSearch(val) {
+      memberSearchQuery = val.toLowerCase().trim();
+      renderMembers();
+    }
+
+    function fetchOrders(showLoading = true) {
+      const loading = document.getElementById('loadingIndicator');
+      if (showLoading) {
+        loading.style.display = 'flex';
+        document.getElementById('ordersBody').innerHTML = '';
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(orders) {
+          allOrders = orders || [];
+          renderOrders();
+          updateStats();
+          if (showLoading) loading.style.display = 'none';
+        })
+        .withFailureHandler(function(err) {
+          console.error(err);
+          if (showLoading) loading.style.display = 'none';
+        })
+        .getAllOrdersNative();
+    }
+
+    function renderOrders() {
+      const tbody = document.getElementById('ordersBody');
+      tbody.innerHTML = '';
+
+      const filtered = allOrders.filter(order => {
+        const statusMatch = (activeFilter === 'all') || (order.status === activeFilter);
+        const searchMatch = !searchQuery ||
+          (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
+          (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
+          (order.phone && order.phone.includes(searchQuery)) ||
+          (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery));
+        return statusMatch && searchMatch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+              <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+              <p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(order => {
+        const tr = document.createElement('tr');
+        
+        let statusClass = 'status-pending';
+        let statusIcon = '⏳';
+
+        if (order.status === 'รอชำระเงิน') {
+          statusClass = 'status-payment'; statusIcon = '💳';
+        } else if (order.status === 'กำลังจัดส่ง') {
+          statusClass = 'status-shipping'; statusIcon = '🚚';
+        } else if (order.status === 'ยืนยันแล้ว') {
+          statusClass = 'status-confirmed'; statusIcon = '✅';
+        } else if (order.status === 'ยกเลิก') {
+          statusClass = 'status-cancelled'; statusIcon = '❌';
+        }
+
+        const isTransfer = order.paymentMethod === 'โอนจ่าย';
+        const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+
+        let dateStr = order.timestamp || '-';
+        try {
+          if (order.timestamp) {
+            const d = new Date(order.timestamp);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+            }
+          }
+        } catch(e){}
+
+        const cleanPhone = (order.phone || '').replace(/'/g, "");
+
+        tr.innerHTML = `
+          <td>
+            <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
+            <div style="margin-top: 4px;">
+              <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
+            </div>
+          </td>
+          <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
+          <td>
+            <div style="font-weight: 600;">${order.customerName || 'ลูกค้า'}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">${cleanPhone}</div>
+          </td>
+          <td><strong style="font-size: 15px; color: #1e293b;">฿${Number(order.totalPrice || 0).toLocaleString()}</strong></td>
+          <td><span class="status-badge ${statusClass}">${statusIcon} ${order.status}</span></td>
+          <td style="text-align: right;">
+            <button class="btn-view" onclick="viewOrder('${order.orderId}')">📋 ดูรายละเอียด</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateStats() {
+      let pendingCount = 0, paymentCount = 0, shippingCount = 0, confirmedCount = 0, cancelledCount = 0, totalSales = 0;
+
+      allOrders.forEach(o => {
+        if (o.status === 'รอตรวจสอบ') pendingCount++;
+        else if (o.status === 'รอชำระเงิน') paymentCount++;
+        else if (o.status === 'กำลังจัดส่ง') shippingCount++;
+        else if (o.status === 'ยืนยันแล้ว') confirmedCount++;
+        else if (o.status === 'ยกเลิก') cancelledCount++;
+
+        if (o.status === 'ยืนยันแล้ว' || o.status === 'กำลังจัดส่ง') {
+          totalSales += Number(o.totalPrice || 0);
+        }
+      });
+
+      document.getElementById('stat-pending').textContent = pendingCount;
+      document.getElementById('stat-payment').textContent = paymentCount;
+      document.getElementById('stat-confirmed').textContent = shippingCount + confirmedCount;
+      document.getElementById('stat-sales').textContent = `฿${totalSales.toLocaleString()}`;
+
+      document.getElementById('count-all').textContent = allOrders.length;
+      document.getElementById('count-pending').textContent = pendingCount;
+      document.getElementById('count-payment').textContent = paymentCount;
+      document.getElementById('count-shipping').textContent = shippingCount;
+      document.getElementById('count-confirmed').textContent = confirmedCount;
+      document.getElementById('count-cancelled').textContent = cancelledCount;
+    }
+
+    function fetchMembers(showLoading = true) {
+      const loading = document.getElementById('membersLoadingIndicator');
+      if (showLoading && loading) {
+        loading.style.display = 'flex';
+        document.getElementById('membersBody').innerHTML = '';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(members) {
+          allMembers = members || [];
+          renderMembers();
+          updateMemberStats();
+          if (showLoading && loading) loading.style.display = 'none';
+        })
+        .withFailureHandler(function(err) {
+          console.error(err);
+          if (showLoading && loading) loading.style.display = 'none';
+        })
+        .getAllMembersNative();
+    }
+
+    function renderMembers() {
+      const tbody = document.getElementById('membersBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const filtered = allMembers.filter(m => {
+        if (!memberSearchQuery) return true;
+        return (m.displayName && m.displayName.toLowerCase().includes(memberSearchQuery)) ||
+               (m.phone && m.phone.includes(memberSearchQuery)) ||
+               (m.userId && m.userId.toLowerCase().includes(memberSearchQuery)) ||
+               (m.email && m.email.toLowerCase().includes(memberSearchQuery));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+              <div style="font-size: 32px; margin-bottom: 8px;">👥</div>
+              <p style="font-weight: 500;">ยังไม่มีสมาชิกในระบบหรือหาไม่พบ</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(m => {
+        const tr = document.createElement('tr');
+        let dateStr = m.registeredAt || '-';
+        try {
+          if (m.registeredAt) {
+            const d = new Date(m.registeredAt);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+            }
+          }
+        } catch(e){}
+
+        const avatarHtml = m.pictureUrl
+          ? `<img src="${m.pictureUrl}" alt="${m.displayName}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />`
+          : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">${(m.displayName || 'U').charAt(0)}</div>`;
+
+        const cleanPhone = m.phone ? m.phone.replace(/'/g, "") : '-';
+
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              ${avatarHtml}
+              <div>
+                <strong style="font-size: 14px; color: var(--text-main);">${m.displayName || 'ไม่ระบุชื่อ'}</strong>
+                <div style="font-size: 12px; color: var(--text-muted);">${m.email || 'ไม่มีอีเมล'}</div>
+              </div>
+            </div>
+          </td>
+          <td><span style="font-weight: 600; color: #1e293b;">${cleanPhone}</span></td>
+          <td><code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">${m.userId || '-'}</code></td>
+          <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateMemberStats() {
+      const elTotal = document.getElementById('stat-total-members');
+      const elPhone = document.getElementById('stat-phone-members');
+      if (elTotal) elTotal.textContent = allMembers.length;
+      let phoneCount = 0;
+      allMembers.forEach(m => { if (m.phone && m.phone.trim() !== '') phoneCount++; });
+      if (elPhone) elPhone.textContent = phoneCount;
+    }
+
+    function viewOrder(orderId) {
+      currentViewingOrderId = orderId;
+      const order = allOrders.find(o => o.orderId === orderId);
+      if (!order) return;
+
+      document.getElementById('modalOrderId').textContent = order.orderId;
+      document.getElementById('modalCustomerName').textContent = order.customerName;
+      document.getElementById('modalPhone').textContent = (order.phone || '').replace(/'/g, "");
+      
+      let gpsText = order.gpsLocation;
+      if (gpsText && gpsText.includes('HYPERLINK')) {
+        const match = gpsText.match(/HYPERLINK\("([^"]+)"/);
+        if (match) gpsText = `<a href="${match[1]}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
+      } else if (gpsText && gpsText.startsWith('http')) {
+        gpsText = `<a href="${gpsText}" target="_blank" style="color: var(--primary); text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
+      }
+      document.getElementById('modalGps').innerHTML = gpsText || '-';
+      document.getElementById('modalAddress').textContent = order.addressDetails || '-';
+
+      const itemsBody = document.getElementById('modalItemsBody');
+      itemsBody.innerHTML = '';
+      
+      if (order.items) {
+        order.items.forEach(item => {
+          const itemPrice = Number(item.price || 0);
+          const itemQty = Number(item.qty || 1);
+          const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.id || '-'}</td>
+            <td><strong>${item.name || '-'}</strong></td>
+            <td>x${itemQty}</td>
+            <td>฿${itemSubtotal.toLocaleString()}</td>
+          `;
+          itemsBody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('modalTotalPrice').textContent = `฿${Number(order.totalPrice || 0).toLocaleString()}`;
+
+      const actionsDiv = document.getElementById('modalActions');
+      actionsDiv.innerHTML = '';
+      
+      if (order.status === 'รอตรวจสอบ') {
+        if (order.paymentMethod === 'โอนจ่าย') {
+          actionsDiv.innerHTML = `
+            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('รอชำระเงิน')">✅ ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>
+            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+          `;
+        } else {
+          actionsDiv.innerHTML = `
+            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">✅ ยืนยันคำสั่งซื้อปลายทาง</button>
+            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+          `;
+        }
+        actionsDiv.style.display = 'flex';
+      } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
+        actionsDiv.innerHTML = `
+          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมจัดส่ง</button>
+          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+        `;
+        actionsDiv.style.display = 'flex';
+      } else if (order.status === 'กำลังจัดส่ง') {
+        actionsDiv.innerHTML = `
+          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ (ย้ายไป "ยืนยันแล้ว")</button>
+          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+        `;
+        actionsDiv.style.display = 'flex';
+      } else {
+        actionsDiv.style.display = 'none';
+      }
+
+      document.getElementById('orderModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('orderModal').classList.remove('active');
+      currentViewingOrderId = null;
+    }
+
+    function updateStatus(newStatus) {
+      if (!currentViewingOrderId) return;
+      if (!confirm(`ยืนยันการเปลี่ยนสถานะออเดอร์เป็น "${newStatus}" หรือไม่?`)) return;
+
+      const btnConfirm = document.getElementById('btnConfirmOrder');
+      const btnCancel = document.getElementById('btnCancelOrder');
+      if (btnConfirm) { btnConfirm.disabled = true; btnConfirm.textContent = "กำลังบันทึก..."; }
+      if (btnCancel) btnCancel.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.status === 'success') {
+            alert("อัปเดตสถานะออเดอร์สำเร็จ!");
+            closeModal();
+            fetchOrders(true);
+          } else {
+            alert("Error: " + result.message);
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error(err);
+          alert("เกิดข้อผิดพลาดในการบันทึก");
+          if (btnConfirm) btnConfirm.disabled = false;
+          if (btnCancel) btnCancel.disabled = false;
+        })
+        .updateOrderStatusNative(currentViewingOrderId, newStatus);
+    }
+  </script>
+</body>
+</html>
