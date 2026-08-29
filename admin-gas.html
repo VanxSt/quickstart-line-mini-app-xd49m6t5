@@ -989,9 +989,9 @@
         <section class="table-card">
           <div class="table-header-toolbar">
             <div class="filter-tabs" id="filterTabs">
-              <button class="tab-btn active" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count"
+              <button class="tab-btn" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count"
                   id="count-all">0</span></button>
-              <button class="tab-btn" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span class="tab-count"
+              <button class="tab-btn active" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span class="tab-count"
                   id="count-pending">0</span></button>
               <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
@@ -1154,7 +1154,7 @@
   <script>
     let allOrders = [];
     let allMembers = [];
-    let activeFilter = 'all';
+    let activeFilter = 'กำลังตรวจสอบออเดอร์';
     let searchQuery = '';
     let memberSearchQuery = '';
     let currentViewingOrderId = null;

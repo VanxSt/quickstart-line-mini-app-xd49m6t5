@@ -1,8 +1,8 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyHGXKDcOjUlZCDURAVLAvkJYr5pnyzncESDTow1qse7QiMNhlp8iTQfYlogxBDTMuV/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4fcy31G6OAlBQhNJCQuYFXjXjRv5yNz5c_unvHSqJKeEfsJuXEyi5tRBBazPCnWXu/exec';
 
 let allOrders = [];
 let allMembers = [];
-let activeFilter = 'all';
+let activeFilter = 'กำลังตรวจสอบออเดอร์';
 let searchQuery = '';
 let memberSearchQuery = '';
 let currentViewingOrderId = null;
