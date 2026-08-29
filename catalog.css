@@ -982,3 +982,83 @@ body {
   overflow-y: auto;
   padding: 16px 24px 24px 24px;
 }
+
+/* === Interactive Map Picker === */
+.map-picker-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1.5px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background-color: #e8ecf0;
+  transition: box-shadow 0.3s ease;
+}
+
+.map-picker-container:hover {
+  box-shadow: 0 6px 20px rgba(56, 139, 194, 0.15);
+}
+
+.map-picker-container .leaflet-container {
+  border-radius: 12px;
+  font-family: inherit;
+}
+
+.map-instruction-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 600;
+  background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%);
+  padding: 16px 12px 10px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.map-instruction-overlay span {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-dark);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: pulse-instruction 2s ease-in-out infinite;
+}
+
+.map-instruction-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes pulse-instruction {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.85; }
+}
+
+/* Custom Leaflet Marker Pulse */
+.leaflet-marker-icon.pin-marker {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+  transition: transform 0.2s ease;
+}
+
+.leaflet-marker-icon.pin-marker:hover {
+  transform: scale(1.15);
+}
+
+/* Fix z-index for Leaflet inside modal */
+.map-picker-container .leaflet-pane {
+  z-index: 400;
+}
+
+.map-picker-container .leaflet-top,
+.map-picker-container .leaflet-bottom {
+  z-index: 500;
+}

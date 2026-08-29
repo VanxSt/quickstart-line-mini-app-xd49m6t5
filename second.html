@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
   <title>เมนูพรีเมียม - ร้านเกื้อกูลกัน</title>
   <link rel="stylesheet" href="catalog.css" />
+  <!-- Leaflet.js Map Library (ฟรี ไม่ต้องใช้ API Key) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -171,14 +174,23 @@
         <!-- Location Geolocation Pinning Section -->
         <div class="checkout-section">
           <h3>📍 ที่อยู่สำหรับจัดส่ง</h3>
-          <p class="section-tip">กรุณาปักหมุดที่ตั้งเพื่อความถูกต้องแม่นยำในการจัดส่ง</p>
+          <p class="section-tip">กดปุ่ม GPS หรือแตะบนแผนที่เพื่อปักหมุดตำแหน่งจัดส่ง</p>
           <button type="button" class="btn-location-gps" id="btnGetLocation">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
               <circle cx="12" cy="10" r="3"></circle>
             </svg>
-            ปักหมุดตำแหน่งปัจจุบันผ่าน GPS
+            📡 ดึงตำแหน่งปัจจุบันผ่าน GPS
           </button>
+
+          <!-- Interactive Map for Pin Dropping -->
+          <div id="mapPickerContainer" class="map-picker-container">
+            <div id="mapPicker" style="width: 100%; height: 100%; border-radius: 12px;"></div>
+            <div class="map-instruction-overlay" id="mapInstructionOverlay">
+              <span>👆 แตะบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อย้ายตำแหน่ง</span>
+            </div>
+          </div>
+
           <div id="locationStatus" class="location-status-badge">ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง</div>
           <input type="hidden" id="gpsLocationLink" value="" />
           

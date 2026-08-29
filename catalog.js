@@ -635,9 +635,23 @@ function openCheckoutModal() {
   document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
   document.getElementById('locationStatus').className = 'location-status-badge';
 
+  // Reset map marker
+  if (mapMarker && mapInstance) {
+    mapInstance.removeLayer(mapMarker);
+    mapMarker = null;
+  }
+  // แสดงข้อความคำแนะนำบนแผนที่อีกครั้ง
+  const instructionOverlay = document.getElementById('mapInstructionOverlay');
+  if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+
   validateCheckoutForm();
 
   checkoutModal.classList.add('show');
+
+  // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ (ต้องรอ transition จบ)
+  setTimeout(() => {
+    initMapPicker();
+  }, 450);
 }
 
 function closeCheckoutModal() {
@@ -992,11 +1006,115 @@ if (checkoutModal) {
   });
 }
 
-// GPS Location Geolocation Pinning
+// GPS Location + Interactive Map Pin Dropping
+let mapInstance = null;
+let mapMarker = null;
+let mapInitialized = false;
+
+// สร้าง Custom Icon สำหรับหมุดบนแผนที่
+function createMapPinIcon() {
+  return L.divIcon({
+    className: 'pin-marker',
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48" fill="none">
+      <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30s18-16.5 18-30C36 8.06 27.94 0 18 0z" fill="#388BC2"/>
+      <circle cx="18" cy="18" r="8" fill="white"/>
+      <circle cx="18" cy="18" r="4" fill="#388BC2"/>
+    </svg>`,
+    iconSize: [36, 48],
+    iconAnchor: [18, 48],
+    popupAnchor: [0, -48]
+  });
+}
+
+// อัปเดตตำแหน่งหมุดบนแผนที่ + อัปเดต GPS Link + แสดงสถานะ
+function updateMapPin(lat, lng, flyTo = true) {
+  const gpsLinkInput = document.getElementById('gpsLocationLink');
+  const statusBadge = document.getElementById('locationStatus');
+  const instructionOverlay = document.getElementById('mapInstructionOverlay');
+
+  const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+  gpsLinkInput.value = mapUrl;
+
+  statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+  statusBadge.className = 'location-status-badge success';
+
+  // ซ่อนข้อความคำแนะนำบนแผนที่
+  if (instructionOverlay) {
+    instructionOverlay.classList.add('hidden');
+  }
+
+  if (mapInstance) {
+    if (mapMarker) {
+      mapMarker.setLatLng([lat, lng]);
+    } else {
+      mapMarker = L.marker([lat, lng], {
+        icon: createMapPinIcon(),
+        draggable: true
+      }).addTo(mapInstance);
+
+      // ลากหมุดเพื่อย้ายตำแหน่ง
+      mapMarker.on('dragend', function (e) {
+        const pos = e.target.getLatLng();
+        updateMapPin(pos.lat, pos.lng, false);
+      });
+
+      mapMarker.bindPopup('<b>📍 ตำแหน่งจัดส่ง</b><br>ลากหมุดเพื่อปรับตำแหน่ง').openPopup();
+    }
+
+    if (flyTo) {
+      mapInstance.flyTo([lat, lng], 16, { duration: 1 });
+    }
+  }
+
+  validateCheckoutForm();
+}
+
+// สร้างแผนที่ Leaflet ตอนเปิด Checkout Modal
+function initMapPicker() {
+  const mapContainer = document.getElementById('mapPicker');
+  if (!mapContainer) return;
+
+  // ถ้าแผนที่ถูกสร้างแล้ว ให้ invalidateSize เพื่อแก้ปัญหาขนาด
+  if (mapInstance) {
+    setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 300);
+    return;
+  }
+
+  // ตำแหน่งเริ่มต้น (กรุงเทพ)
+  const defaultLat = 13.7563;
+  const defaultLng = 100.5018;
+
+  mapInstance = L.map('mapPicker', {
+    center: [defaultLat, defaultLng],
+    zoom: 13,
+    zoomControl: true,
+    attributionControl: false
+  });
+
+  // ใช้ OpenStreetMap Tiles (ฟรี)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(mapInstance);
+
+  // คลิกบนแผนที่เพื่อปักหมุด
+  mapInstance.on('click', function (e) {
+    updateMapPin(e.latlng.lat, e.latlng.lng, false);
+  });
+
+  mapInitialized = true;
+
+  // Fix ขนาดแผนที่หลังจาก modal แสดงเสร็จ
+  setTimeout(() => {
+    mapInstance.invalidateSize();
+  }, 400);
+}
+
+// ปุ่ม GPS ดึงพิกัดปัจจุบัน + แสดงบนแผนที่
 if (btnGetLocation) {
   btnGetLocation.addEventListener('click', () => {
     const statusBadge = document.getElementById('locationStatus');
-    const gpsLinkInput = document.getElementById('gpsLocationLink');
 
     statusBadge.textContent = '📍 กำลังดึงพิกัด GPS...';
     statusBadge.className = 'location-status-badge';
@@ -1006,12 +1124,7 @@ if (btnGetLocation) {
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-
-          gpsLinkInput.value = mapUrl;
-          statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-          statusBadge.className = 'location-status-badge success';
-          validateCheckoutForm();
+          updateMapPin(lat, lng, true);
         },
         (error) => {
           console.error('Geolocation error:', error);
