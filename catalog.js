@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwKQlYTykzf_tLDaIWXoUfNMOwdIw8Bxnp25E6X79YyrJxXp6Nk8v50aoV_1sfu7zbk/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLq9JR7VKEDlFsc3q8jaDJdWA2gijP_WE39zRoC-CfkrU7-rkk1HMeY0Cd9Ptf9oO3/exec';
 
 let PRODUCTS = [];
 
@@ -665,69 +665,49 @@ function addSavedAddress(address) {
   const addresses = getSavedAddresses();
   // ป้องกันซ้ำ: เช็คว่ามีที่อยู่เดียวกันอยู่แล้วหรือไม่
   const isDuplicate = addresses.some(a =>
-    (address.gpsLocation && a.gpsLocation === address.gpsLocation) ||
-    (address.addressDetails && a.addressDetails === address.addressDetails)
+    a.gpsLocation === address.gpsLocation && a.addressDetails === address.addressDetails
   );
   if (!isDuplicate) {
     addresses.unshift(address); // เพิ่มล่าสุดไว้ด้านบน
     if (addresses.length > 5) addresses.pop(); // เก็บสูงสุด 5 ที่อยู่
     saveSavedAddresses(addresses);
-    renderSavedAddresses();
   }
 }
 
-async function deleteSavedAddress(index) {
-  const confirmDelete = confirm("⚠️ คุณต้องการลบที่อยู่นี้ใช่หรือไม่?");
-  if (!confirmDelete) return false;
-
+function deleteSavedAddress(index) {
   const addresses = getSavedAddresses();
   addresses.splice(index, 1);
   saveSavedAddresses(addresses);
-
-  let userId = 'web-test-user';
-  if (typeof liff !== 'undefined' && liff && liff.isLoggedIn()) {
-    try {
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-    } catch (e) {}
-  }
-  try {
-    const payload = {
-      action: 'updateSavedAddresses',
-      userId: userId,
-      savedAddresses: JSON.stringify(addresses)
-    };
-    fetch(GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {}
-  return true;
 }
 
-window.selectSavedAddress = function(idx) {
-  selectSavedAddress(Number(idx));
-};
+function toggleShippingFields() {
+  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+  const savedAddressesSection = document.getElementById('savedAddressesSection');
+  const newAddressSection = document.getElementById('newAddressSection');
 
-window.handleDeleteSavedAddress = function(e, idx) {
-  if (e) e.stopPropagation();
-  deleteSavedAddress(Number(idx)).then(deleted => {
-    if (deleted) {
-      const numIdx = Number(idx);
-      if (selectedSavedAddressIndex === numIdx) {
-        selectedSavedAddressIndex = -1;
-        const newAddressSection = document.getElementById('newAddressSection');
-        if (newAddressSection) newAddressSection.style.display = 'block';
-      } else if (selectedSavedAddressIndex > numIdx) {
-        selectedSavedAddressIndex--;
-      }
-      renderSavedAddresses();
-      validateCheckoutForm();
+  if (shippingOption === 'รับหน้าร้าน') {
+    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+    if (newAddressSection) newAddressSection.style.display = 'none';
+  } else {
+    const savedAddresses = getSavedAddresses();
+    if (savedAddresses.length > 0 && selectedSavedAddressIndex !== -1) {
+      if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+      if (newAddressSection) newAddressSection.style.display = 'none';
+    } else {
+      if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+      if (newAddressSection) newAddressSection.style.display = 'block';
     }
-  });
-};
+  }
+  validateCheckoutForm();
+}
+
+function getAddressIcon(label) {
+  const l = (label || '').toLowerCase();
+  if (l.includes('บ้าน') || l.includes('home')) return '🏠';
+  if (l.includes('ทำงาน') || l.includes('ออฟฟิศ') || l.includes('work') || l.includes('office')) return '🏢';
+  if (l.includes('คอนโด') || l.includes('condo') || l.includes('หอ')) return '🏬';
+  return '📍';
+}
 
 function renderSavedAddresses() {
   const addresses = getSavedAddresses();
@@ -736,63 +716,77 @@ function renderSavedAddresses() {
   const newAddressSection = document.getElementById('newAddressSection');
 
   if (addresses.length === 0) {
-    if (section) section.style.display = 'none';
-    if (newAddressSection) newAddressSection.style.display = 'block';
+    section.style.display = 'none';
+    newAddressSection.style.display = 'block';
     return;
   }
 
-  if (section) section.style.display = 'block';
-  if (listEl) {
-    listEl.innerHTML = '';
+  section.style.display = 'block';
+  listEl.innerHTML = '';
 
-    addresses.forEach((addr, idx) => {
-      const isSelected = selectedSavedAddressIndex === idx;
-      const card = document.createElement('div');
-      card.className = 'saved-address-card' + (isSelected ? ' selected' : '');
+  addresses.forEach((addr, idx) => {
+    const card = document.createElement('div');
+    card.className = 'saved-address-card' + (selectedSavedAddressIndex === idx ? ' selected' : '');
 
-      let coordsText = '';
-      if (addr.gpsLocation) {
-        const coords = parseCoords(addr.gpsLocation);
-        if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+    // ดึงพิกัดจาก GPS URL
+    let coordsText = '';
+    if (addr.gpsLocation) {
+      const coords = parseCoords(addr.gpsLocation);
+      if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+    }
+
+    card.innerHTML = `
+      <div class="address-label">
+        <span class="address-icon">${getAddressIcon(addr.label)}</span>
+        ${addr.label || 'ที่อยู่ #' + (idx + 1)}
+      </div>
+      <div class="address-detail">${addr.addressDetails || '-'}</div>
+      ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
+      <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="address-check">✓</div>
+    `;
+
+    // คลิกเลือกที่อยู่
+    card.addEventListener('click', (e) => {
+      console.log(`[SavedAddress] Card clicked. Index: ${idx}`, addr);
+      if (e.target.closest('.btn-delete-address')) {
+        console.log(`[SavedAddress] Click was on delete button, ignoring selection.`);
+        return;
       }
-
-      card.innerHTML = `
-        <div class="address-label">
-          <span class="address-icon">${getAddressIcon(addr.label)}</span>
-          ${addr.label || 'ที่อยู่ #' + (idx + 1)}
-        </div>
-        <div class="address-detail">${addr.addressDetails || '-'}</div>
-        ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
-        <button type="button" class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-        <div class="address-check">${isSelected ? '✓' : ''}</div>
-      `;
-
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-delete-address')) return;
-        selectSavedAddress(idx);
-      });
-
-      const delBtn = card.querySelector('.btn-delete-address');
-      if (delBtn) {
-        delBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          window.handleDeleteSavedAddress(e, idx);
-        });
-      }
-
-      listEl.appendChild(card);
+      selectSavedAddress(idx);
     });
-  }
 
+    // ปุ่มลบ
+    const deleteBtn = card.querySelector('.btn-delete-address');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log(`[SavedAddress] Delete clicked for index: ${idx}`);
+        deleteSavedAddress(idx);
+        if (selectedSavedAddressIndex === idx) {
+          selectedSavedAddressIndex = -1;
+          newAddressSection.style.display = 'block';
+        } else if (selectedSavedAddressIndex > idx) {
+          selectedSavedAddressIndex--;
+        }
+        renderSavedAddresses();
+        validateCheckoutForm();
+      });
+    }
+
+    listEl.appendChild(card);
+  });
+
+  // ถ้ายังไม่ได้เลือกที่อยู่เก่า → แสดงฟอร์มที่อยู่ใหม่
   if (selectedSavedAddressIndex === -1) {
-    if (newAddressSection) newAddressSection.style.display = 'block';
+    newAddressSection.style.display = 'block';
   } else {
-    if (newAddressSection) newAddressSection.style.display = 'none';
+    newAddressSection.style.display = 'none';
   }
 }
 
@@ -812,7 +806,7 @@ function selectSavedAddress(idx) {
     // เติมข้อมูลจากที่อยู่ที่เลือก
     const gpsLinkEl = document.getElementById('gpsLocationLink');
     const addrDetailsEl = document.getElementById('checkoutAddressDetails');
-    
+
     if (gpsLinkEl) gpsLinkEl.value = addr.gpsLocation || '';
     if (addrDetailsEl) addrDetailsEl.value = addr.addressDetails || '';
 
@@ -881,121 +875,94 @@ document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
 });
 
 function openCheckoutModal() {
-  closeCartModal();
-  const modalEl = document.getElementById('checkoutModal');
-  if (modalEl) modalEl.classList.add('show');
+  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  document.getElementById('checkoutTotalText').textContent = `฿${totalAmount}`;
 
-  try {
-    const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    const checkoutTotalText = document.getElementById('checkoutTotalText');
-    if (checkoutTotalText) checkoutTotalText.textContent = `฿${totalAmount}`;
+  // Prefill default info from member profile
+  document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
+  document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
 
-    // Prefill default info from member profile
-    const nameInput = document.getElementById('checkoutName');
-    const phoneInput = document.getElementById('checkoutPhone');
-    if (nameInput) nameInput.value = currentMemberInfo.displayName || '';
-    if (phoneInput) phoneInput.value = currentMemberInfo.phone || '';
+  // รีเซ็ตตัวเลือกช่องทางการรับสินค้า
+  const defaultShippingOption = document.querySelector('input[name="shippingOption"][value="จัดส่ง"]');
+  if (defaultShippingOption) defaultShippingOption.checked = true;
 
-    // รีเซ็ตตัวเลือกช่องทางการรับสินค้า
-    const defaultShippingOption = document.querySelector('input[name="shippingOption"][value="จัดส่ง"]');
-    if (defaultShippingOption) defaultShippingOption.checked = true;
+  // รีเซ็ตการสั่งล่วงหน้า
+  const defaultDeliveryType = document.querySelector('input[name="deliveryType"][value="ทันที"]');
+  if (defaultDeliveryType) defaultDeliveryType.checked = true;
+  const preorderTimeSection = document.getElementById('preorderTimeSection');
+  if (preorderTimeSection) preorderTimeSection.style.display = 'none';
+  const preorderTimeSelect = document.getElementById('preorderTime');
+  if (preorderTimeSelect) preorderTimeSelect.value = '';
+  const preorderDateInput = document.getElementById('preorderDate');
+  if (preorderDateInput) {
+    const localDate = new Date();
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    preorderDateInput.value = `${year}-${month}-${day}`;
+  }
 
-    // รีเซ็ตการสั่งล่วงหน้า
-    const defaultDeliveryType = document.querySelector('input[name="deliveryType"][value="ทันที"]');
-    if (defaultDeliveryType) defaultDeliveryType.checked = true;
-    const preorderTimeSection = document.getElementById('preorderTimeSection');
-    if (preorderTimeSection) preorderTimeSection.style.display = 'none';
-    const preorderTimeSelect = document.getElementById('preorderTime');
-    if (preorderTimeSelect) preorderTimeSelect.value = '';
-    const preorderDateInput = document.getElementById('preorderDate');
-    if (preorderDateInput) {
-      const localDate = new Date();
-      const year = localDate.getFullYear();
-      const month = String(localDate.getMonth() + 1).padStart(2, '0');
-      const day = String(localDate.getDate()).padStart(2, '0');
-      preorderDateInput.value = `${year}-${month}-${day}`;
-    }
+  // Reset address label + checkbox
+  const addressLabelInput = document.getElementById('addressLabel');
+  if (addressLabelInput) addressLabelInput.value = '';
+  const chkSave = document.getElementById('chkSaveAddress');
+  if (chkSave) chkSave.checked = true;
 
-    // Reset address label + checkbox
-    const addressLabelInput = document.getElementById('addressLabel');
-    if (addressLabelInput) addressLabelInput.value = '';
-    const chkSave = document.getElementById('chkSaveAddress');
-    if (chkSave) chkSave.checked = true;
+  // Reset map marker
+  if (mapMarker && mapInstance) {
+    mapInstance.removeLayer(mapMarker);
+    mapMarker = null;
+  }
+  const instructionOverlay = document.getElementById('mapInstructionOverlay');
+  if (instructionOverlay) instructionOverlay.classList.remove('hidden');
 
-    // Reset map marker
-    if (mapMarker && mapInstance) {
-      mapInstance.removeLayer(mapMarker);
-      mapMarker = null;
-    }
-    const instructionOverlay = document.getElementById('mapInstructionOverlay');
-    if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+  // โหลดที่อยู่ที่บันทึกไว้
+  const savedAddresses = getSavedAddresses();
+  if (savedAddresses.length > 0) {
+    selectedSavedAddressIndex = 0; // Default to first saved address
+    setTimeout(() => { selectSavedAddress(0); }, 50);
+  } else {
+    selectedSavedAddressIndex = -1;
+    // หากไม่มีที่อยู่เซฟใน LocalStorage ให้ลองดึงจาก member profile ใน Google Sheet
+    if (currentMemberInfo.gpsLocation) {
+      document.getElementById('gpsLocationLink').value = currentMemberInfo.gpsLocation;
+      document.getElementById('checkoutAddressDetails').value = currentMemberInfo.addressDetails || '';
+      const addressLabelInput = document.getElementById('addressLabel');
+      if (addressLabelInput) addressLabelInput.value = currentMemberInfo.addressLabel || '';
 
-    // โหลดและแสดงที่อยู่ที่บันทึกไว้ทันที
-    let savedAddresses = getSavedAddresses();
-    if (savedAddresses.length === 0 && (currentMemberInfo.gpsLocation || currentMemberInfo.addressDetails)) {
-      addSavedAddress({
-        label: currentMemberInfo.addressLabel || 'ที่อยู่ของฉัน',
-        gpsLocation: currentMemberInfo.gpsLocation || '',
-        addressDetails: currentMemberInfo.addressDetails || ''
-      });
-      savedAddresses = getSavedAddresses();
+      const gpsLocation = currentMemberInfo.gpsLocation;
+      const coords = parseCoords(gpsLocation);
+      if (coords) {
+        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
+        document.getElementById('locationStatus').className = 'location-status-badge success';
+        // เติมพิกัดลงแผนที่หลังจากแผนที่โหลดเสร็จ
+        setTimeout(() => {
+          updateMapPin(coords.lat, coords.lng, true);
+        }, 500);
+      } else {
+        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (ไม่มีพิกัดแผนที่)`;
+        document.getElementById('locationStatus').className = 'location-status-badge success';
+      }
+    } else {
+      document.getElementById('gpsLocationLink').value = '';
+      document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
+      document.getElementById('locationStatus').className = 'location-status-badge';
+      document.getElementById('checkoutAddressDetails').value = '';
+      const addressLabelInput = document.getElementById('addressLabel');
+      if (addressLabelInput) addressLabelInput.value = '';
     }
     renderSavedAddresses();
-
-    if (savedAddresses.length > 0) {
-      selectedSavedAddressIndex = 0;
-      selectSavedAddress(0);
-    } else {
-      selectedSavedAddressIndex = -1;
-      const gpsInput = document.getElementById('gpsLocationLink');
-      const detailsInput = document.getElementById('checkoutAddressDetails');
-      const statusBadge = document.getElementById('locationStatus');
-
-      if (currentMemberInfo.gpsLocation) {
-        if (gpsInput) gpsInput.value = currentMemberInfo.gpsLocation;
-        if (detailsInput) detailsInput.value = currentMemberInfo.addressDetails || '';
-        if (addressLabelInput) addressLabelInput.value = currentMemberInfo.addressLabel || '';
-        
-        const gpsLocation = currentMemberInfo.gpsLocation;
-        const coords = parseCoords(gpsLocation);
-        if (coords) {
-          if (statusBadge) {
-            statusBadge.textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
-            statusBadge.className = 'location-status-badge success';
-          }
-          setTimeout(() => {
-            updateMapPin(coords.lat, coords.lng, true);
-          }, 500);
-        } else {
-          if (statusBadge) {
-            statusBadge.textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (ไม่มีพิกัดแผนที่)`;
-            statusBadge.className = 'location-status-badge success';
-          }
-        }
-      } else {
-        if (gpsInput) gpsInput.value = '';
-        if (statusBadge) {
-          statusBadge.textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
-          statusBadge.className = 'location-status-badge';
-        }
-        if (detailsInput) detailsInput.value = '';
-        if (addressLabelInput) addressLabelInput.value = '';
-      }
-      renderSavedAddresses();
-    }
-
-    toggleShippingFields();
-  } catch (err) {
-    console.error('Error prefilling checkout modal:', err);
   }
+
+  toggleShippingFields();
+
+  checkoutModal.classList.add('show');
 
   // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ
   setTimeout(() => {
     initMapPicker();
   }, 450);
 }
-
-window.openCheckoutModal = openCheckoutModal;
 
 function closeCheckoutModal() {
   checkoutModal.classList.remove('show');
@@ -1026,8 +993,8 @@ async function fetchMemberInfo(userId) {
     if (cached) {
       const cachedInfo = JSON.parse(cached);
       if (cachedInfo && cachedInfo.userId === userId) {
-        currentMemberInfo = { 
-          displayName: cachedInfo.displayName || '', 
+        currentMemberInfo = {
+          displayName: cachedInfo.displayName || '',
           phone: cachedInfo.phone || '',
           gpsLocation: cachedInfo.gpsLocation || '',
           addressDetails: cachedInfo.addressDetails || '',
@@ -1055,47 +1022,29 @@ async function fetchMemberInfo(userId) {
       };
 
       // ซิงค์ saved addresses จาก Google Sheet ลง LocalStorage เพื่อให้ลูกค้ามีที่อยู่ใช้บนทุกอุปกรณ์
-      try {
-        let remoteSaved = [];
-        if (data.savedAddresses) {
-          try {
-            remoteSaved = JSON.parse(data.savedAddresses);
-          } catch(e) { }
-        }
-
-        const localSaved = getSavedAddresses();
-        const merged = [...localSaved];
-
-        if (Array.isArray(remoteSaved) && remoteSaved.length > 0) {
-          remoteSaved.forEach(remoteAddr => {
-            const isDuplicate = merged.some(localAddr => 
-              (localAddr.gpsLocation && localAddr.gpsLocation === remoteAddr.gpsLocation) ||
-              (localAddr.addressDetails && localAddr.addressDetails === remoteAddr.addressDetails)
-            );
-            if (!isDuplicate) {
-              merged.push(remoteAddr);
+      if (data.savedAddresses) {
+        try {
+          const remoteSaved = JSON.parse(data.savedAddresses);
+          if (Array.isArray(remoteSaved)) {
+            const localSaved = getSavedAddresses();
+            const merged = [...localSaved];
+            remoteSaved.forEach(remoteAddr => {
+              const isDuplicate = merged.some(localAddr =>
+                localAddr.gpsLocation === remoteAddr.gpsLocation &&
+                localAddr.addressDetails === remoteAddr.addressDetails
+              );
+              if (!isDuplicate) {
+                merged.push(remoteAddr);
+              }
+            });
+            if (merged.length > 5) {
+              merged.splice(5);
             }
-          });
+            localStorage.setItem('saved_addresses', JSON.stringify(merged));
+          }
+        } catch (err) {
+          console.error("Error parsing remote saved addresses:", err);
         }
-
-        if (merged.length === 0 && (currentMemberInfo.gpsLocation || currentMemberInfo.addressDetails)) {
-          merged.push({
-            label: currentMemberInfo.addressLabel || 'ที่อยู่ของฉัน',
-            gpsLocation: currentMemberInfo.gpsLocation || '',
-            addressDetails: currentMemberInfo.addressDetails || ''
-          });
-        }
-
-        if (merged.length > 5) {
-          merged.splice(5);
-        }
-
-        if (merged.length > 0) {
-          localStorage.setItem('saved_addresses', JSON.stringify(merged));
-          renderSavedAddresses();
-        }
-      } catch(err) {
-        console.error("Error parsing remote saved addresses:", err);
       }
 
       // บันทึก cache ใหม่
@@ -1457,12 +1406,10 @@ function updateMapPin(lat, lng, flyTo = true) {
   const instructionOverlay = document.getElementById('mapInstructionOverlay');
 
   const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-  if (gpsLinkInput) gpsLinkInput.value = mapUrl;
+  gpsLinkInput.value = mapUrl;
 
-  if (statusBadge) {
-    statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-    statusBadge.className = 'location-status-badge success';
-  }
+  statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+  statusBadge.className = 'location-status-badge success';
 
   // ซ่อนข้อความคำแนะนำบนแผนที่
   if (instructionOverlay) {
@@ -1648,7 +1595,7 @@ if (btnSubmitOrder) {
       }
     }
 
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'โอนเงิน';
+    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
 
     const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
@@ -1783,23 +1730,23 @@ searchInput.addEventListener('input', (e) => {
 
 function parseProductCategory(categoryStr) {
   if (!categoryStr) return { parent: 'ทั่วไป', sub: 'ทั้งหมด' };
-  
+
   const trimmed = categoryStr.trim();
   const lower = trimmed.toLowerCase();
-  
+
   // Custom mapping for mock data & standard English names
   if (lower === 'coffee') return { parent: 'เครื่องดื่ม', sub: 'กาแฟ' };
   if (lower === 'tea') return { parent: 'เครื่องดื่ม', sub: 'ชา' };
   if (lower === 'bakery') return { parent: 'เบเกอรี่', sub: 'เบเกอรี่' };
   if (lower === 'food') return { parent: 'อาหาร', sub: 'ทั่วไป' };
   if (lower === 'dessert') return { parent: 'ของหวาน', sub: 'ทั่วไป' };
-  
+
   // Split by common separators: / or > or | or : or -
   const parts = trimmed.split(/[\/>|:-]/).map(p => p.trim());
   if (parts.length >= 2) {
     return { parent: parts[0], sub: parts[1] };
   }
-  
+
   return { parent: parts[0] || 'ทั่วไป', sub: 'ทั้งหมด' };
 }
 

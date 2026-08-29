@@ -1,11 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary-color: #388BC2; /* Minimal Blue */
+  --primary-color: #388BC2;
+  /* Minimal Blue */
   --primary-dark: #2972a0;
   --primary-light: #e4f0f8;
-  --bg-color: #f7fafc; /* Minimal Light Gray/Blue */
-  --text-dark: #1a202c; /* Modern Dark Gray */
+  --bg-color: #f7fafc;
+  /* Minimal Light Gray/Blue */
+  --text-dark: #1a202c;
+  /* Modern Dark Gray */
   --text-light: #4a5568;
   --card-bg: #ffffff;
   --border-color: #edf2f7;
@@ -377,8 +380,13 @@ body {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {

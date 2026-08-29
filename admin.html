@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - จัดการคำสั่งซื้อ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="admin.css">
 </head>
+
 <body>
   <div class="dashboard-container">
     <aside class="sidebar">
@@ -71,12 +75,18 @@
         <section class="table-card">
           <div class="table-header-toolbar">
             <div class="filter-tabs" id="filterTabs">
-              <button class="tab-btn active" data-status="all">ทั้งหมด <span class="tab-count" id="count-all">0</span></button>
-              <button class="tab-btn" data-status="รอตรวจสอบ">⏳ รอตรวจสอบ <span class="tab-count" id="count-pending">0</span></button>
-              <button class="tab-btn" data-status="รอชำระเงิน">💳 รอชำระเงิน <span class="tab-count" id="count-payment">0</span></button>
-              <button class="tab-btn" data-status="กำลังจัดส่ง">🚚 กำลังจัดส่ง <span class="tab-count" id="count-shipping">0</span></button>
-              <button class="tab-btn" data-status="ยืนยันแล้ว">✅ ยืนยันแล้ว <span class="tab-count" id="count-confirmed">0</span></button>
-              <button class="tab-btn" data-status="ยกเลิก">❌ ยกเลิก <span class="tab-count" id="count-cancelled">0</span></button>
+              <button class="tab-btn active" data-status="all">ทั้งหมด <span class="tab-count"
+                  id="count-all">0</span></button>
+              <button class="tab-btn" data-status="รอตรวจสอบ">⏳ รอตรวจสอบ <span class="tab-count"
+                  id="count-pending">0</span></button>
+              <button class="tab-btn" data-status="รอชำระเงิน">💳 รอชำระเงิน <span class="tab-count"
+                  id="count-payment">0</span></button>
+              <button class="tab-btn" data-status="กำลังจัดส่ง">🚚 กำลังจัดส่ง <span class="tab-count"
+                  id="count-shipping">0</span></button>
+              <button class="tab-btn" data-status="ยืนยันแล้ว">✅ ยืนยันแล้ว <span class="tab-count"
+                  id="count-confirmed">0</span></button>
+              <button class="tab-btn" data-status="ยกเลิก">❌ ยกเลิก <span class="tab-count"
+                  id="count-cancelled">0</span></button>
             </div>
             <div class="search-box">
               <span class="search-icon">🔍</span>
@@ -217,4 +227,5 @@
 
   <script src="admin.js"></script>
 </body>
+
 </html>
