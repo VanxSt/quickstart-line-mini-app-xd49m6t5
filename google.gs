@@ -99,6 +99,34 @@ function createOrderHandler(ss, data) {
       itemsJson
     ]);
     
+    // อัปเดตข้อมูลเบอร์โทร และที่อยู่ล่าสุดในชีต Members ทันทีที่มีออเดอร์ใหม่
+    if (userId && userId !== 'unknown' && userId !== 'web-test-user') {
+      try {
+        var membersSheet = ss.getSheetByName("Members") || ss.getSheets()[0];
+        if (membersSheet) {
+          var mValues = membersSheet.getDataRange().getValues();
+          var mRow = -1;
+          for (var idx = 1; idx < mValues.length; idx++) {
+            if (mValues[idx][1] && mValues[idx][1].toString().trim() === userId.toString().trim()) {
+              mRow = idx + 1;
+              break;
+            }
+          }
+          if (mRow !== -1) {
+            // คอลัมน์ 7 (G) = Phone (ดึงตัวนำหน้า quote ออก)
+            var cleanPhone = phone ? phone.toString().replace(/'/g, "") : "";
+            membersSheet.getRange(mRow, 7).setNumberFormat('@').setValue(cleanPhone);
+            // คอลัมน์ 8 (H) = GPS Location
+            membersSheet.getRange(mRow, 8).setValue(gpsLocation || "");
+            // คอลัมน์ 9 (I) = Address Details
+            membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
+          }
+        }
+      } catch (memErr) {
+        Logger.log("Failed to update member profile address: " + memErr.message);
+      }
+    }
+    
     return ContentService.createTextOutput(JSON.stringify({ 
       status: 'success', 
       orderId: orderId
@@ -374,7 +402,9 @@ function doGet(e) {
           statusMessage: values[i][3],
           email: values[i][4],
           pictureUrl: values[i][5],
-          phone: values[i][6]
+          phone: values[i][6],
+          gpsLocation: values[i][7] || '',
+          addressDetails: values[i][8] || ''
         };
         return ContentService.createTextOutput(JSON.stringify(userData))
           .setMimeType(ContentService.MimeType.JSON);

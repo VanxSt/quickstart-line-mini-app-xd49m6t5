@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznFcP2d0XXEuEfpMrmpNSHup4LMENY1WvAGm_kKMIFkj3eS8ZI5KQnv4RdVee-1WFg/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3lG5EFL8MDfDeaN9DWIojkuSjVaYc2kDsVb_vYEiRAkbqvy8wD9xbAWf0jnBG5IHN/exec';
 
 let PRODUCTS = [];
 
@@ -83,7 +83,8 @@ function getMockProducts() {
 // กำหนดเบอร์ PromptPay สำหรับสร้าง QR Code สแกนจ่าย (กรุณาเปลี่ยนเป็นเบอร์ร้านค้าจริง)
 const SHOP_PROMPTPAY_ID = '0957579454';
 
-let currentCategory = 'all';
+let currentParentCategory = 'all';
+let currentSubCategory = 'all';
 let searchQuery = '';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
@@ -105,7 +106,6 @@ try {
 // Elements
 const productsGrid = document.getElementById('productsGrid');
 const searchInput = document.getElementById('searchInput');
-const categoryTabs = document.querySelectorAll('.category-tab');
 const modal = document.getElementById('productModal');
 const modalContent = document.getElementById('modalContentBody');
 const btnBack = document.getElementById('btnBack');
@@ -150,7 +150,16 @@ function renderProducts() {
   productsGrid.innerHTML = '';
 
   const filtered = PRODUCTS.filter(product => {
-    const matchesCategory = currentCategory === 'all' || product.category === currentCategory;
+    if (!product._parsedParent) {
+      const parsed = parseProductCategory(product.category);
+      product._parsedParent = parsed.parent;
+      product._parsedSub = parsed.sub;
+    }
+
+    const matchesParent = currentParentCategory === 'all' || product._parsedParent === currentParentCategory;
+    const matchesSub = currentSubCategory === 'all' || product._parsedSub === currentSubCategory;
+    const matchesCategory = matchesParent && matchesSub;
+
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.desc.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -805,12 +814,6 @@ function openCheckoutModal() {
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
   document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
 
-  // Reset location
-  document.getElementById('gpsLocationLink').value = '';
-  document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
-  document.getElementById('locationStatus').className = 'location-status-badge';
-  document.getElementById('checkoutAddressDetails').value = '';
-
   // Reset address label + checkbox
   const addressLabelInput = document.getElementById('addressLabel');
   if (addressLabelInput) addressLabelInput.value = '';
@@ -826,8 +829,37 @@ function openCheckoutModal() {
   if (instructionOverlay) instructionOverlay.classList.remove('hidden');
 
   // โหลดที่อยู่ที่บันทึกไว้
-  selectedSavedAddressIndex = -1;
-  renderSavedAddresses();
+  const savedAddresses = getSavedAddresses();
+  if (savedAddresses.length > 0) {
+    selectedSavedAddressIndex = 0; // Default to first saved address
+    setTimeout(() => { selectSavedAddress(0); }, 50);
+  } else {
+    selectedSavedAddressIndex = -1;
+    // หากไม่มีที่อยู่เซฟใน LocalStorage ให้ลองดึงจาก member profile ใน Google Sheet
+    if (currentMemberInfo.gpsLocation) {
+      document.getElementById('gpsLocationLink').value = currentMemberInfo.gpsLocation;
+      document.getElementById('checkoutAddressDetails').value = currentMemberInfo.addressDetails || '';
+      
+      const gpsLocation = currentMemberInfo.gpsLocation;
+      const match = gpsLocation.match(/q=([\d.]+),([\d.]+)/);
+      if (match) {
+        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${parseFloat(match[1]).toFixed(5)}, ${parseFloat(match[2]).toFixed(5)})`;
+        document.getElementById('locationStatus').className = 'location-status-badge success';
+        // เติมพิกัดลงแผนที่หลังจากแผนที่โหลดเสร็จ
+        setTimeout(() => {
+          if (match) {
+            updateMapPin(parseFloat(match[1]), parseFloat(match[2]), true);
+          }
+        }, 500);
+      }
+    } else {
+      document.getElementById('gpsLocationLink').value = '';
+      document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
+      document.getElementById('locationStatus').className = 'location-status-badge';
+      document.getElementById('checkoutAddressDetails').value = '';
+    }
+    renderSavedAddresses();
+  }
 
   validateCheckoutForm();
 
@@ -859,7 +891,12 @@ async function fetchMemberInfo(userId) {
     if (cached) {
       const cachedInfo = JSON.parse(cached);
       if (cachedInfo && cachedInfo.userId === userId) {
-        currentMemberInfo = { displayName: cachedInfo.displayName || '', phone: cachedInfo.phone || '' };
+        currentMemberInfo = { 
+          displayName: cachedInfo.displayName || '', 
+          phone: cachedInfo.phone || '',
+          gpsLocation: cachedInfo.gpsLocation || '',
+          addressDetails: cachedInfo.addressDetails || ''
+        };
         const nameInput = document.getElementById('checkoutName');
         const phoneInput = document.getElementById('checkoutPhone');
         if (nameInput && !nameInput.value) nameInput.value = currentMemberInfo.displayName;
@@ -875,14 +912,18 @@ async function fetchMemberInfo(userId) {
     if (data.status === 'success' && data.found) {
       currentMemberInfo = {
         displayName: data.displayName || '',
-        phone: data.phone || ''
+        phone: data.phone || '',
+        gpsLocation: data.gpsLocation || '',
+        addressDetails: data.addressDetails || ''
       };
 
       // บันทึก cache ใหม่
       localStorage.setItem('member_info_cache', JSON.stringify({
         userId,
         displayName: currentMemberInfo.displayName,
-        phone: currentMemberInfo.phone
+        phone: currentMemberInfo.phone,
+        gpsLocation: currentMemberInfo.gpsLocation,
+        addressDetails: currentMemberInfo.addressDetails
       }));
 
       // อัปเดต form fields
@@ -1466,19 +1507,126 @@ searchInput.addEventListener('input', (e) => {
   renderProducts();
 });
 
-categoryTabs.forEach(tab => {
-  tab.addEventListener('click', (e) => {
-    // Remove active from all
-    categoryTabs.forEach(t => t.classList.remove('active'));
+// === MULTI-LEVEL DYNAMIC CATEGORIES SYSTEM ===
 
-    // Add to current
-    tab.classList.add('active');
-    currentCategory = tab.dataset.category;
-    visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อเปลี่ยนหมวดหมู่
+function parseProductCategory(categoryStr) {
+  if (!categoryStr) return { parent: 'ทั่วไป', sub: 'ทั้งหมด' };
+  
+  const trimmed = categoryStr.trim();
+  const lower = trimmed.toLowerCase();
+  
+  // Custom mapping for mock data & standard English names
+  if (lower === 'coffee') return { parent: 'เครื่องดื่ม', sub: 'กาแฟ' };
+  if (lower === 'tea') return { parent: 'เครื่องดื่ม', sub: 'ชา' };
+  if (lower === 'bakery') return { parent: 'เบเกอรี่', sub: 'เบเกอรี่' };
+  if (lower === 'food') return { parent: 'อาหาร', sub: 'ทั่วไป' };
+  if (lower === 'dessert') return { parent: 'ของหวาน', sub: 'ทั่วไป' };
+  
+  // Split by common separators: / or > or | or : or -
+  const parts = trimmed.split(/[\/>|:-]/).map(p => p.trim());
+  if (parts.length >= 2) {
+    return { parent: parts[0], sub: parts[1] };
+  }
+  
+  return { parent: parts[0] || 'ทั่วไป', sub: 'ทั้งหมด' };
+}
 
-    renderProducts();
+function initCategoryFilters() {
+  const categoryTree = {
+    'all': new Set()
+  };
+
+  // Build tree from loaded products
+  PRODUCTS.forEach(product => {
+    const parsed = parseProductCategory(product.category);
+    product._parsedParent = parsed.parent;
+    product._parsedSub = parsed.sub;
+
+    if (!categoryTree[parsed.parent]) {
+      categoryTree[parsed.parent] = new Set();
+    }
+    categoryTree[parsed.parent].add(parsed.sub);
   });
-});
+
+  const parentNav = document.getElementById('parentCategoriesNav');
+  if (!parentNav) return;
+
+  // Clear and Render Parent Tabs
+  parentNav.innerHTML = '';
+
+  // All Parent Tab
+  const allParentTab = document.createElement('button');
+  allParentTab.className = `category-tab ${currentParentCategory === 'all' ? 'active' : ''}`;
+  allParentTab.textContent = 'ทั้งหมด';
+  allParentTab.addEventListener('click', () => {
+    selectParentCategory('all');
+  });
+  parentNav.appendChild(allParentTab);
+
+  // Render parent tabs
+  Object.keys(categoryTree).forEach(parent => {
+    if (parent === 'all') return;
+    const tab = document.createElement('button');
+    tab.className = `category-tab ${currentParentCategory === parent ? 'active' : ''}`;
+    tab.textContent = parent;
+    tab.addEventListener('click', () => {
+      selectParentCategory(parent);
+    });
+    parentNav.appendChild(tab);
+  });
+
+  // Render Subcategory Tabs
+  renderSubCategoriesUI(categoryTree);
+}
+
+function renderSubCategoriesUI(categoryTree) {
+  const subNav = document.getElementById('subCategoriesNav');
+  if (!subNav) return;
+
+  if (currentParentCategory === 'all' || !categoryTree[currentParentCategory] || categoryTree[currentParentCategory].size === 0) {
+    subNav.style.display = 'none';
+    return;
+  }
+
+  subNav.style.display = 'flex';
+  subNav.innerHTML = '';
+
+  // Add "ทั้งหมด" for subcategory
+  const allSubTab = document.createElement('button');
+  allSubTab.className = `category-tab ${currentSubCategory === 'all' ? 'active' : ''}`;
+  allSubTab.textContent = 'ทั้งหมด';
+  allSubTab.addEventListener('click', () => {
+    selectSubCategory('all');
+  });
+  subNav.appendChild(allSubTab);
+
+  // Add individual subcategories
+  categoryTree[currentParentCategory].forEach(sub => {
+    if (sub === 'ทั้งหมด') return; // Skip if 'ทั้งหมด' was added as a string
+    const tab = document.createElement('button');
+    tab.className = `category-tab ${currentSubCategory === sub ? 'active' : ''}`;
+    tab.textContent = sub;
+    tab.addEventListener('click', () => {
+      selectSubCategory(sub);
+    });
+    subNav.appendChild(tab);
+  });
+}
+
+function selectParentCategory(parent) {
+  currentParentCategory = parent;
+  currentSubCategory = 'all'; // Reset subcategory when parent changes
+  initCategoryFilters();
+  visibleLimit = 20;
+  renderProducts();
+}
+
+function selectSubCategory(sub) {
+  currentSubCategory = sub;
+  initCategoryFilters();
+  visibleLimit = 20;
+  renderProducts();
+}
 
 // Infinite Scroll - โหลดสินค้าเพิ่มทีละ 20 รายการเมื่อเลื่อนจอถึงด้านล่าง
 window.addEventListener('scroll', () => {
@@ -1535,6 +1683,7 @@ async function loadProducts() {
       if (parsed && parsed.length > 0) {
         PRODUCTS = parsed;
         hasValidCache = true;
+        initCategoryFilters();
         renderProducts(); // แสดงผลทันทีจาก cache
       }
     } catch (e) { }
@@ -1569,18 +1718,21 @@ async function loadProducts() {
         const freshProducts = data.products || [];
         if (JSON.stringify(freshProducts) !== JSON.stringify(PRODUCTS)) {
           PRODUCTS = freshProducts;
+          initCategoryFilters();
           renderProducts();
         }
         localStorage.setItem('catalog_products_cache', JSON.stringify(PRODUCTS));
         localStorage.setItem('catalog_products_cache_time', String(Date.now()));
       } else if (PRODUCTS.length === 0) {
         PRODUCTS = getMockProducts();
+        initCategoryFilters();
         renderProducts();
       }
     } catch (error) {
       console.error('Fetch error:', error);
       if (PRODUCTS.length === 0) {
         PRODUCTS = getMockProducts();
+        initCategoryFilters();
         renderProducts();
       }
     }

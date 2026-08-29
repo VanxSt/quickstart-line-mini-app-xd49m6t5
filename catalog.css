@@ -1220,3 +1220,46 @@ body {
   color: var(--text-dark);
 }
 
+/* === Multi-level Categories CSS === */
+.category-system-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--bg-color);
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+.categories.parent-categories {
+  padding: 10px 20px 4px 20px;
+}
+
+.categories.sub-categories {
+  padding: 0 20px 10px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  gap: 6px;
+}
+
+.categories.sub-categories .category-tab {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--text-light);
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+.categories.sub-categories .category-tab:hover {
+  background-color: rgba(56, 139, 194, 0.05);
+}
+
+.categories.sub-categories .category-tab.active {
+  background-color: rgba(56, 139, 194, 0.08);
+  color: var(--primary-dark);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+

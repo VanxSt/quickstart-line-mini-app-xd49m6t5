@@ -66,12 +66,14 @@
   </section>
 
   <!-- Category Tabs -->
-  <nav class="categories">
-    <button class="category-tab active" data-category="all">ทั้งหมด</button>
-    <button class="category-tab" data-category="coffee">กาแฟ</button>
-    <button class="category-tab" data-category="tea">ชา</button>
-    <button class="category-tab" data-category="bakery">เบเกอรี่</button>
-  </nav>
+  <div class="category-system-container">
+    <nav class="categories parent-categories" id="parentCategoriesNav">
+      <!-- Dynamic Parent Categories will be rendered here -->
+    </nav>
+    <nav class="categories sub-categories" id="subCategoriesNav" style="display: none; padding-top: 0; margin-top: -12px;">
+      <!-- Dynamic Sub Categories will be rendered here -->
+    </nav>
+  </div>
 
   <!-- Products Grid -->
   <main class="products-grid" id="productsGrid">
