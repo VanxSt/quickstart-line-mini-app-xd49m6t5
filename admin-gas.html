@@ -1098,28 +1098,57 @@
         document.getElementById('ordersBody').innerHTML = '';
       }
 
-      google.script.run
-        .withSuccessHandler(function (orders) {
-          allOrders = orders || [];
-          renderOrders();
-          updateStats();
-          if (showLoading) loading.style.display = 'none';
+      let loaded = false;
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler(function (orders) {
+              if (loaded) return;
+              loaded = true;
+              allOrders = orders || [];
+              renderOrders();
+              updateStats();
+              if (showLoading && loading) loading.style.display = 'none';
+            })
+            .withFailureHandler(function (err) {
+              console.error("google.script.run failed, falling back:", err);
+              if (!loaded) fetchOrdersViaFetch(showLoading);
+            })
+            .getAllOrdersNative();
+        } catch (e) {
+          console.error("google.script.run error:", e);
+          if (!loaded) fetchOrdersViaFetch(showLoading);
+        }
+      } else {
+        fetchOrdersViaFetch(showLoading);
+      }
+
+      // Auto fallback if native call hangs or takes >3.5s
+      setTimeout(() => {
+        if (!loaded) {
+          console.warn("Native load timeout, fallback to fetch API");
+          fetchOrdersViaFetch(showLoading);
+        }
+      }, 3500);
+    }
+
+    function fetchOrdersViaFetch(showLoading) {
+      const loading = document.getElementById('loadingIndicator');
+      fetch('?action=getAllOrders')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.status === 'success') {
+            allOrders = data.orders || [];
+            renderOrders();
+            updateStats();
+          }
+          if (showLoading && loading) loading.style.display = 'none';
         })
-        .withFailureHandler(function (err) {
-          console.error("Fetch orders failed:", err);
-          if (showLoading) loading.style.display = 'none';
-          const tbody = document.getElementById('ordersBody');
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="6" style="text-align: center; padding: 40px 20px; color: #ef4444;">
-                <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
-                <p style="font-weight: 600;">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${(err && err.message) || err || 'ไม่ทราบสาเหตุ'}</p>
-                <button class="btn-primary" onclick="fetchOrders(true)" style="margin-top: 12px; padding: 8px 16px; cursor: pointer;">🔄 ลองใหม่อีกครั้ง</button>
-              </td>
-            </tr>
-          `;
-        })
-        .getAllOrdersNative();
+        .catch(err => {
+          console.error("fetch API failed:", err);
+          if (showLoading && loading) loading.style.display = 'none';
+        });
     }
 
     function renderOrders() {
@@ -1164,37 +1193,27 @@
           statusClass = 'status-cancelled'; statusIcon = '❌';
         }
 
-        const isTransfer = order.paymentMethod === 'โอนจ่าย';
-        const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
-
-        let dateStr = order.timestamp || '-';
-        try {
-          if (order.timestamp) {
-            const d = new Date(order.timestamp);
-            if (!isNaN(d.getTime())) {
-              dateStr = d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
-            }
-          }
-        } catch (e) { }
-
+        const dateStr = order.timestamp ? new Date(order.timestamp).toLocaleString('th-TH') : '-';
         const cleanPhone = (order.phone || '').replace(/'/g, "");
 
         tr.innerHTML = `
           <td>
-            <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
-            <div style="margin-top: 4px;">
-              <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
-            </div>
+            <div style="font-weight: 600; color: var(--text-main);">${order.orderId || '-'}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">${order.paymentMethod || 'ปลายทาง'} • ${order.shippingOption || 'จัดส่ง'}</div>
           </td>
           <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
           <td>
-            <div style="font-weight: 600;">${order.customerName || 'ลูกค้า'}</div>
+            <div style="font-weight: 500;">${order.customerName || 'ไม่ระบุชื่อ'}</div>
             <div style="font-size: 12px; color: var(--text-muted);">${cleanPhone}</div>
           </td>
-          <td><strong style="font-size: 15px; color: #1e293b;">฿${Number(order.totalPrice || 0).toLocaleString()}</strong></td>
-          <td><span class="status-badge ${statusClass}">${statusIcon} ${order.status}</span></td>
-          <td style="text-align: right;">
-            <button class="btn-view" onclick="viewOrder('${order.orderId}')">📋 ดูรายละเอียด</button>
+          <td style="font-weight: 600; color: var(--text-main);">฿${Number(order.totalPrice || 0).toLocaleString()}</td>
+          <td>
+            <span class="status-badge ${statusClass}">
+              ${statusIcon} ${order.status || 'รอตรวจสอบ'}
+            </span>
+          </td>
+          <td>
+            <button class="btn-action" onclick="viewOrder('${order.orderId}')">👁️ ดูรายละเอียด</button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1202,18 +1221,22 @@
     }
 
     function updateStats() {
-      let pendingCount = 0, paymentCount = 0, shippingCount = 0, confirmedCount = 0, cancelledCount = 0, totalSales = 0;
+      let pendingCount = 0;
+      let paymentCount = 0;
+      let shippingCount = 0;
+      let confirmedCount = 0;
+      let cancelledCount = 0;
+      let totalSales = 0;
 
       allOrders.forEach(o => {
-        if (o.status === 'รอตรวจสอบ') pendingCount++;
-        else if (o.status === 'รอชำระเงิน') paymentCount++;
-        else if (o.status === 'กำลังจัดส่ง') shippingCount++;
-        else if (o.status === 'ยืนยันแล้ว') confirmedCount++;
-        else if (o.status === 'ยกเลิก') cancelledCount++;
-
-        if (o.status === 'ยืนยันแล้ว' || o.status === 'กำลังจัดส่ง') {
+        const s = o.status || 'รอตรวจสอบ';
+        if (s === 'รอตรวจสอบ') pendingCount++;
+        else if (s === 'รอชำระเงิน') paymentCount++;
+        else if (s === 'กำลังจัดส่ง') shippingCount++;
+        else if (s === 'ยืนยันแล้ว') {
+          confirmedCount++;
           totalSales += Number(o.totalPrice || 0);
-        }
+        } else if (s === 'ยกเลิก') cancelledCount++;
       });
 
       document.getElementById('stat-pending').textContent = pendingCount;
