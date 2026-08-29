@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9aLnnCFj7SBZLujfAd7UIcUGMCioiWjOuBekRrD3dGORhcRyTs1q30pft3hpWdt5o/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtyxhOgF165ZuOlSdbo2mfCklOCgMX5eANSaUXntinmOnocx9nSiWgY_YfAfXJrzx6/exec';
 
 let PRODUCTS = [];
 
@@ -1673,6 +1673,8 @@ if (btnSubmitOrder) {
       preorderTimeStr = `${pDate} ${pTime}`;
     }
 
+    const note = document.getElementById('checkoutNote')?.value.trim() || '';
+
     const orderPayload = {
       action: 'createOrder',
       orderId: orderId,
@@ -1687,6 +1689,7 @@ if (btnSubmitOrder) {
       deliveryType: deliveryType,
       preorderTime: preorderTimeStr,
       shippingOption: shippingOption,
+      note: note,
       items: cart.map(item => ({
         id: item.id,
         name: item.name,
@@ -1741,6 +1744,8 @@ if (btnSubmitOrder) {
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที
+      const noteInputEl = document.getElementById('checkoutNote');
+      if (noteInputEl) noteInputEl.value = '';
       clearCart();
       closeCheckoutModal();
       closeCartModal();

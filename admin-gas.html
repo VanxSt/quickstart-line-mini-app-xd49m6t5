@@ -1440,7 +1440,7 @@
         const isUnread = !readOrderIds.includes(order.orderId);
         const unreadDot = isUnread ? `<span class="unread-badge" title="ยังไม่ได้เปิดดู"></span>` : '';
 
-        const isTransfer = order.paymentMethod === 'โอนจ่าย';
+        const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
         const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
 
         tr.innerHTML = `
@@ -1546,7 +1546,8 @@
           buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
         }
 
-        const isCod = order.paymentMethod !== 'โอนจ่าย';
+        const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+        const isCod = !isTransfer;
         const statuses = isCod ? [
           { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
           { val: 'เตรียมออเดอร์', label: '👨‍🍳 2. เตรียมออเดอร์' },
@@ -1754,7 +1755,8 @@
           buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขออเดอร์</button>`;
         }
 
-        const isCod = order.paymentMethod !== 'โอนจ่าย';
+        const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+        const isCod = !isTransfer;
         const currentMeta = getStatusMeta(order.status);
         const normStatus = currentMeta.name;
 

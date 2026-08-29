@@ -159,8 +159,10 @@ function createOrderHandler(ss, data) {
     
     var slipFormula = "";
     
+    var note = data.note ? data.note.toString().trim() : '';
+    
     // ดึงหรือสร้างชีต "Orders"
-    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON", "Delivery Type", "Preorder Time", "Shipping Option"];
+    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON", "Delivery Type", "Preorder Time", "Shipping Option", "Note"];
     var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
     
     // สร้างข้อความรายการสินค้าให้อ่านง่ายสำหรับมนุษย์
@@ -176,6 +178,10 @@ function createOrderHandler(ss, data) {
       displayAddress = "🏪 [รับหน้าร้าน] " + (deliveryType === 'ล่วงหน้า' && preorderTime ? "🕒 สั่งล่วงหน้า: " + preorderTime + " น." : "รับทันที");
     } else if (deliveryType === 'ล่วงหน้า' && preorderTime) {
       displayAddress = "🕒 [สั่งล่วงหน้า: " + preorderTime + " น.] " + addressDetails;
+    }
+
+    if (note) {
+      displayAddress += "\n📝 หมายเหตุ: " + note;
     }
     
     // บันทึกคำสั่งซื้อลงชีต Orders (1 API Call)
@@ -195,7 +201,8 @@ function createOrderHandler(ss, data) {
       itemsJson,
       deliveryType,
       preorderTime,
-      shippingOption
+      shippingOption,
+      note
     ]);
     
     // อัปเดตข้อมูลเบอร์โทร และที่อยู่ล่าสุดในชีต Members ทันทีที่มีออเดอร์ใหม่
@@ -467,7 +474,8 @@ function doGet(e) {
           items: orderItems,
           deliveryType: oRow[13] || 'ทันที',
           preorderTime: oRow[14] || '',
-          shippingOption: oRow[15] || 'จัดส่ง'
+          shippingOption: oRow[15] || 'จัดส่ง',
+          note: oRow[16] || ''
         });
       }
       
@@ -684,7 +692,8 @@ function getAllOrdersNative() {
       items: parsedItems,
       deliveryType: safeString(oRow[13] || 'ทันที'),
       preorderTime: safeString(oRow[14]),
-      shippingOption: safeString(oRow[15] || 'จัดส่ง')
+      shippingOption: safeString(oRow[15] || 'จัดส่ง'),
+      note: safeString(oRow[16] || '')
     });
   }
   
@@ -718,11 +727,8 @@ function updateOrderStatusNative(orderId, newStatus) {
       try {
         var messages = [];
         
-        if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && paymentMethod === "โอนจ่าย") {
-           messages.push({
-             "type": "text",
-             "text": "💳 [ ยืนยันออเดอร์ & แจ้งชำระเงิน ]\nรหัสออเดอร์: " + orderId + "\n\nแอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨"
-           });
+        if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod === "โอนจ่าย" || paymentMethod === "โอนเงินผ่านบัญชีธนาคาร" || paymentMethod === "โอนเงินผสมเงินสด")) {
+           messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb"));
            
            var staticQrUrl = "https://i.postimg.cc/zDFp1Dpk/Screenshot-10.png";
            messages.push({
@@ -732,34 +738,19 @@ function updateOrderStatusNative(orderId, newStatus) {
            });
         }
         else if (newStatus === "เตรียมออเดอร์") {
-           messages.push({
-             "type": "text",
-             "text": "📦 [ กำลังจัดเตรียมพัสดุสินค้า ]\nรหัสออเดอร์: " + orderId + "\n\nทางร้านกำลังจัดเตรียมและจัดแพ็คพัสดุของคุณอย่างพิถีพิถันครับ อดใจรออีกสักครู่นะครับ! 📦✨"
-           });
+           messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "ทางร้านกำลังเตรียมสินค้าของคุณอย่างพิถีพิถันครับ อดใจรออีกสักครู่นะครับ! 📦✨", "#d97706"));
         }
         else if (newStatus === "เตรียมจัดส่ง") {
-           messages.push({
-             "type": "text",
-             "text": "🛍️ [ จัดเตรียมสินค้าพร้อมส่ง ]\nรหัสออเดอร์: " + orderId + "\n\nสินค้าแพ็คเสร็จเรียบร้อยแล้ว พร้อมส่งมอบให้ไรเดอร์แล้วครับ! 📦💨"
-           });
+           messages.push(buildStatusFlexMessage("🛍️ จัดเตรียมสินค้าพร้อมส่ง", orderId, "สินค้าแพ็คเสร็จเรียบร้อยแล้ว พร้อมส่งมอบให้ไรเดอร์แล้วครับ! 📦💨", "#0284c7"));
         }
         else if (newStatus === "กำลังจัดส่ง") {
-           messages.push({
-             "type": "text",
-             "text": "🚚 [ สินค้าอยู่ระหว่างจัดส่ง ]\nรหัสออเดอร์: " + orderId + "\n\nพี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵"
-           });
+           messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6"));
         }
         else if (newStatus === "จัดส่งสำเร็จ" || newStatus === "ยืนยันแล้ว") {
-           messages.push({
-             "type": "text",
-             "text": "🎉 [ จัดส่งสินค้าสำเร็จเรียบร้อย ]\nรหัสออเดอร์: " + orderId + "\n\nสินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️"
-           });
+           messages.push(buildStatusFlexMessage("🎉 จัดส่งสินค้าสำเร็จเรียบร้อย", orderId, "สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️", "#16a34a"));
         }
         else if (newStatus === "ยกเลิก") {
-           messages.push({
-             "type": "text",
-             "text": "🥺 [ แจ้งยกเลิกออเดอร์ ]\nรหัสออเดอร์: " + orderId + "\n\nทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨"
-           });
+           messages.push(buildStatusFlexMessage("🥺 แจ้งยกเลิกออเดอร์", orderId, "ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨", "#dc2626"));
         }
         
         if (messages.length > 0) {
@@ -862,5 +853,75 @@ function getAllMembersNative() {
     });
   }
   return members;
+}
+
+// สร้าง Flex Message สำหรับการแจ้งเตือนเปลี่ยนสถานะออเดอร์ (หัวข้อใหญ่ โดดเด่น สวยงาม)
+function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor) {
+  return {
+    "type": "flex",
+    "altText": title + " (" + orderId + ")",
+    "contents": {
+      "type": "bubble",
+      "size": "mega",
+      "header": {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": headerBgColor || "#2563eb",
+        "paddingAll": "16px",
+        "contents": [
+          {
+            "type": "text",
+            "text": title,
+            "weight": "bold",
+            "size": "xl",
+            "color": "#ffffff",
+            "wrap": true
+          }
+        ]
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "paddingAll": "16px",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "baseline",
+            "spacing": "sm",
+            "contents": [
+              {
+                "type": "text",
+                "text": "รหัสออเดอร์:",
+                "color": "#8c8c8c",
+                "size": "sm",
+                "flex": 0
+              },
+              {
+                "type": "text",
+                "text": orderId,
+                "weight": "bold",
+                "size": "sm",
+                "color": "#1f2937",
+                "flex": 1
+              }
+            ]
+          },
+          {
+            "type": "separator",
+            "margin": "md"
+          },
+          {
+            "type": "text",
+            "text": bodyText,
+            "size": "md",
+            "color": "#374151",
+            "wrap": true,
+            "margin": "md"
+          }
+        ]
+      }
+    }
+  };
 }
 

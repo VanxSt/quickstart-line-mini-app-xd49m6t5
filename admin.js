@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9aLnnCFj7SBZLujfAd7UIcUGMCioiWjOuBekRrD3dGORhcRyTs1q30pft3hpWdt5o/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtyxhOgF165ZuOlSdbo2mfCklOCgMX5eANSaUXntinmOnocx9nSiWgY_YfAfXJrzx6/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -331,7 +331,7 @@ function renderOrders() {
     const tr = document.createElement('tr');
     const meta = getStatusMeta(order.status);
 
-    const isTransfer = order.paymentMethod === 'โอนจ่าย';
+    const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
     const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
 
     let dateStr = order.timestamp || '-';
@@ -524,7 +524,8 @@ function renderModalActions(order) {
       buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขออเดอร์</button>`;
     }
 
-    const isCod = order.paymentMethod !== 'โอนจ่าย';
+    const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+    const isCod = !isTransfer;
     const currentMeta = getStatusMeta(order.status);
     const normStatus = currentMeta.name;
 
