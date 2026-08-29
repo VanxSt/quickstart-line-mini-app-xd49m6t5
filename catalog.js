@@ -912,7 +912,7 @@ function toggleShippingFields() {
 function calculateCheckoutTotal() {
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
-  
+
   let shippingFee = 0;
   let discountNote = '';
   let distKm = 0;
@@ -1528,9 +1528,40 @@ if (checkoutModal) {
   });
 }
 
+// ตำแหน่งพิกัดร้านเกื้อกูลกัน (Default Store Location)
+const STORE_LOCATION = { lat: 15.7256381, lng: 100.1131528 };
+
+// คำนวณระยะทางทรงกลม (Haversine Formula) เป็นกิโลเมตร
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // รัศมีโลก (กม.)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// แยกพิกัด lat, lng จาก URL หรือ String
+function parseCoords(urlOrStr) {
+  if (!urlOrStr) return null;
+  const match = urlOrStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (match) {
+    return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+  }
+  const match2 = urlOrStr.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+  if (match2) {
+    return { lat: parseFloat(match2[1]), lng: parseFloat(match2[2]) };
+  }
+  return null;
+}
+
 // GPS Location + Interactive Map Pin Dropping
 let mapInstance = null;
 let mapMarker = null;
+let storeMarker = null;
 let mapInitialized = false;
 
 // สร้าง Custom Icon สำหรับหมุดบนแผนที่
@@ -1548,7 +1579,7 @@ function createMapPinIcon() {
   });
 }
 
-// อัปเดตตำแหน่งหมุดบนแผนที่ + อัปเดต GPS Link + แสดงสถานะ
+// อัปเดตตำแหน่งหมุดบนแผนที่ + คำนวณระยะทางอัตโนมัติจากร้าน + แสดงสถานะ
 function updateMapPin(lat, lng, flyTo = true) {
   const gpsLinkInput = document.getElementById('gpsLocationLink');
   const statusBadge = document.getElementById('locationStatus');
@@ -1557,8 +1588,20 @@ function updateMapPin(lat, lng, flyTo = true) {
   const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
   gpsLinkInput.value = mapUrl;
 
-  statusBadge.textContent = `📍 ปักหมุดพิกัดสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+  // คำนวณระยะทางอัตโนมัติจากร้านเกื้อกูลกันถึงตำแหน่งจัดส่ง
+  const rawDistance = calculateHaversineDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, lat, lng);
+  const calcDistance = rawDistance < 0.1 ? 0.1 : Math.round(rawDistance * 10) / 10;
+
+  const distInput = document.getElementById('deliveryDistance');
+  if (distInput) {
+    distInput.value = calcDistance;
+  }
+
+  statusBadge.textContent = `📍 ปักหมุดจัดส่งสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)}) • ระยะทาง ~${calcDistance} กม. จากร้าน`;
   statusBadge.className = 'location-status-badge success';
+
+  // คำนวณสรุปยอดสั่งซื้อใหม่ตามระยะทางจริงทันที
+  calculateCheckoutTotal();
 
   // ซ่อนข้อความคำแนะนำบนแผนที่
   if (instructionOverlay) {
@@ -1581,7 +1624,7 @@ function updateMapPin(lat, lng, flyTo = true) {
           updateMapPin(pos.lat, pos.lng, false);
         });
 
-        mapMarker.bindPopup('<b>📍 ตำแหน่งจัดส่ง</b><br>ลากหมุดเพื่อปรับตำแหน่ง').openPopup();
+        mapMarker.bindPopup('<b>📍 ตำแหน่งจัดส่งของคุณ</b><br>ลากหมุดเพื่อปรับตำแหน่ง').openPopup();
       }
 
       if (flyTo) {
@@ -1608,13 +1651,13 @@ function initMapPicker() {
     return;
   }
 
-  // ตำแหน่งเริ่มต้น (กรุงเทพ)
-  const defaultLat = 13.7563;
-  const defaultLng = 100.5018;
+  // ตำแหน่งเริ่มต้นเป็นตำแหน่งร้านเกื้อกูลกัน ( Default Store Location )
+  const defaultLat = STORE_LOCATION.lat;
+  const defaultLng = STORE_LOCATION.lng;
 
   mapInstance = L.map('mapPicker', {
     center: [defaultLat, defaultLng],
-    zoom: 13,
+    zoom: 15,
     zoomControl: true,
     attributionControl: false
   });
@@ -1624,7 +1667,17 @@ function initMapPicker() {
     maxZoom: 19
   }).addTo(mapInstance);
 
-  // คลิกบนแผนที่เพื่อปักหมุด
+  // ปักหมุดประจำตำแหน่งร้านเกื้อกูลกัน (Store Marker)
+  const storeMarkerIcon = L.divIcon({
+    className: 'store-marker-badge',
+    html: `<div style="background: #16a34a; color: white; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white;">🏪 ร้านเกื้อกูลกัน</div>`,
+    iconSize: [110, 30],
+    iconAnchor: [55, 15]
+  });
+  storeMarker = L.marker([defaultLat, defaultLng], { icon: storeMarkerIcon, zIndexOffset: 1000 }).addTo(mapInstance);
+  storeMarker.bindPopup('<b>🏪 ร้านเกื้อกูลกัน (จุดเริ่มต้นจัดส่ง)</b><br>วัตถุดิบอาหาร กาแฟ เบเกอรี่');
+
+  // คลิกบนแผนที่เพื่อปักหมุดจัดส่ง
   mapInstance.on('click', function (e) {
     updateMapPin(e.latlng.lat, e.latlng.lng, false);
   });
@@ -1690,12 +1743,7 @@ if (preorderDateInput) {
   preorderDateInput.value = localTodayStr;
 }
 
-const distInputEl = document.getElementById('deliveryDistance');
-if (distInputEl) {
-  distInputEl.addEventListener('input', () => {
-    calculateCheckoutTotal();
-  });
-}
+// จัดการการสลับรูปแบบการจัดส่ง (จัดส่ง / รับหน้าร้าน)
 document.querySelectorAll('input[name="shippingOption"]').forEach(radio => {
   radio.addEventListener('change', () => {
     toggleShippingFields();
