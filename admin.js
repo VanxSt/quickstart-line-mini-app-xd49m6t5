@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyg3FlKUKO9C9fipkJctDPns8TE4fa7JC0v2-dIuxz0bxqhM0Ho066iB4b1-7oPl_Iq/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHFQJ5a4gc5znOkRlKCRm6cvkJTs1OzvdrxTx6isv9lXot_UUk8-rQfKf-cVTQ5thb/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -521,10 +521,43 @@ function renderModalActions(order) {
     let buttonsHtml = '';
     const isEditable = order.status !== 'จัดส่งสำเร็จ' && order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
     if (isEditable) {
-      buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
+      buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขออเดอร์</button>`;
     }
 
     const isCod = order.paymentMethod !== 'โอนจ่าย';
+    const currentMeta = getStatusMeta(order.status);
+    const normStatus = currentMeta.name;
+
+    // ปุ่มลัดไปขั้นตอนถัดไป (Quick Action Button)
+    let nextStepBtn = '';
+    if (isCod) {
+      if (normStatus === 'กำลังตรวจสอบออเดอร์') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
+      } else if (normStatus === 'เตรียมออเดอร์') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
+      } else if (normStatus === 'เตรียมจัดส่ง') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ส่งมอบไรเดอร์ -> กำลังจัดส่ง</button>`;
+      } else if (normStatus === 'กำลังจัดส่ง') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
+      }
+    } else {
+      if (normStatus === 'กำลังตรวจสอบออเดอร์') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
+      } else if (normStatus === 'ชำระเงิน') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
+      } else if (normStatus === 'เตรียมออเดอร์') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
+      } else if (normStatus === 'เตรียมจัดส่ง') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ส่งมอบไรเดอร์ -> กำลังจัดส่ง</button>`;
+      } else if (normStatus === 'กำลังจัดส่ง') {
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
+      }
+    }
+
+    if (nextStepBtn) {
+      buttonsHtml += nextStepBtn;
+    }
+
     const statuses = isCod ? [
       { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
       { val: 'เตรียมออเดอร์', label: '👨‍🍳 2. เตรียมออเดอร์' },
@@ -542,14 +575,13 @@ function renderModalActions(order) {
       { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
     ];
 
-    const currentMeta = getStatusMeta(order.status);
     let optionsHtml = statuses.map(s => `
       <option value="${s.val}" ${currentMeta.name === s.val ? 'selected' : ''}>${s.label}</option>
     `).join('');
 
     buttonsHtml += `
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <label style="font-weight: 600; font-size: 13px;">เปลี่ยนสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
+        <label style="font-weight: 600; font-size: 13px;">เลือกสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
         <select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">
           ${optionsHtml}
         </select>
