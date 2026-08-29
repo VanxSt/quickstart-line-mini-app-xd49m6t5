@@ -917,7 +917,15 @@ function openCheckoutModal() {
     if (instructionOverlay) instructionOverlay.classList.remove('hidden');
 
     // โหลดและแสดงที่อยู่ที่บันทึกไว้ทันที
-    const savedAddresses = getSavedAddresses();
+    let savedAddresses = getSavedAddresses();
+    if (savedAddresses.length === 0 && (currentMemberInfo.gpsLocation || currentMemberInfo.addressDetails)) {
+      addSavedAddress({
+        label: currentMemberInfo.addressLabel || 'ที่อยู่ของฉัน',
+        gpsLocation: currentMemberInfo.gpsLocation || '',
+        addressDetails: currentMemberInfo.addressDetails || ''
+      });
+      savedAddresses = getSavedAddresses();
+    }
     renderSavedAddresses();
 
     if (savedAddresses.length > 0) {
@@ -1033,30 +1041,47 @@ async function fetchMemberInfo(userId) {
       };
 
       // ซิงค์ saved addresses จาก Google Sheet ลง LocalStorage เพื่อให้ลูกค้ามีที่อยู่ใช้บนทุกอุปกรณ์
-      if (data.savedAddresses) {
-        try {
-          const remoteSaved = JSON.parse(data.savedAddresses);
-          if (Array.isArray(remoteSaved)) {
-            const localSaved = getSavedAddresses();
-            const merged = [...localSaved];
-            remoteSaved.forEach(remoteAddr => {
-              const isDuplicate = merged.some(localAddr => 
-                localAddr.gpsLocation === remoteAddr.gpsLocation && 
-                localAddr.addressDetails === remoteAddr.addressDetails
-              );
-              if (!isDuplicate) {
-                merged.push(remoteAddr);
-              }
-            });
-            if (merged.length > 5) {
-              merged.splice(5);
-            }
-            localStorage.setItem('saved_addresses', JSON.stringify(merged));
-            renderSavedAddresses();
-          }
-        } catch(err) {
-          console.error("Error parsing remote saved addresses:", err);
+      try {
+        let remoteSaved = [];
+        if (data.savedAddresses) {
+          try {
+            remoteSaved = JSON.parse(data.savedAddresses);
+          } catch(e) { }
         }
+
+        const localSaved = getSavedAddresses();
+        const merged = [...localSaved];
+
+        if (Array.isArray(remoteSaved) && remoteSaved.length > 0) {
+          remoteSaved.forEach(remoteAddr => {
+            const isDuplicate = merged.some(localAddr => 
+              (localAddr.gpsLocation && localAddr.gpsLocation === remoteAddr.gpsLocation) ||
+              (localAddr.addressDetails && localAddr.addressDetails === remoteAddr.addressDetails)
+            );
+            if (!isDuplicate) {
+              merged.push(remoteAddr);
+            }
+          });
+        }
+
+        if (merged.length === 0 && (currentMemberInfo.gpsLocation || currentMemberInfo.addressDetails)) {
+          merged.push({
+            label: currentMemberInfo.addressLabel || 'ที่อยู่ของฉัน',
+            gpsLocation: currentMemberInfo.gpsLocation || '',
+            addressDetails: currentMemberInfo.addressDetails || ''
+          });
+        }
+
+        if (merged.length > 5) {
+          merged.splice(5);
+        }
+
+        if (merged.length > 0) {
+          localStorage.setItem('saved_addresses', JSON.stringify(merged));
+          renderSavedAddresses();
+        }
+      } catch(err) {
+        console.error("Error parsing remote saved addresses:", err);
       }
 
       // บันทึก cache ใหม่
