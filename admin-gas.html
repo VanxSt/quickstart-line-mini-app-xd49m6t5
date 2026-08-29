@@ -710,17 +710,107 @@
       opacity: 0.3;
       pointer-events: none;
     }
-    .item-row-deleting {
-      animation: itemFadeOut 0.35s ease forwards;
+    /* Edit Order Items UI */
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
     }
-    @keyframes itemFadeOut {
-      to {
-        opacity: 0;
-        transform: translateX(20px);
-        max-height: 0;
-        padding: 0;
-        overflow: hidden;
-      }
+    .btn-warning:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+    }
+    .btn-secondary {
+      background: #64748b;
+      color: white;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    .input-edit-qty {
+      width: 65px;
+      padding: 6px 8px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      font-family: inherit;
+      outline: none;
+      background: #ffffff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-edit-qty:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    }
+    .input-edit-price {
+      width: 85px;
+      padding: 6px 8px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: right;
+      font-family: inherit;
+      outline: none;
+      background: #ffffff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-edit-price:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    }
+    .edit-note-box {
+      margin-top: 16px;
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .edit-note-box label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      color: #a16207;
+      margin-bottom: 6px;
+    }
+    .edit-note-box input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #fde047;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: white;
+      outline: none;
+    }
+    .edit-note-box input:focus {
+      border-color: #eab308;
+      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+    }
+    .row-subtotal-text {
+      font-weight: 700;
+      color: var(--text-main);
     }
   </style>
 </head>
@@ -919,7 +1009,8 @@
               <tr>
                 <th>รหัส</th>
                 <th>รายการ</th>
-                <th>จำนวน</th>
+                <th style="width:75px;">จำนวน</th>
+                <th style="width:95px;">ราคา/หน่วย</th>
                 <th>รวม</th>
                 <th style="text-align:center; width:60px;">จัดการ</th>
               </tr>
@@ -927,6 +1018,10 @@
             <tbody id="modalItemsBody">
             </tbody>
           </table>
+          <div id="editNoteContainer" class="edit-note-box" style="display:none;">
+            <label for="editChangeNote">📌 หมายเหตุการแก้ไข (ส่งแจ้งเตือนให้ลูกค้าผ่าน LINE):</label>
+            <input type="text" id="editChangeNote" placeholder="เช่น ปรับเปลี่ยนราคาตามป้าย / สินค้าหมดเปลี่ยนเป็น..." />
+          </div>
           <h3 class="modal-total">ยอดสุทธิ: <span id="modalTotalPrice"></span></h3>
         </div>
       </div>
@@ -1215,14 +1310,22 @@
       if (elPhone) elPhone.textContent = phoneCount;
     }
 
+    let isModalEditMode = false;
+
     function viewOrder(orderId) {
       currentViewingOrderId = orderId;
+      isModalEditMode = false;
       const order = allOrders.find(o => o.orderId === orderId);
       if (!order) return;
 
       document.getElementById('modalOrderId').textContent = order.orderId;
       document.getElementById('modalCustomerName').textContent = order.customerName;
       document.getElementById('modalPhone').textContent = (order.phone || '').replace(/'/g, "");
+
+      const noteBox = document.getElementById('editNoteContainer');
+      if (noteBox) noteBox.style.display = 'none';
+      const noteInput = document.getElementById('editChangeNote');
+      if (noteInput) noteInput.value = '';
 
       // === GPS / Map Section ===
       let gpsUrl = '';
@@ -1252,47 +1355,78 @@
 
       document.getElementById('modalAddress').textContent = order.addressDetails || '-';
 
-      // === Render Items (with delete buttons) ===
-      renderModalItems(order);
+      // === Render Items ===
+      renderModalItems(order, false);
 
       // Dynamic action buttons
-      const actionsDiv = document.getElementById('modalActions');
-      actionsDiv.innerHTML = '';
-
-      if (order.status === 'รอตรวจสอบ') {
-        if (order.paymentMethod === 'โอนจ่าย') {
-          actionsDiv.innerHTML = `
-            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('รอชำระเงิน')">✅ ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>
-            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
-          `;
-        } else {
-          actionsDiv.innerHTML = `
-            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">✅ ยืนยันคำสั่งซื้อปลายทาง</button>
-            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
-          `;
-        }
-        actionsDiv.style.display = 'flex';
-      } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
-        actionsDiv.innerHTML = `
-          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมจัดส่ง</button>
-          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
-        `;
-        actionsDiv.style.display = 'flex';
-      } else if (order.status === 'กำลังจัดส่ง') {
-        actionsDiv.innerHTML = `
-          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ</button>
-          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
-        `;
-        actionsDiv.style.display = 'flex';
-      } else {
-        actionsDiv.style.display = 'none';
-      }
+      renderModalActions(order);
 
       document.getElementById('orderModal').classList.add('active');
     }
 
-    // === Render Items in Modal (with delete button per row) ===
-    function renderModalItems(order) {
+    function renderModalActions(order) {
+      const actionsDiv = document.getElementById('modalActions');
+      if (!actionsDiv) return;
+      actionsDiv.innerHTML = '';
+
+      const isEditable = order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
+
+      if (isModalEditMode) {
+        actionsDiv.innerHTML = `
+          <button id="btnSaveEditOrder" class="btn-success" onclick="saveOrderChanges()">💾 บันทึกการแก้ไข & แจ้งลูกค้า</button>
+          <button id="btnCancelEditOrder" class="btn-secondary" onclick="toggleModalEditMode()">↩️ ยกเลิกการแก้ไข</button>
+        `;
+        actionsDiv.style.display = 'flex';
+      } else {
+        let buttonsHtml = '';
+        if (isEditable) {
+          buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
+        }
+
+        if (order.status === 'รอตรวจสอบ') {
+          if (order.paymentMethod === 'โอนจ่าย') {
+            buttonsHtml += `
+              <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('รอชำระเงิน')">✅ ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>
+              <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+            `;
+          } else {
+            buttonsHtml += `
+              <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">✅ ยืนยันคำสั่งซื้อปลายทาง</button>
+              <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+            `;
+          }
+        } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
+          buttonsHtml += `
+            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมจัดส่ง</button>
+            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+          `;
+        } else if (order.status === 'กำลังจัดส่ง') {
+          buttonsHtml += `
+            <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ</button>
+            <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>
+          `;
+        }
+
+        actionsDiv.innerHTML = buttonsHtml;
+        actionsDiv.style.display = buttonsHtml ? 'flex' : 'none';
+      }
+    }
+
+    function toggleModalEditMode() {
+      if (!currentViewingOrderId) return;
+      const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+      if (!order) return;
+
+      isModalEditMode = !isModalEditMode;
+
+      const noteBox = document.getElementById('editNoteContainer');
+      if (noteBox) noteBox.style.display = isModalEditMode ? 'block' : 'none';
+
+      renderModalItems(order, isModalEditMode);
+      renderModalActions(order);
+    }
+
+    function renderModalItems(order, isEditMode = false) {
       const itemsBody = document.getElementById('modalItemsBody');
       itemsBody.innerHTML = '';
       const isEditable = order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
@@ -1305,18 +1439,40 @@
 
           const tr = document.createElement('tr');
           tr.dataset.index = index;
-          tr.innerHTML = `
-            <td>${item.id || '-'}</td>
-            <td><strong>${item.name || '-'}</strong></td>
-            <td>x${itemQty}</td>
-            <td>฿${itemSubtotal.toLocaleString()}</td>
-            <td style="text-align:center;">
-              ${isEditable && order.items.length > 1
-                ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
-                : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
-              }
-            </td>
-          `;
+
+          if (isEditMode) {
+            tr.innerHTML = `
+              <td>${item.id || '-'}</td>
+              <td><strong>${item.name || '-'}</strong></td>
+              <td>
+                <input type="number" class="input-edit-qty" data-index="${index}" value="${itemQty}" min="1" oninput="onRowEditChange(${index})">
+              </td>
+              <td>
+                <input type="number" class="input-edit-price" data-index="${index}" value="${itemPrice}" min="0" step="1" oninput="onRowEditChange(${index})">
+              </td>
+              <td><span class="row-subtotal-text" id="rowSubtotal_${index}">฿${itemSubtotal.toLocaleString()}</span></td>
+              <td style="text-align:center;">
+                ${order.items.length > 1
+                  ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+                  : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+                }
+              </td>
+            `;
+          } else {
+            tr.innerHTML = `
+              <td>${item.id || '-'}</td>
+              <td><strong>${item.name || '-'}</strong></td>
+              <td>x${itemQty}</td>
+              <td>฿${itemPrice.toLocaleString()}</td>
+              <td>฿${itemSubtotal.toLocaleString()}</td>
+              <td style="text-align:center;">
+                ${isEditable && order.items.length > 1
+                  ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+                  : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+                }
+              </td>
+            `;
+          }
           itemsBody.appendChild(tr);
         });
       }
@@ -1324,7 +1480,112 @@
       document.getElementById('modalTotalPrice').textContent = `฿${Number(order.totalPrice || 0).toLocaleString()}`;
     }
 
-    // === Delete a single item from the order ===
+    function onRowEditChange(index) {
+      const qtyInput = document.querySelector(`.input-edit-qty[data-index="${index}"]`);
+      const priceInput = document.querySelector(`.input-edit-price[data-index="${index}"]`);
+      const subtotalEl = document.getElementById(`rowSubtotal_${index}`);
+
+      if (!qtyInput || !priceInput) return;
+
+      const qty = Math.max(1, parseInt(qtyInput.value) || 1);
+      const price = Math.max(0, parseFloat(priceInput.value) || 0);
+      const subtotal = qty * price;
+
+      if (subtotalEl) {
+        subtotalEl.textContent = `฿${subtotal.toLocaleString()}`;
+      }
+
+      recalculateModalTotalFromInputs();
+    }
+
+    function recalculateModalTotalFromInputs() {
+      let grandTotal = 0;
+      const qtyInputs = document.querySelectorAll('.input-edit-qty');
+      const priceInputs = document.querySelectorAll('.input-edit-price');
+
+      qtyInputs.forEach((qEl, idx) => {
+        const pEl = priceInputs[idx];
+        if (pEl) {
+          const q = Math.max(1, parseInt(qEl.value) || 1);
+          const p = Math.max(0, parseFloat(pEl.value) || 0);
+          grandTotal += (q * p);
+        }
+      });
+
+      const totalEl = document.getElementById('modalTotalPrice');
+      if (totalEl) {
+        totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
+      }
+    }
+
+    function saveOrderChanges() {
+      if (!currentViewingOrderId) return;
+      const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+      if (!order) return;
+
+      const qtyInputs = document.querySelectorAll('.input-edit-qty');
+      const priceInputs = document.querySelectorAll('.input-edit-price');
+      const updatedItems = [];
+      let newTotal = 0;
+
+      order.items.forEach((item, idx) => {
+        const qInput = qtyInputs[idx];
+        const pInput = priceInputs[idx];
+        const qty = qInput ? Math.max(1, parseInt(qInput.value) || 1) : Number(item.qty || 1);
+        const price = pInput ? Math.max(0, parseFloat(pInput.value) || 0) : Number(item.price || 0);
+        const subtotal = qty * price;
+        newTotal += subtotal;
+
+        updatedItems.push({
+          ...item,
+          qty: qty,
+          price: price,
+          subtotal: subtotal
+        });
+      });
+
+      const changeNoteInput = document.getElementById('editChangeNote');
+      const changeNote = changeNoteInput ? changeNoteInput.value.trim() : '';
+
+      if (!confirm(`ยืนยันการปรับเปลี่ยนข้อมูลออเดอร์ ${currentViewingOrderId} และส่งข้อความแจ้งเตือนหาลูกค้าผ่าน LINE หรือไม่?`)) {
+        return;
+      }
+
+      const btnSave = document.getElementById('btnSaveEditOrder');
+      const btnCancel = document.getElementById('btnCancelEditOrder');
+      if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ กำลังบันทึก & แจ้งลูกค้า...'; }
+      if (btnCancel) btnCancel.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.status === 'success') {
+            alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
+            order.items = updatedItems;
+            order.totalPrice = newTotal;
+            isModalEditMode = false;
+
+            const noteBox = document.getElementById('editNoteContainer');
+            if (noteBox) noteBox.style.display = 'none';
+
+            renderModalItems(order, false);
+            renderModalActions(order);
+            renderOrders();
+            updateStats();
+          } else {
+            alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
+            if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
+            if (btnCancel) btnCancel.disabled = false;
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error('Save order error:', err);
+          alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+          if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
+          if (btnCancel) btnCancel.disabled = false;
+        })
+        .updateOrderItemsNative(currentViewingOrderId, updatedItems, newTotal, true, changeNote);
+    }
+
     function deleteOrderItem(orderId, itemIndex) {
       const order = allOrders.find(o => o.orderId === orderId);
       if (!order || !order.items) return;
@@ -1334,7 +1595,6 @@
       const itemName = itemToDelete.name || 'รายการนี้';
       if (!confirm(`ต้องการลบ "${itemName}" ออกจากออเดอร์นี้หรือไม่?\n\n⚠️ ยอดรวมจะถูกคำนวณใหม่อัตโนมัติ`)) return;
 
-      // Animate
       const row = document.querySelector(`#modalItemsBody tr[data-index="${itemIndex}"]`);
       if (row) row.classList.add('item-row-deleting');
 
@@ -1345,13 +1605,12 @@
           newTotal += Number(item.subtotal || (Number(item.price || 0) * Number(item.qty || 1)));
         });
 
-        // Save via google.script.run
         google.script.run
           .withSuccessHandler(function(result) {
             if (result.status === 'success') {
               order.items = newItems;
               order.totalPrice = newTotal;
-              renderModalItems(order);
+              renderModalItems(order, isModalEditMode);
               renderOrders();
               updateStats();
             } else {
@@ -1362,7 +1621,7 @@
             console.error('Delete item error:', err);
             alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
           })
-          .updateOrderItemsNative(orderId, newItems, newTotal);
+          .updateOrderItemsNative(orderId, newItems, newTotal, true, `ลบรายการสินค้า "${itemName}" ออกจากออเดอร์`);
       }, 350);
     }
 

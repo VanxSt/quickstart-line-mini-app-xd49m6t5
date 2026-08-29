@@ -824,3 +824,119 @@ button {
 .gps-link:hover {
   color: #1d4ed8;
 }
+
+/* Edit Order Items UI */
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.btn-secondary {
+  background: #64748b;
+  color: white;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.input-edit-qty {
+  width: 65px;
+  padding: 6px 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  font-family: inherit;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-edit-qty:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.input-edit-price {
+  width: 85px;
+  padding: 6px 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  font-family: inherit;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-edit-price:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.edit-note-box {
+  margin-top: 16px;
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  border-radius: 12px;
+  padding: 14px 16px;
+  animation: modalIn 0.2s ease;
+}
+
+.edit-note-box label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: #a16207;
+  margin-bottom: 6px;
+}
+
+.edit-note-box input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #fde047;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: white;
+  outline: none;
+}
+
+.edit-note-box input:focus {
+  border-color: #eab308;
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+}
+
+.row-subtotal-text {
+  font-weight: 700;
+  color: var(--text-main);
+}

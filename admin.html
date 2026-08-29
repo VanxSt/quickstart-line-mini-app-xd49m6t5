@@ -209,7 +209,8 @@
               <tr>
                 <th>รหัสสินค้า</th>
                 <th>รายการ</th>
-                <th>จำนวน</th>
+                <th style="width:75px;">จำนวน</th>
+                <th style="width:95px;">ราคา/หน่วย</th>
                 <th>รวม</th>
                 <th style="text-align:center; width:60px;">จัดการ</th>
               </tr>
@@ -218,6 +219,10 @@
               <!-- Items go here -->
             </tbody>
           </table>
+          <div id="editNoteContainer" class="edit-note-box" style="display:none;">
+            <label for="editChangeNote">📌 หมายเหตุการแก้ไข (ส่งแจ้งเตือนให้ลูกค้าผ่าน LINE):</label>
+            <input type="text" id="editChangeNote" placeholder="เช่น ปรับเปลี่ยนราคาตามป้าย / สินค้าหมดเปลี่ยนเป็น..." />
+          </div>
           <h3 class="modal-total">ยอดสุทธิ: <span id="modalTotalPrice"></span></h3>
         </div>
       </div>

@@ -45,49 +45,86 @@ function updateOrderStatusHandler(ss, data) {
   }
 }
 
-// Handler สำหรับแก้ไขรายการสินค้าในออเดอร์ (ลบสินค้าบางรายการ)
+// Handler สำหรับแก้ไขรายการสินค้าในออเดอร์ (ปรับจำนวน/ราคา/ลบรายการ และแจ้งเตือนลูกค้า)
 function updateOrderItemsHandler(ss, data) {
   try {
     var orderId = data.orderId;
     var newItems = data.items || [];
     var newTotalPrice = Number(data.totalPrice || 0);
+    var notifyCustomer = data.notifyCustomer !== false;
+    var changeNote = data.changeNote || data.note || '';
     
-    var ordersSheet = ss.getSheetByName("Orders");
-    if (!ordersSheet) {
-      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ไม่พบชีต Orders' }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    var values = ordersSheet.getDataRange().getValues();
-    var foundRow = -1;
-    for (var i = 1; i < values.length; i++) {
-      if (values[i][1] && values[i][1].toString() === orderId) {
-        foundRow = i + 1;
-        break;
-      }
-    }
-    
-    if (foundRow === -1) {
-      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ไม่พบออเดอร์: ' + orderId }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // สร้างข้อความรายการสินค้าให้อ่านง่าย
-    var itemsText = newItems.map(function(item) {
-      return item.name + " x" + item.qty;
-    }).join(", ");
-    
-    // อัปเดต 3 คอลัมน์: Total Price (col 9), Order Items Text (col 12), Items JSON (col 13)
-    ordersSheet.getRange(foundRow, 9).setValue(newTotalPrice);    // Total Price
-    ordersSheet.getRange(foundRow, 12).setValue(itemsText);       // Order Items (readable)
-    ordersSheet.getRange(foundRow, 13).setValue(JSON.stringify(newItems)); // Items JSON
-    
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'อัปเดตรายการสินค้าสำเร็จ' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    var result = updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer, changeNote);
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ฟังก์ชันหลักสำหรับแก้ไขรายการสินค้า พร้อมส่ง LINE Notification หาผู้ซื้อ
+function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer, changeNote) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ordersSheet = ss.getSheetByName("Orders");
+  if (!ordersSheet) {
+    return { status: 'error', message: 'ไม่พบชีต Orders' };
+  }
+  
+  var values = ordersSheet.getDataRange().getValues();
+  var foundRow = -1;
+  var userId = "";
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][1] && values[i][1].toString() === orderId) {
+      foundRow = i + 1;
+      userId = values[i][2];
+      break;
+    }
+  }
+  
+  if (foundRow === -1) {
+    return { status: 'error', message: 'ไม่พบออเดอร์: ' + orderId };
+  }
+  
+  // สร้างข้อความรายการสินค้าให้อ่านง่าย
+  var itemsText = (newItems || []).map(function(item) {
+    return item.name + " x" + item.qty;
+  }).join(", ");
+  
+  // อัปเดต 3 คอลัมน์: Total Price (col 9), Order Items Text (col 12), Items JSON (col 13)
+  ordersSheet.getRange(foundRow, 9).setValue(newTotalPrice);            // Total Price
+  ordersSheet.getRange(foundRow, 12).setValue(itemsText);               // Order Items (readable)
+  ordersSheet.getRange(foundRow, 13).setValue(JSON.stringify(newItems)); // Items JSON
+  
+  var notifyDebug = "Skipped notification";
+  
+  // ส่งข้อความแจ้งเตือนหาลูกค้าผ่าน LINE เมื่อมีการแก้ไขรายการสินค้า/ราคา
+  if (notifyCustomer !== false && userId && userId !== 'unknown' && userId !== 'web-test-user' && LINE_ACCESS_TOKEN !== 'YOUR_LINE_ACCESS_TOKEN_HERE') {
+    try {
+      var msgText = "✏️ มีการปรับเปลี่ยนรายการสินค้าในออเดอร์ " + orderId + "\n" +
+                    "ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ\n\n" +
+                    "📋 รายการสินค้าล่าสุด:\n";
+      
+      (newItems || []).forEach(function(item) {
+        var p = Number(item.price || 0);
+        var q = Number(item.qty || 1);
+        var sub = Number(item.subtotal || (p * q));
+        msgText += "• " + (item.name || 'สินค้า') + " x" + q + " (฿" + sub.toLocaleString() + ")\n";
+      });
+      
+      msgText += "\n💰 ยอดสุทธิใหม่: ฿" + newTotalPrice.toLocaleString();
+      
+      if (changeNote && changeNote.trim() !== '') {
+        msgText += "\n📌 หมายเหตุ: " + changeNote.trim();
+      }
+      
+      msgText += "\n\nหากมีข้อสงสัย ทักแชทสอบถามแอดมินได้เลยครับ 😊";
+      
+      notifyDebug = sendLinePushMessage(userId, [{ "type": "text", "text": msgText }]);
+    } catch(e) {
+      notifyDebug = 'Notification Error: ' + e.message;
+    }
+  }
+  
+  return { status: 'success', message: 'อัปเดตรายการสินค้าและแจ้งลูกค้าสำเร็จ', debug: notifyDebug };
 }
 
 // Handler สำหรับบันทึกคำสั่งซื้อใหม่
