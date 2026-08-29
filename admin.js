@@ -826,26 +826,30 @@ function updateMemberStats() {
 function extractGpsUrl(gpsRaw, addressDetails, customerName) {
   let str = (gpsRaw || '').toString().trim();
 
-  // 1. Extract URL from HYPERLINK formula e.g. HYPERLINK("https://...", "...") or HYPERLINK('https://...', '...')
-  if (str.includes('HYPERLINK')) {
-    const match = str.match(/HYPERLINK\(\s*["']([^"']+)["']/i);
-    if (match && match[1]) return match[1];
+  // 1. Extract URL from HYPERLINK formula e.g. HYPERLINK("https://...", "...")
+  if (str.indexOf('HYPERLINK') !== -1) {
+    const hMatch = str.match(/HYPERLINK\(\s*["']([^"']+)["']/i);
+    if (hMatch && hMatch[1]) return hMatch[1];
   }
 
   // 2. Extract URL starting with http:// or https:// anywhere in the string
-  const urlMatch = str.match(/(https?:\/\/[^\s"'>]+)/i);
-  if (urlMatch && urlMatch[1]) return urlMatch[1];
+  const httpIdx = str.toLowerCase().indexOf('http');
+  if (httpIdx !== -1) {
+    const sub = str.substring(httpIdx);
+    const spaceIdx = sub.search(/[\s"'>]/);
+    return spaceIdx !== -1 ? sub.substring(0, spaceIdx) : sub;
+  }
 
   // 3. Match coordinates (lat, lng) e.g. 13.7563, 100.5018
   const coordMatch = str.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
   if (coordMatch) {
-    return `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`;
+    return 'https://www.google.com/maps?q=' + coordMatch[1] + ',' + coordMatch[2];
   }
 
   // 4. Fallback: Search Google Maps by address or customer name if no URL was embedded
   const query = (addressDetails || '').trim() || (customerName || '').trim();
   if (query && query !== '-') {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
   }
 
   return '';
