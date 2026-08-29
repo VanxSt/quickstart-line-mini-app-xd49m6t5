@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWIVonghpM_TgZs4JMbTbGaMfuqpxqy1bbpTZyDqWAevVvFxhuzz3xjTVZ0v5nHzAW/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9aLnnCFj7SBZLujfAd7UIcUGMCioiWjOuBekRrD3dGORhcRyTs1q30pft3hpWdt5o/exec';
 
 let PRODUCTS = [];
 
@@ -998,7 +998,14 @@ function validateCheckoutForm() {
 
   // Valid if Name, Phone, Shipping details, and Preorder (if any) are valid
   const isValid = name !== "" && phone !== "" && isPreorderValid && isShippingValid;
-  if (btnSubmitOrder) btnSubmitOrder.disabled = !isValid;
+  if (btnSubmitOrder) {
+    btnSubmitOrder.removeAttribute('disabled');
+    if (!isValid) {
+      btnSubmitOrder.classList.add('btn-gray-disabled');
+    } else {
+      btnSubmitOrder.classList.remove('btn-gray-disabled');
+    }
+  }
 }
 
 async function fetchMemberInfo(userId) {
@@ -1590,6 +1597,25 @@ if (btnSubmitOrder) {
     const phone = checkoutPhone.value.trim();
 
     const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+    let rawAddressDetails = checkoutAddressDetails ? checkoutAddressDetails.value.trim() : '';
+
+    // ตรวจสอบความครบถ้วนของข้อมูล
+    let missingFields = [];
+    if (!name) missingFields.push('ชื่อผู้สั่ง');
+    if (!phone) missingFields.push('เบอร์โทรศัพท์');
+    if (shippingOption === 'จัดส่ง' && !rawAddressDetails) missingFields.push('รายละเอียดที่อยู่จัดส่ง');
+
+    const deliveryTypeCheck = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
+    if (deliveryTypeCheck === 'ล่วงหน้า') {
+      const pDate = document.getElementById('preorderDate')?.value;
+      const pTime = document.getElementById('preorderTime')?.value;
+      if (!pDate || !pTime) missingFields.push('วันและเวลาสั่งซื้อล่วงหน้า');
+    }
+
+    if (missingFields.length > 0) {
+      alert(`⚠️ ข้อมูลยังไม่ครบถ้วน!\n\nกรุณากรอกข้อมูลต่อไปนี้ก่อนยืนยันการสั่งซื้อครับ:\n• ${missingFields.join('\n• ')}`);
+      return;
+    }
     let addressDetails = '';
     let gpsLocation = '';
     let addressLabel = '';

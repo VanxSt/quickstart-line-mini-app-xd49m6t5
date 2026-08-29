@@ -476,6 +476,17 @@ body {
   box-shadow: 0 6px 14px rgba(56, 139, 194, 0.35);
 }
 
+.btn-primary.btn-gray-disabled,
+.btn-primary.btn-gray-disabled:hover {
+  background: #a0aec0 !important;
+  background-color: #a0aec0 !important;
+  border-color: #a0aec0 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  opacity: 0.85;
+}
+
 .btn-outline {
   background-color: transparent;
   border: 1px solid var(--border-color);
