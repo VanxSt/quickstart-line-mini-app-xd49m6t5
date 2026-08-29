@@ -56,6 +56,9 @@ function createOrderHandler(ss, data) {
     var totalPrice = Number(data.totalPrice || 0);
     var items = data.items || [];
     
+    var deliveryType = data.deliveryType || 'ทันที';
+    var preorderTime = data.preorderTime || '';
+    
     // สร้าง Order ID แบบไม่ซ้ำกัน (หรือรับค่ามาจาก Frontend ถ้ามีการส่งมา)
     var timestamp = new Date();
     var formattedDate = Utilities.formatDate(timestamp, "GMT+7", "yyyyMMdd-HHmmss");
@@ -71,7 +74,7 @@ function createOrderHandler(ss, data) {
     var slipFormula = "";
     
     // ดึงหรือสร้างชีต "Orders"
-    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON"];
+    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON", "Delivery Type", "Preorder Time"];
     var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
     
     // สร้างข้อความรายการสินค้าให้อ่านง่ายสำหรับมนุษย์
@@ -82,6 +85,11 @@ function createOrderHandler(ss, data) {
     // สร้าง JSON string สำหรับระบบ API
     var itemsJson = JSON.stringify(items);
     
+    var displayAddress = addressDetails;
+    if (deliveryType === 'ล่วงหน้า' && preorderTime) {
+      displayAddress = "🕒 [สั่งล่วงหน้า: " + preorderTime + " น.] " + addressDetails;
+    }
+    
     // บันทึกคำสั่งซื้อลงชีต Orders (1 API Call)
     ordersSheet.appendRow([
       timestamp,
@@ -90,13 +98,15 @@ function createOrderHandler(ss, data) {
       displayName,
       phone,
       gpsFormula,
-      addressDetails,
+      displayAddress,
       slipFormula,
       totalPrice,
       "รอตรวจสอบ", // สถานะเริ่มต้น
       paymentMethod,
       itemsText,
-      itemsJson
+      itemsJson,
+      deliveryType,
+      preorderTime
     ]);
     
     // อัปเดตข้อมูลเบอร์โทร และที่อยู่ล่าสุดในชีต Members ทันทีที่มีออเดอร์ใหม่
@@ -312,7 +322,10 @@ function doGet(e) {
           addressDetails: oRow[6],
           totalPrice: oRow[8],
           status: oRow[9] || 'รอตรวจสอบ',
-          items: orderItems
+          paymentMethod: oRow[10] || 'ปลายทาง',
+          items: orderItems,
+          deliveryType: oRow[13] || 'ทันที',
+          preorderTime: oRow[14] || ''
         });
       }
       
@@ -466,7 +479,9 @@ function getAllOrdersNative() {
       totalPrice: oRow[8],
       status: oRow[9] || 'รอตรวจสอบ',
       paymentMethod: oRow[10] || 'ไม่ระบุ',
-      items: orderItems
+      items: orderItems,
+      deliveryType: oRow[13] || 'ทันที',
+      preorderTime: oRow[14] || ''
     });
   }
   

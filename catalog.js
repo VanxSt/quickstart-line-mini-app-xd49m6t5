@@ -814,6 +814,22 @@ function openCheckoutModal() {
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
   document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
 
+  // รีเซ็ตการสั่งล่วงหน้า
+  const defaultDeliveryType = document.querySelector('input[name="deliveryType"][value="ทันที"]');
+  if (defaultDeliveryType) defaultDeliveryType.checked = true;
+  const preorderTimeSection = document.getElementById('preorderTimeSection');
+  if (preorderTimeSection) preorderTimeSection.style.display = 'none';
+  const preorderTimeSelect = document.getElementById('preorderTime');
+  if (preorderTimeSelect) preorderTimeSelect.value = '';
+  const preorderDateInput = document.getElementById('preorderDate');
+  if (preorderDateInput) {
+    const localDate = new Date();
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    preorderDateInput.value = `${year}-${month}-${day}`;
+  }
+
   // Reset address label + checkbox
   const addressLabelInput = document.getElementById('addressLabel');
   if (addressLabelInput) addressLabelInput.value = '';
@@ -879,8 +895,17 @@ function validateCheckoutForm() {
   const name = document.getElementById('checkoutName').value.trim();
   const phone = document.getElementById('checkoutPhone').value.trim();
 
-  // Valid if Name and Phone are filled (address is optional)
-  const isValid = name !== "" && phone !== "";
+  // ตรวจสอบการสั่งล่วงหน้า
+  const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
+  let isPreorderValid = true;
+  if (deliveryType === 'ล่วงหน้า') {
+    const preorderDate = document.getElementById('preorderDate').value;
+    const preorderTime = document.getElementById('preorderTime').value;
+    isPreorderValid = preorderDate !== "" && preorderTime !== null && preorderTime !== "";
+  }
+
+  // Valid if Name and Phone are filled, and if preorder, date and time are selected
+  const isValid = name !== "" && phone !== "" && isPreorderValid;
   btnSubmitOrder.disabled = !isValid;
 }
 
@@ -939,7 +964,7 @@ async function fetchMemberInfo(userId) {
 }
 
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = []) {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '') {
   // สร้างรายการสินค้าสำหรับ Flex Message
   const itemBoxes = cartItems.map(item => ({
     type: "box",
@@ -1029,6 +1054,14 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 contents: [
                   { type: "text", text: "เบอร์ติดต่อ", size: "sm", color: "#aaaaaa", flex: 2 },
                   { type: "text", text: phone, size: "sm", color: "#1a202c", flex: 4 }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "เวลาส่งสินค้า", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: deliveryType === 'ล่วงหน้า' ? `🕒 สั่งล่วงหน้า (${preorderTime} น.)` : "🚀 ส่งทันที (ด่วนที่สุด)", size: "sm", color: "#e11d48", flex: 4, weight: "bold", wrap: true }
                 ]
               },
               { type: "separator", margin: "md" },
@@ -1376,10 +1409,37 @@ if (btnGetLocation) {
 const checkoutName = document.getElementById('checkoutName');
 const checkoutPhone = document.getElementById('checkoutPhone');
 const checkoutAddressDetails = document.getElementById('checkoutAddressDetails');
+const preorderDateInput = document.getElementById('preorderDate');
+const preorderTimeSelect = document.getElementById('preorderTime');
+const preorderTimeSection = document.getElementById('preorderTimeSection');
+
+if (preorderDateInput) {
+  const localDate = new Date();
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getDate()).padStart(2, '0');
+  const localTodayStr = `${year}-${month}-${day}`;
+  preorderDateInput.min = localTodayStr;
+  preorderDateInput.value = localTodayStr;
+}
+
+// จัดการการสลับรูปแบบการสั่งซื้อ (ส่งทันที / สั่งล่วงหน้า)
+document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    if (e.target.value === 'ล่วงหน้า') {
+      if (preorderTimeSection) preorderTimeSection.style.display = 'block';
+    } else {
+      if (preorderTimeSection) preorderTimeSection.style.display = 'none';
+    }
+    validateCheckoutForm();
+  });
+});
 
 if (checkoutName) checkoutName.addEventListener('input', validateCheckoutForm);
 if (checkoutPhone) checkoutPhone.addEventListener('input', validateCheckoutForm);
 if (checkoutAddressDetails) checkoutAddressDetails.addEventListener('input', validateCheckoutForm);
+if (preorderDateInput) preorderDateInput.addEventListener('change', validateCheckoutForm);
+if (preorderTimeSelect) preorderTimeSelect.addEventListener('change', validateCheckoutForm);
 
 // Submit Order to Google Sheets
 if (btnSubmitOrder) {
@@ -1415,6 +1475,14 @@ if (btnSubmitOrder) {
     const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     const orderId = `ORD-${dateStr}-${randomNum}`;
 
+    const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
+    let preorderTimeStr = '';
+    if (deliveryType === 'ล่วงหน้า') {
+      const pDate = document.getElementById('preorderDate').value;
+      const pTime = document.getElementById('preorderTime').value;
+      preorderTimeStr = `${pDate} ${pTime}`;
+    }
+
     const orderPayload = {
       action: 'createOrder',
       orderId: orderId,
@@ -1425,6 +1493,8 @@ if (btnSubmitOrder) {
       addressDetails: addressDetails,
       paymentMethod: paymentMethod,
       totalPrice: totalAmount,
+      deliveryType: deliveryType,
+      preorderTime: preorderTimeStr,
       items: cart.map(item => ({
         id: item.id,
         name: item.name,
@@ -1475,7 +1545,7 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart);
+        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart, deliveryType, preorderTimeStr);
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที
