@@ -58,6 +58,7 @@ function createOrderHandler(ss, data) {
     
     var deliveryType = data.deliveryType || 'ทันที';
     var preorderTime = data.preorderTime || '';
+    var shippingOption = data.shippingOption || 'จัดส่ง';
     
     // สร้าง Order ID แบบไม่ซ้ำกัน (หรือรับค่ามาจาก Frontend ถ้ามีการส่งมา)
     var timestamp = new Date();
@@ -74,7 +75,7 @@ function createOrderHandler(ss, data) {
     var slipFormula = "";
     
     // ดึงหรือสร้างชีต "Orders"
-    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON", "Delivery Type", "Preorder Time"];
+    var ordersHeaders = ["Timestamp", "Order ID", "User ID", "Name", "Phone", "GPS Location", "Address Details", "Slip Image URL", "Total Price", "Status", "Payment Method", "Order Items", "Items JSON", "Delivery Type", "Preorder Time", "Shipping Option"];
     var ordersSheet = getFastSheet(ss, "Orders", ordersHeaders);
     
     // สร้างข้อความรายการสินค้าให้อ่านง่ายสำหรับมนุษย์
@@ -86,7 +87,9 @@ function createOrderHandler(ss, data) {
     var itemsJson = JSON.stringify(items);
     
     var displayAddress = addressDetails;
-    if (deliveryType === 'ล่วงหน้า' && preorderTime) {
+    if (shippingOption === 'รับหน้าร้าน') {
+      displayAddress = "🏪 [รับหน้าร้าน] " + (deliveryType === 'ล่วงหน้า' && preorderTime ? "🕒 สั่งล่วงหน้า: " + preorderTime + " น." : "รับทันที");
+    } else if (deliveryType === 'ล่วงหน้า' && preorderTime) {
       displayAddress = "🕒 [สั่งล่วงหน้า: " + preorderTime + " น.] " + addressDetails;
     }
     
@@ -106,7 +109,8 @@ function createOrderHandler(ss, data) {
       itemsText,
       itemsJson,
       deliveryType,
-      preorderTime
+      preorderTime,
+      shippingOption
     ]);
     
     // อัปเดตข้อมูลเบอร์โทร และที่อยู่ล่าสุดในชีต Members ทันทีที่มีออเดอร์ใหม่
@@ -325,7 +329,8 @@ function doGet(e) {
           paymentMethod: oRow[10] || 'ปลายทาง',
           items: orderItems,
           deliveryType: oRow[13] || 'ทันที',
-          preorderTime: oRow[14] || ''
+          preorderTime: oRow[14] || '',
+          shippingOption: oRow[15] || 'จัดส่ง'
         });
       }
       
@@ -481,7 +486,8 @@ function getAllOrdersNative() {
       paymentMethod: oRow[10] || 'ไม่ระบุ',
       items: orderItems,
       deliveryType: oRow[13] || 'ทันที',
-      preorderTime: oRow[14] || ''
+      preorderTime: oRow[14] || '',
+      shippingOption: oRow[15] || 'จัดส่ง'
     });
   }
   

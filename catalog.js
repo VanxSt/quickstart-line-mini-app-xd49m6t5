@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTy_7iZYyXVKqr2uJ_rWPQya0xYyDFsNQfXyZXvaoAzPuOINF_4UivR6K_NQ_hFm7w/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxF72FsZaIXKzTH7LiMcGtDGWh0Yz1Oku1N0VUQmlHr-V67tpxYYwRurcDdbN1UIZK/exec';
 
 let PRODUCTS = [];
 
@@ -666,6 +666,27 @@ function deleteSavedAddress(index) {
   saveSavedAddresses(addresses);
 }
 
+function toggleShippingFields() {
+  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+  const savedAddressesSection = document.getElementById('savedAddressesSection');
+  const newAddressSection = document.getElementById('newAddressSection');
+  
+  if (shippingOption === 'รับหน้าร้าน') {
+    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+    if (newAddressSection) newAddressSection.style.display = 'none';
+  } else {
+    const savedAddresses = getSavedAddresses();
+    if (savedAddresses.length > 0 && selectedSavedAddressIndex !== -1) {
+      if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+      if (newAddressSection) newAddressSection.style.display = 'none';
+    } else {
+      if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+      if (newAddressSection) newAddressSection.style.display = 'block';
+    }
+  }
+  validateCheckoutForm();
+}
+
 function getAddressIcon(label) {
   const l = (label || '').toLowerCase();
   if (l.includes('บ้าน') || l.includes('home')) return '🏠';
@@ -814,6 +835,10 @@ function openCheckoutModal() {
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
   document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
 
+  // รีเซ็ตตัวเลือกช่องทางการรับสินค้า
+  const defaultShippingOption = document.querySelector('input[name="shippingOption"][value="จัดส่ง"]');
+  if (defaultShippingOption) defaultShippingOption.checked = true;
+
   // รีเซ็ตการสั่งล่วงหน้า
   const defaultDeliveryType = document.querySelector('input[name="deliveryType"][value="ทันที"]');
   if (defaultDeliveryType) defaultDeliveryType.checked = true;
@@ -877,7 +902,7 @@ function openCheckoutModal() {
     renderSavedAddresses();
   }
 
-  validateCheckoutForm();
+  toggleShippingFields();
 
   checkoutModal.classList.add('show');
 
@@ -964,7 +989,7 @@ async function fetchMemberInfo(userId) {
 }
 
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '') {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง') {
   // สร้างรายการสินค้าสำหรับ Flex Message
   const itemBoxes = cartItems.map(item => ({
     type: "box",
@@ -1060,7 +1085,15 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "เวลาส่งสินค้า", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: "การรับสินค้า", size: "sm", color: "#aaaaaa", flex: 2 },
+                  { type: "text", text: shippingOption === 'รับหน้าร้าน' ? "🏪 รับสินค้าเองที่หน้าร้าน" : "🚚 จัดส่งตามที่อยู่", size: "sm", color: "#1a202c", flex: 4, weight: "bold" }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "เวลาส่ง/รับ", size: "sm", color: "#aaaaaa", flex: 2 },
                   { type: "text", text: deliveryType === 'ล่วงหน้า' ? `🕒 สั่งล่วงหน้า (${preorderTime} น.)` : "🚀 ส่งทันที (ด่วนที่สุด)", size: "sm", color: "#e11d48", flex: 4, weight: "bold", wrap: true }
                 ]
               },
@@ -1423,6 +1456,13 @@ if (preorderDateInput) {
   preorderDateInput.value = localTodayStr;
 }
 
+// จัดการการสลับรูปแบบการจัดส่ง (จัดส่ง / รับหน้าร้าน)
+document.querySelectorAll('input[name="shippingOption"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    toggleShippingFields();
+  });
+});
+
 // จัดการการสลับรูปแบบการสั่งซื้อ (ส่งทันที / สั่งล่วงหน้า)
 document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
@@ -1446,8 +1486,19 @@ if (btnSubmitOrder) {
   btnSubmitOrder.addEventListener('click', async () => {
     const name = checkoutName.value.trim();
     const phone = checkoutPhone.value.trim();
-    const addressDetails = checkoutAddressDetails.value.trim();
-    const gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+
+    const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+    let addressDetails = '';
+    let gpsLocation = '';
+
+    if (shippingOption === 'รับหน้าร้าน') {
+      addressDetails = 'รับสินค้าเองที่หน้าร้าน';
+      gpsLocation = 'รับสินค้าเองที่หน้าร้าน';
+    } else {
+      addressDetails = checkoutAddressDetails.value.trim();
+      gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+    }
+
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
 
     const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -1495,6 +1546,7 @@ if (btnSubmitOrder) {
       totalPrice: totalAmount,
       deliveryType: deliveryType,
       preorderTime: preorderTimeStr,
+      shippingOption: shippingOption,
       items: cart.map(item => ({
         id: item.id,
         name: item.name,
@@ -1530,7 +1582,7 @@ if (btnSubmitOrder) {
 
       // บันทึกที่อยู่ใหม่ (ถ้าเลือก checkbox บันทึก + ไม่ได้ใช้ที่อยู่เดิม)
       const chkSave = document.getElementById('chkSaveAddress');
-      if (chkSave && chkSave.checked && selectedSavedAddressIndex === -1 && gpsLocation) {
+      if (chkSave && chkSave.checked && selectedSavedAddressIndex === -1 && gpsLocation && shippingOption !== 'รับหน้าร้าน') {
         const addressLabelInput = document.getElementById('addressLabel');
         const label = (addressLabelInput ? addressLabelInput.value.trim() : '') || 'ที่อยู่ของฉัน';
         addSavedAddress({
@@ -1545,7 +1597,7 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart, deliveryType, preorderTimeStr);
+        await sendOrderFlexMessage(orderId, name, phone, totalAmount, cart, deliveryType, preorderTimeStr, shippingOption);
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที

@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTy_7iZYyXVKqr2uJ_rWPQya0xYyDFsNQfXyZXvaoAzPuOINF_4UivR6K_NQ_hFm7w/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxF72FsZaIXKzTH7LiMcGtDGWh0Yz1Oku1N0VUQmlHr-V67tpxYYwRurcDdbN1UIZK/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -185,8 +185,9 @@ function renderOrders() {
     tr.innerHTML = `
       <td>
         <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
-        <div style="margin-top: 4px;">
+        <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
           <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
+          ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
         </div>
       </td>
       <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
