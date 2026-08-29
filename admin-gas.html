@@ -1106,8 +1106,18 @@
           if (showLoading) loading.style.display = 'none';
         })
         .withFailureHandler(function (err) {
-          console.error(err);
+          console.error("Fetch orders failed:", err);
           if (showLoading) loading.style.display = 'none';
+          const tbody = document.getElementById('ordersBody');
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px 20px; color: #ef4444;">
+                <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
+                <p style="font-weight: 600;">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${(err && err.message) || err || 'ไม่ทราบสาเหตุ'}</p>
+                <button class="btn-primary" onclick="fetchOrders(true)" style="margin-top: 12px; padding: 8px 16px; cursor: pointer;">🔄 ลองใหม่อีกครั้ง</button>
+              </td>
+            </tr>
+          `;
         })
         .getAllOrdersNative();
     }

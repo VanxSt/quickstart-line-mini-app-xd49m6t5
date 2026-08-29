@@ -635,6 +635,13 @@ function triggerAuthorization() {
   Logger.log("อนุมัติสิทธิ์การเข้าถึง Google Drive และ External Request สำเร็จแล้ว!");
 }
 
+// Helper: Safe stringifier to prevent google.script.run serialization failure (e.g. Unhandled Date objects)
+function safeString(val) {
+  if (val === null || val === undefined) return '';
+  if (val instanceof Date) return Utilities.formatDate(val, "GMT+7", "yyyy-MM-dd HH:mm:ss");
+  return val.toString();
+}
+
 // ==========================================
 // ฟังก์ชันสำหรับเรียกใช้ตรงจากหน้า admin.html (google.script.run)
 // ==========================================
@@ -645,40 +652,39 @@ function getAllOrdersNative() {
   if (!ordersSheet) return [];
   
   var orderValues = ordersSheet.getDataRange().getValues();
+  var orderFormulas = ordersSheet.getDataRange().getFormulas();
   var orders = [];
   
   for (var k = orderValues.length - 1; k >= 1; k--) {
     var oRow = orderValues[k];
+    var fRow = (orderFormulas && orderFormulas[k]) ? orderFormulas[k] : [];
     if (!oRow[1]) continue;
     
-    // แปลง Date เป็น String เพื่อให้ google.script.run ส่งค่ากลับไปได้
-    var ts = oRow[0];
-    if (ts instanceof Date) {
-      ts = ts.toISOString();
-    }
-    
+    var ts = safeString(oRow[0]);
     var parsedItems = [];
     try {
       if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
     } catch(e) {}
     
-    var orderItems = parsedItems;
+    var gpsVal = safeString(oRow[5]);
+    var gpsForm = safeString(fRow[5]);
+    var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
     
     orders.push({
       timestamp: ts,
-      orderId: oRow[1],
-      userId: oRow[2],
-      customerName: oRow[3],
-      phone: oRow[4],
-      gpsLocation: oRow[5],
-      addressDetails: oRow[6],
-      totalPrice: oRow[8],
-      status: oRow[9] || 'รอตรวจสอบ',
-      paymentMethod: oRow[10] || 'ไม่ระบุ',
-      items: orderItems,
-      deliveryType: oRow[13] || 'ทันที',
-      preorderTime: oRow[14] || '',
-      shippingOption: oRow[15] || 'จัดส่ง'
+      orderId: safeString(oRow[1]),
+      userId: safeString(oRow[2]),
+      customerName: safeString(oRow[3]),
+      phone: safeString(oRow[4]).replace(/'/g, ""),
+      gpsLocation: finalGps,
+      addressDetails: safeString(oRow[6]),
+      totalPrice: Number(oRow[8] || 0),
+      status: safeString(oRow[9] || 'รอตรวจสอบ'),
+      paymentMethod: safeString(oRow[10] || 'ไม่ระบุ'),
+      items: parsedItems,
+      deliveryType: safeString(oRow[13] || 'ทันที'),
+      preorderTime: safeString(oRow[14]),
+      shippingOption: safeString(oRow[15] || 'จัดส่ง')
     });
   }
   
@@ -810,9 +816,8 @@ function getAllMembersNative() {
   for (var m = mValues.length - 1; m >= 1; m--) {
     var mRow = mValues[m];
     if (!mRow[1]) continue;
-    var mTs = mRow[0];
-    if (mTs instanceof Date) mTs = mTs.toISOString();
-    var savedAddressesStr = mRow[7] || '[]';
+    var mTs = safeString(mRow[0]);
+    var savedAddressesStr = safeString(mRow[7] || '[]');
     var gpsLoc = '';
     var addrDetails = '';
     var addrLabel = '';
@@ -820,26 +825,26 @@ function getAllMembersNative() {
     try {
       parsed = JSON.parse(savedAddressesStr);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        gpsLoc = parsed[0].gpsLocation || '';
-        addrDetails = parsed[0].addressDetails || '';
-        addrLabel = parsed[0].label || '';
-      } else if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
-        gpsLoc = savedAddressesStr.toString();
+        gpsLoc = safeString(parsed[0].gpsLocation);
+        addrDetails = safeString(parsed[0].addressDetails);
+        addrLabel = safeString(parsed[0].label);
+      } else if (savedAddressesStr && savedAddressesStr.indexOf("http") === 0) {
+        gpsLoc = savedAddressesStr;
       }
     } catch(e) {
-      if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
-        gpsLoc = savedAddressesStr.toString();
+      if (savedAddressesStr && savedAddressesStr.indexOf("http") === 0) {
+        gpsLoc = savedAddressesStr;
       }
     }
 
     members.push({
       registeredAt: mTs,
-      userId: mRow[1],
-      displayName: mRow[2] || '',
-      statusMessage: mRow[3] || '',
-      email: mRow[4] || '',
-      pictureUrl: mRow[5] || '',
-      phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : '',
+      userId: safeString(mRow[1]),
+      displayName: safeString(mRow[2]),
+      statusMessage: safeString(mRow[3]),
+      email: safeString(mRow[4]),
+      pictureUrl: safeString(mRow[5]),
+      phone: safeString(mRow[6]).replace(/'/g, ""),
       gpsLocation: gpsLoc,
       addressDetails: addrDetails,
       addressLabel: addrLabel,
