@@ -817,8 +817,19 @@ function selectSavedAddress(idx) {
       newAddressSection.style.display = 'none';
     }
 
-    console.log(`[SavedAddress] Re-rendering list with selected index: ${selectedSavedAddressIndex}`);
-    renderSavedAddresses();
+    console.log(`[SavedAddress] Updating DOM selection for index: ${selectedSavedAddressIndex}`);
+    // Update DOM classes instead of re-rendering everything to improve speed
+    const listEl = document.getElementById('savedAddressList');
+    if (listEl) {
+      const cards = listEl.querySelectorAll('.saved-address-card');
+      cards.forEach((card, i) => {
+        if (i === selectedSavedAddressIndex) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
+      });
+    }
     validateCheckoutForm();
   } catch (err) {
     console.error("[SavedAddress] Critical error inside selectSavedAddress:", err);
@@ -869,11 +880,20 @@ function toggleShippingFields() {
   const savedSection = document.getElementById('savedAddressesSection');
   const newSection = document.getElementById('newAddressSection');
   const distanceSection = document.getElementById('deliveryDistanceSection');
+  const conditionsBox = document.getElementById('shippingConditionsBox');
 
   if (shippingOption === 'รับหน้าร้าน') {
     if (savedSection) savedSection.style.display = 'none';
     if (newSection) newSection.style.display = 'none';
     if (distanceSection) distanceSection.style.display = 'none';
+    
+    if (conditionsBox) {
+      conditionsBox.innerHTML = `
+        <div style="font-size: 14px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 6px;">
+          <span>🏪 มารับสินค้าเองที่หน้าร้าน : <strong style="font-size: 15px; color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></span>
+        </div>
+      `;
+    }
   } else {
     if (distanceSection) distanceSection.style.display = 'block';
     const savedAddresses = getSavedAddresses();
@@ -883,6 +903,20 @@ function toggleShippingFields() {
     } else {
       if (savedSection) savedSection.style.display = savedAddresses.length > 0 ? 'block' : 'none';
       if (newSection) newSection.style.display = 'block';
+    }
+    
+    if (conditionsBox) {
+      conditionsBox.innerHTML = `
+        <div style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+          <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
+        </div>
+        <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
+          <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 50 บาท)</li>
+          <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
+          <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
+          <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
+        </ul>
+      `;
     }
   }
   calculateCheckoutTotal();
@@ -1609,7 +1643,7 @@ function updateMapPin(lat, lng, flyTo = true) {
       }
 
       if (flyTo) {
-        mapInstance.flyTo([lat, lng], 16, { duration: 1 });
+        mapInstance.flyTo([lat, lng], 16, { duration: 0.25 });
       }
     }
   } catch (mapErr) {
