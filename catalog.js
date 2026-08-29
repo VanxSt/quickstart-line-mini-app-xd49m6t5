@@ -622,6 +622,181 @@ function closeCartModal() {
   cartModal.classList.remove('show');
 }
 
+// === SAVED ADDRESSES SYSTEM ===
+let selectedSavedAddressIndex = -1; // -1 = ใช้ที่อยู่ใหม่
+
+function getSavedAddresses() {
+  try {
+    const data = localStorage.getItem('saved_addresses');
+    return data ? JSON.parse(data) : [];
+  } catch (e) { return []; }
+}
+
+function saveSavedAddresses(addresses) {
+  try {
+    localStorage.setItem('saved_addresses', JSON.stringify(addresses));
+  } catch (e) { console.error('Error saving addresses:', e); }
+}
+
+function addSavedAddress(address) {
+  const addresses = getSavedAddresses();
+  // ป้องกันซ้ำ: เช็คว่ามีที่อยู่เดียวกันอยู่แล้วหรือไม่
+  const isDuplicate = addresses.some(a =>
+    a.gpsLocation === address.gpsLocation && a.addressDetails === address.addressDetails
+  );
+  if (!isDuplicate) {
+    addresses.unshift(address); // เพิ่มล่าสุดไว้ด้านบน
+    if (addresses.length > 5) addresses.pop(); // เก็บสูงสุด 5 ที่อยู่
+    saveSavedAddresses(addresses);
+  }
+}
+
+function deleteSavedAddress(index) {
+  const addresses = getSavedAddresses();
+  addresses.splice(index, 1);
+  saveSavedAddresses(addresses);
+}
+
+function getAddressIcon(label) {
+  const l = (label || '').toLowerCase();
+  if (l.includes('บ้าน') || l.includes('home')) return '🏠';
+  if (l.includes('ทำงาน') || l.includes('ออฟฟิศ') || l.includes('work') || l.includes('office')) return '🏢';
+  if (l.includes('คอนโด') || l.includes('condo') || l.includes('หอ')) return '🏬';
+  return '📍';
+}
+
+function renderSavedAddresses() {
+  const addresses = getSavedAddresses();
+  const section = document.getElementById('savedAddressesSection');
+  const listEl = document.getElementById('savedAddressList');
+  const newAddressSection = document.getElementById('newAddressSection');
+
+  if (addresses.length === 0) {
+    section.style.display = 'none';
+    newAddressSection.style.display = 'block';
+    return;
+  }
+
+  section.style.display = 'block';
+  listEl.innerHTML = '';
+
+  addresses.forEach((addr, idx) => {
+    const card = document.createElement('div');
+    card.className = 'saved-address-card' + (selectedSavedAddressIndex === idx ? ' selected' : '');
+    
+    // ดึงพิกัดจาก GPS URL
+    let coordsText = '';
+    if (addr.gpsLocation) {
+      const match = addr.gpsLocation.match(/q=([\d.]+),([\d.]+)/);
+      if (match) coordsText = `📍 ${parseFloat(match[1]).toFixed(4)}, ${parseFloat(match[2]).toFixed(4)}`;
+    }
+
+    card.innerHTML = `
+      <div class="address-label">
+        <span class="address-icon">${getAddressIcon(addr.label)}</span>
+        ${addr.label || 'ที่อยู่ #' + (idx + 1)}
+      </div>
+      <div class="address-detail">${addr.addressDetails || '-'}</div>
+      ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
+      <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="address-check">✓</div>
+    `;
+
+    // คลิกเลือกที่อยู่
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-delete-address')) return;
+      selectSavedAddress(idx);
+    });
+
+    // ปุ่มลบ
+    const deleteBtn = card.querySelector('.btn-delete-address');
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteSavedAddress(idx);
+      if (selectedSavedAddressIndex === idx) {
+        selectedSavedAddressIndex = -1;
+        newAddressSection.style.display = 'block';
+      } else if (selectedSavedAddressIndex > idx) {
+        selectedSavedAddressIndex--;
+      }
+      renderSavedAddresses();
+      validateCheckoutForm();
+    });
+
+    listEl.appendChild(card);
+  });
+
+  // ถ้ายังไม่ได้เลือกที่อยู่เก่า → แสดงฟอร์มที่อยู่ใหม่
+  if (selectedSavedAddressIndex === -1) {
+    newAddressSection.style.display = 'block';
+  } else {
+    newAddressSection.style.display = 'none';
+  }
+}
+
+function selectSavedAddress(idx) {
+  const addresses = getSavedAddresses();
+  const addr = addresses[idx];
+  if (!addr) return;
+
+  selectedSavedAddressIndex = idx;
+
+  // เติมข้อมูลจากที่อยู่ที่เลือก
+  document.getElementById('gpsLocationLink').value = addr.gpsLocation || '';
+  document.getElementById('checkoutAddressDetails').value = addr.addressDetails || '';
+
+  const statusBadge = document.getElementById('locationStatus');
+  if (addr.gpsLocation) {
+    const match = addr.gpsLocation.match(/q=([\d.]+),([\d.]+)/);
+    if (match) {
+      statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${parseFloat(match[1]).toFixed(5)}, ${parseFloat(match[2]).toFixed(5)})`;
+      statusBadge.className = 'location-status-badge success';
+      // อัปเดตแผนที่
+      updateMapPin(parseFloat(match[1]), parseFloat(match[2]), true);
+    }
+  }
+
+  // ซ่อนฟอร์มที่อยู่ใหม่
+  document.getElementById('newAddressSection').style.display = 'none';
+
+  renderSavedAddresses();
+  validateCheckoutForm();
+}
+
+// ปุ่ม "เพิ่มที่อยู่ใหม่"
+document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
+  selectedSavedAddressIndex = -1;
+
+  // รีเซ็ตฟอร์ม
+  document.getElementById('gpsLocationLink').value = '';
+  document.getElementById('checkoutAddressDetails').value = '';
+  document.getElementById('addressLabel').value = '';
+  document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
+  document.getElementById('locationStatus').className = 'location-status-badge';
+
+  // Reset map marker
+  if (mapMarker && mapInstance) {
+    mapInstance.removeLayer(mapMarker);
+    mapMarker = null;
+  }
+  const instructionOverlay = document.getElementById('mapInstructionOverlay');
+  if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+
+  // แสดงฟอร์มที่อยู่ใหม่
+  document.getElementById('newAddressSection').style.display = 'block';
+
+  renderSavedAddresses();
+  validateCheckoutForm();
+
+  // Init map
+  setTimeout(() => { initMapPicker(); }, 450);
+});
+
 function openCheckoutModal() {
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   document.getElementById('checkoutTotalText').textContent = `฿${totalAmount}`;
@@ -634,21 +809,31 @@ function openCheckoutModal() {
   document.getElementById('gpsLocationLink').value = '';
   document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
   document.getElementById('locationStatus').className = 'location-status-badge';
+  document.getElementById('checkoutAddressDetails').value = '';
+
+  // Reset address label + checkbox
+  const addressLabelInput = document.getElementById('addressLabel');
+  if (addressLabelInput) addressLabelInput.value = '';
+  const chkSave = document.getElementById('chkSaveAddress');
+  if (chkSave) chkSave.checked = true;
 
   // Reset map marker
   if (mapMarker && mapInstance) {
     mapInstance.removeLayer(mapMarker);
     mapMarker = null;
   }
-  // แสดงข้อความคำแนะนำบนแผนที่อีกครั้ง
   const instructionOverlay = document.getElementById('mapInstructionOverlay');
   if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+
+  // โหลดที่อยู่ที่บันทึกไว้
+  selectedSavedAddressIndex = -1;
+  renderSavedAddresses();
 
   validateCheckoutForm();
 
   checkoutModal.classList.add('show');
 
-  // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ (ต้องรอ transition จบ)
+  // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ
   setTimeout(() => {
     initMapPicker();
   }, 450);
@@ -1231,6 +1416,18 @@ if (btnSubmitOrder) {
         });
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
       } catch (e) { }
+
+      // บันทึกที่อยู่ใหม่ (ถ้าเลือก checkbox บันทึก + ไม่ได้ใช้ที่อยู่เดิม)
+      const chkSave = document.getElementById('chkSaveAddress');
+      if (chkSave && chkSave.checked && selectedSavedAddressIndex === -1 && gpsLocation) {
+        const addressLabelInput = document.getElementById('addressLabel');
+        const label = (addressLabelInput ? addressLabelInput.value.trim() : '') || 'ที่อยู่ของฉัน';
+        addSavedAddress({
+          label: label,
+          gpsLocation: gpsLocation,
+          addressDetails: addressDetails
+        });
+      }
 
       // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
       alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}`);

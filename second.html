@@ -171,8 +171,23 @@
           </div>
         </div>
 
-        <!-- Location Geolocation Pinning Section -->
-        <div class="checkout-section">
+        <!-- Saved Addresses Section -->
+        <div class="checkout-section" id="savedAddressesSection" style="display: none;">
+          <h3>🏠 เลือกที่อยู่ที่บันทึกไว้</h3>
+          <div id="savedAddressList" class="saved-address-list">
+            <!-- Saved addresses will be injected here -->
+          </div>
+          <button type="button" class="btn-add-new-address" id="btnUseNewAddress">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            เพิ่มที่อยู่ใหม่
+          </button>
+        </div>
+
+        <!-- Location Geolocation Pinning Section (New Address) -->
+        <div class="checkout-section" id="newAddressSection">
           <h3>📍 ที่อยู่สำหรับจัดส่ง</h3>
           <p class="section-tip">กดปุ่ม GPS หรือแตะบนแผนที่เพื่อปักหมุดตำแหน่งจัดส่ง</p>
           <button type="button" class="btn-location-gps" id="btnGetLocation">
@@ -198,6 +213,16 @@
             <label for="checkoutAddressDetails">รายละเอียดที่อยู่เพิ่มเติม</label>
             <textarea id="checkoutAddressDetails" placeholder="ระบุเลขที่บ้าน, ชั้น, อาคาร, ซอย, ถนน หรือจุดสังเกต..." rows="3"></textarea>
           </div>
+
+          <div class="form-group">
+            <label for="addressLabel">ตั้งชื่อที่อยู่นี้ (เพื่อใช้ครั้งหน้า)</label>
+            <input type="text" id="addressLabel" placeholder="เช่น บ้าน, ที่ทำงาน, คอนโด..." />
+          </div>
+
+          <label class="checkbox-save-address">
+            <input type="checkbox" id="chkSaveAddress" checked />
+            <span>💾 บันทึกที่อยู่นี้สำหรับการสั่งซื้อครั้งถัดไป</span>
+          </label>
         </div>
 
         <!-- Payment Method Selection -->

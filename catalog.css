@@ -1062,3 +1062,161 @@ body {
 .map-picker-container .leaflet-bottom {
   z-index: 500;
 }
+
+/* === Saved Addresses === */
+.saved-address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.saved-address-card {
+  position: relative;
+  background: var(--bg-color);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 40px 12px 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+}
+
+.saved-address-card:hover {
+  border-color: var(--primary-color);
+  background: rgba(56, 139, 194, 0.04);
+}
+
+.saved-address-card.selected {
+  border-color: var(--primary-color);
+  background: rgba(56, 139, 194, 0.08);
+  box-shadow: 0 0 0 3px rgba(56, 139, 194, 0.15);
+}
+
+.saved-address-card .address-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saved-address-card .address-label .address-icon {
+  font-size: 1.1rem;
+}
+
+.saved-address-card .address-detail {
+  font-size: 0.82rem;
+  color: var(--text-light);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.saved-address-card .address-gps {
+  font-size: 0.75rem;
+  color: var(--primary-color);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.saved-address-card .btn-delete-address {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.saved-address-card .btn-delete-address:hover {
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.08);
+}
+
+.saved-address-card .address-check {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.saved-address-card.selected .address-check {
+  display: flex;
+}
+
+.saved-address-card.selected .btn-delete-address {
+  display: none;
+}
+
+.btn-add-new-address {
+  background: transparent;
+  border: 1.5px dashed var(--primary-color);
+  color: var(--primary-color);
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-add-new-address:hover {
+  background: rgba(56, 139, 194, 0.06);
+}
+
+.checkbox-save-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(56, 139, 194, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(56, 139, 194, 0.12);
+  transition: background 0.2s ease;
+}
+
+.checkbox-save-address:hover {
+  background: rgba(56, 139, 194, 0.1);
+}
+
+.checkbox-save-address input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+.checkbox-save-address span {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
