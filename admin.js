@@ -238,25 +238,69 @@ function renderOrders() {
     let statusClass = 'status-pending';
     let statusIcon = '⏳';
 
-    if (order.status === 'รอชำระเงิน') {
-      statusClass = 'status-payment';
-      statusIcon = '💳';
-    } else if (order.status === 'กำลังจัดส่ง') {
-      statusClass = 'status-shipping';
-      statusIcon = '🚚';
-    } else if (order.status === 'ยืนยันแล้ว') {
-      statusClass = 'status-confirmed';
-      statusIcon = '✅';
-    } else if (order.status === 'ยกเลิก') {
-      statusClass = 'status-cancelled';
-      statusIcon = '❌';
-    }
+function getStatusMeta(status) {
+  const s = (status || '').trim();
+  if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
+    return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+  } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
+    return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
+  } else if (s === 'เตรียมออเดอร์') {
+    return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '👨‍🍳' };
+  } else if (s === 'เตรียมจัดส่ง') {
+    return { name: 'เตรียมจัดส่ง', class: 'status-ready-to-ship', icon: '🛍️' };
+  } else if (s === 'กำลังจัดส่ง') {
+    return { name: 'กำลังจัดส่ง', class: 'status-shipping', icon: '🚚' };
+  } else if (s === 'จัดส่งสำเร็จ' || s === 'ยืนยันแล้ว') {
+    return { name: 'จัดส่งสำเร็จ', class: 'status-completed', icon: '✅' };
+  } else if (s === 'ยกเลิก') {
+    return { name: 'ยกเลิก', class: 'status-cancelled', icon: '❌' };
+  }
+  return { name: s || 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+}
 
-    // Payment Method Badge Class
+function renderOrders() {
+  const tbody = document.getElementById('ordersBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const filtered = allOrders.filter(order => {
+    const meta = getStatusMeta(order.status);
+    let statusMatch = (activeFilter === 'all');
+    if (!statusMatch) {
+      if (activeFilter === meta.name) statusMatch = true;
+      else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
+      else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
+      else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
+      else statusMatch = (order.status === activeFilter);
+    }
+    const searchMatch = !searchQuery ||
+      (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
+      (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
+      (order.phone && order.phone.includes(searchQuery)) ||
+      (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery)) ||
+      (meta.name.toLowerCase().includes(searchQuery));
+    return statusMatch && searchMatch;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+          <p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach(order => {
+    const tr = document.createElement('tr');
+    const meta = getStatusMeta(order.status);
+
     const isTransfer = order.paymentMethod === 'โอนจ่าย';
     const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
 
-    // Format Date
     let dateStr = order.timestamp || '-';
     try {
       if (order.timestamp) {
@@ -277,7 +321,7 @@ function renderOrders() {
           ${unreadDot}
           <div>
             <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
-            <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
+            <div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap;">
               <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
               ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
             </div>
@@ -290,7 +334,7 @@ function renderOrders() {
         <div style="font-size: 12px; color: var(--text-muted);">${cleanPhone}</div>
       </td>
       <td><strong style="font-size: 15px; color: #1e293b;">฿${Number(order.totalPrice || 0).toLocaleString()}</strong></td>
-      <td><span class="status-badge ${statusClass}">${statusIcon} ${order.status}</span></td>
+      <td><span class="status-badge ${meta.class}">${meta.icon} ${meta.name}</span></td>
       <td style="text-align: right;">
         <button class="btn-view" onclick="viewOrder('${order.orderId}')">📋 ดูรายละเอียด</button>
       </td>
@@ -300,24 +344,27 @@ function renderOrders() {
 }
 
 function updateStats() {
-  let pendingCount = 0;
+  let checkingCount = 0;
   let paymentCount = 0;
+  let preparingCount = 0;
+  let readyToShipCount = 0;
   let shippingCount = 0;
-  let confirmedCount = 0;
+  let completedCount = 0;
   let cancelledCount = 0;
   let totalSales = 0;
   let unreadCount = 0;
 
   allOrders.forEach(o => {
-    if (o.status === 'รอตรวจสอบ') pendingCount++;
-    else if (o.status === 'รอชำระเงิน') paymentCount++;
-    else if (o.status === 'กำลังจัดส่ง') shippingCount++;
-    else if (o.status === 'ยืนยันแล้ว') confirmedCount++;
-    else if (o.status === 'ยกเลิก') cancelledCount++;
-
-    if (o.status === 'ยืนยันแล้ว' || o.status === 'กำลังจัดส่ง') {
+    const meta = getStatusMeta(o.status);
+    if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+    else if (meta.name === 'ชำระเงิน') paymentCount++;
+    else if (meta.name === 'เตรียมออเดอร์') preparingCount++;
+    else if (meta.name === 'เตรียมจัดส่ง') readyToShipCount++;
+    else if (meta.name === 'กำลังจัดส่ง') shippingCount++;
+    else if (meta.name === 'จัดส่งสำเร็จ') {
+      completedCount++;
       totalSales += Number(o.totalPrice || 0);
-    }
+    } else if (meta.name === 'ยกเลิก') cancelledCount++;
 
     if (o.orderId && !readOrderIds.includes(o.orderId)) {
       unreadCount++;
@@ -330,9 +377,9 @@ function updateStats() {
   const elConfirmed = document.getElementById('stat-confirmed');
   const elSales = document.getElementById('stat-sales');
 
-  if (elPending) elPending.textContent = pendingCount;
+  if (elPending) elPending.textContent = checkingCount;
   if (elPayment) elPayment.textContent = paymentCount;
-  if (elConfirmed) elConfirmed.textContent = shippingCount + confirmedCount;
+  if (elConfirmed) elConfirmed.textContent = shippingCount + completedCount;
   if (elSales) elSales.textContent = `฿${totalSales.toLocaleString()}`;
 
   // Filter Tab Badges
@@ -438,40 +485,46 @@ function renderModalActions(order) {
     `;
     actionsDiv.style.display = 'flex';
   } else {
-    // Standard view mode buttons
     let buttonsHtml = '';
-    
-    // Add Edit Order button if order is editable
+    const isEditable = order.status !== 'จัดส่งสำเร็จ' && order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
     if (isEditable) {
       buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
     }
 
-    if (order.status === 'รอตรวจสอบ') {
-      if (order.paymentMethod === 'โอนจ่าย') {
-        buttonsHtml += `
-          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('รอชำระเงิน')">✅ ยืนยันคำสั่งซื้อพร้อมส่ง QR Code</button>
-          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
-        `;
-      } else { // ปลายทาง
-        buttonsHtml += `
-          <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">✅ ยืนยันคำสั่งซื้อปลายทาง</button>
-          <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
-        `;
-      }
-    } else if (order.status === 'รอชำระเงิน' && order.paymentMethod === 'โอนจ่าย') {
-      buttonsHtml += `
-        <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">📦 ตรวจสอบยอดแล้ว เตรียมส่งสินค้า</button>
-        <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
-      `;
-    } else if (order.status === 'กำลังจัดส่ง') {
-      buttonsHtml += `
-        <button id="btnConfirmOrder" class="btn-success" onclick="updateStatus('ยืนยันแล้ว')">🎉 จัดส่งเรียบร้อย / ทำรายการสำเร็จ</button>
-        <button id="btnCancelOrder" class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิก</button>
-      `;
-    }
+    const isCod = order.paymentMethod !== 'โอนจ่าย';
+    const statuses = isCod ? [
+      { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
+      { val: 'เตรียมออเดอร์', label: '👨‍🍳 2. เตรียมออเดอร์' },
+      { val: 'เตรียมจัดส่ง', label: '🛍️ 3. เตรียมจัดส่ง' },
+      { val: 'กำลังจัดส่ง', label: '🚚 4. กำลังจัดส่ง' },
+      { val: 'จัดส่งสำเร็จ', label: '✅ 5. จัดส่งสำเร็จ' },
+      { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
+    ] : [
+      { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
+      { val: 'ชำระเงิน', label: '💳 2. ชำระเงิน (ส่ง QR)' },
+      { val: 'เตรียมออเดอร์', label: '👨‍🍳 3. เตรียมออเดอร์' },
+      { val: 'เตรียมจัดส่ง', label: '🛍️ 4. เตรียมจัดส่ง' },
+      { val: 'กำลังจัดส่ง', label: '🚚 5. กำลังจัดส่ง' },
+      { val: 'จัดส่งสำเร็จ', label: '✅ 6. จัดส่งสำเร็จ' },
+      { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
+    ];
+
+    const currentMeta = getStatusMeta(order.status);
+    let optionsHtml = statuses.map(s => `
+      <option value="${s.val}" ${currentMeta.name === s.val ? 'selected' : ''}>${s.label}</option>
+    `).join('');
+
+    buttonsHtml += `
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <label style="font-weight: 600; font-size: 13px;">เปลี่ยนสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
+        <select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">
+          ${optionsHtml}
+        </select>
+      </div>
+    `;
 
     actionsDiv.innerHTML = buttonsHtml;
-    actionsDiv.style.display = buttonsHtml ? 'flex' : 'none';
+    actionsDiv.style.display = 'flex';
   }
 }
 

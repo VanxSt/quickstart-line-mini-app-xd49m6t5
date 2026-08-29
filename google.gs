@@ -718,13 +718,7 @@ function updateOrderStatusNative(orderId, newStatus) {
       try {
         var messages = [];
         
-        if (newStatus === "กำลังจัดส่ง" && paymentMethod === "ปลายทาง") {
-           messages.push({
-             "type": "text",
-             "text": "📦 ออเดอร์ " + orderId + " ของคุณได้รับการยืนยันแล้ว!\nขณะนี้ร้านกำลังเตรียมสินค้าและจัดส่งให้คุณ (ชำระเงินปลายทาง)\nขอบคุณที่อุดหนุนครับ 😊"
-           });
-        } 
-        else if (newStatus === "รอชำระเงิน" && paymentMethod === "โอนจ่าย") {
+        if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && paymentMethod === "โอนจ่าย") {
            messages.push({
              "type": "text",
              "text": "แอดมินยืนยันออเดอร์แล้วครับ\nโอนเงินแล้วส่งสลิปได้เลยนะครับ!"
@@ -737,16 +731,28 @@ function updateOrderStatusNative(orderId, newStatus) {
              "previewImageUrl": staticQrUrl
            });
         }
-        else if (newStatus === "กำลังจัดส่ง" && paymentMethod === "โอนจ่าย") {
+        else if (newStatus === "เตรียมออเดอร์") {
            messages.push({
              "type": "text",
-             "text": "📦 แอดมินตรวจสอบยอดเงินเรียบร้อยแล้ว!\nขณะนี้ร้านกำลังเตรียมสินค้าและจัดส่งให้คุณสำหรับออเดอร์ " + orderId + "\nขอบคุณที่อุดหนุนครับ 😊"
+             "text": "👨‍🍳 ออเดอร์ " + orderId + " ของคุณอยู่ในขั้นตอนจัดเตรียมออเดอร์เรียบร้อยแล้วครับ!"
            });
         }
-        else if (newStatus === "ยืนยันแล้ว") {
+        else if (newStatus === "เตรียมจัดส่ง") {
            messages.push({
              "type": "text",
-             "text": "🎉 ออเดอร์ " + orderId + " จัดส่งเรียบร้อยแล้ว!\nขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰"
+             "text": "🛍️ ออเดอร์ " + orderId + " เตรียมจัดส่งสินค้าเรียบร้อยแล้วครับ!"
+           });
+        }
+        else if (newStatus === "กำลังจัดส่ง") {
+           messages.push({
+             "type": "text",
+             "text": "🚚 ออเดอร์ " + orderId + " กำลังจัดส่งสินค้าให้คุณแล้วครับ!\nขอบคุณที่อุดหนุนครับ 😊"
+           });
+        }
+        else if (newStatus === "จัดส่งสำเร็จ" || newStatus === "ยืนยันแล้ว") {
+           messages.push({
+             "type": "text",
+             "text": "🎉 ออเดอร์ " + orderId + " จัดส่งสำเร็จเรียบร้อยแล้ว!\nขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰"
            });
         }
         else if (newStatus === "ยกเลิก") {

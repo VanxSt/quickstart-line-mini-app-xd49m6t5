@@ -969,21 +969,36 @@ function closeCheckoutModal() {
 }
 
 function validateCheckoutForm() {
-  const name = document.getElementById('checkoutName').value.trim();
-  const phone = document.getElementById('checkoutPhone').value.trim();
+  const name = document.getElementById('checkoutName')?.value.trim() || '';
+  const phone = document.getElementById('checkoutPhone')?.value.trim() || '';
 
   // ตรวจสอบการสั่งล่วงหน้า
   const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
   let isPreorderValid = true;
   if (deliveryType === 'ล่วงหน้า') {
-    const preorderDate = document.getElementById('preorderDate').value;
-    const preorderTime = document.getElementById('preorderTime').value;
+    const preorderDate = document.getElementById('preorderDate')?.value || '';
+    const preorderTime = document.getElementById('preorderTime')?.value || '';
     isPreorderValid = preorderDate !== "" && preorderTime !== null && preorderTime !== "";
   }
 
-  // Valid if Name and Phone are filled, and if preorder, date and time are selected
-  const isValid = name !== "" && phone !== "" && isPreorderValid;
-  btnSubmitOrder.disabled = !isValid;
+  // ตรวจสอบข้อมูลจัดส่งกรณีเลือก "จัดส่งตามที่อยู่"
+  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+  let isShippingValid = true;
+  if (shippingOption === 'จัดส่ง') {
+    const addressDetails = document.getElementById('checkoutAddressDetails')?.value.trim() || '';
+    const addressLabel = document.getElementById('addressLabel')?.value.trim() || '';
+
+    if (typeof selectedSavedAddressIndex !== 'undefined' && selectedSavedAddressIndex !== -1) {
+      isShippingValid = addressDetails !== "";
+    } else {
+      // บังคับกรอกทั้ง รายละเอียดที่อยู่ และ ตั้งชื่อที่อยู่
+      isShippingValid = addressDetails !== "" && addressLabel !== "";
+    }
+  }
+
+  // Valid if Name, Phone, Shipping details, and Preorder (if any) are valid
+  const isValid = name !== "" && phone !== "" && isPreorderValid && isShippingValid;
+  if (btnSubmitOrder) btnSubmitOrder.disabled = !isValid;
 }
 
 async function fetchMemberInfo(userId) {
@@ -1563,6 +1578,8 @@ document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
 if (checkoutName) checkoutName.addEventListener('input', validateCheckoutForm);
 if (checkoutPhone) checkoutPhone.addEventListener('input', validateCheckoutForm);
 if (checkoutAddressDetails) checkoutAddressDetails.addEventListener('input', validateCheckoutForm);
+const addressLabelEl = document.getElementById('addressLabel');
+if (addressLabelEl) addressLabelEl.addEventListener('input', validateCheckoutForm);
 if (preorderDateInput) preorderDateInput.addEventListener('change', validateCheckoutForm);
 if (preorderTimeSelect) preorderTimeSelect.addEventListener('change', validateCheckoutForm);
 

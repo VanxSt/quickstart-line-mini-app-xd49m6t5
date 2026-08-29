@@ -338,17 +338,32 @@
       color: #b45309;
     }
 
+    .status-pending, .status-checking {
+      background-color: #fef3c7;
+      color: #b45309;
+    }
+
     .status-payment {
       background-color: #e0f2fe;
       color: #0369a1;
     }
 
-    .status-shipping {
+    .status-preparing {
+      background-color: #f3e8ff;
+      color: #6b21a8;
+    }
+
+    .status-ready-to-ship {
       background-color: #e0e7ff;
       color: #4338ca;
     }
 
-    .status-confirmed {
+    .status-shipping {
+      background-color: #cff4fc;
+      color: #055160;
+    }
+
+    .status-confirmed, .status-completed {
       background-color: #dcfce7;
       color: #15803d;
     }
@@ -359,11 +374,14 @@
     }
 
     .pay-badge {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13.5px;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      line-height: 1.3;
     }
 
     .pay-badge.transfer {
@@ -940,28 +958,28 @@
           <div class="stat-card pending">
             <div class="stat-icon">⏳</div>
             <div class="stat-info">
-              <h3>รอตรวจสอบ</h3>
+              <h3>กำลังตรวจสอบ</h3>
               <p id="stat-pending">0</p>
             </div>
           </div>
           <div class="stat-card payment">
             <div class="stat-icon">💳</div>
             <div class="stat-info">
-              <h3>รอชำระเงิน</h3>
+              <h3>ชำระเงิน</h3>
               <p id="stat-payment">0</p>
             </div>
           </div>
           <div class="stat-card shipping">
             <div class="stat-icon">🚚</div>
             <div class="stat-info">
-              <h3>กำลังจัดส่ง / ยืนยัน</h3>
+              <h3>กำลังจัดส่ง / สำเร็จ</h3>
               <p id="stat-confirmed">0</p>
             </div>
           </div>
           <div class="stat-card sales">
             <div class="stat-icon">💰</div>
             <div class="stat-info">
-              <h3>ยอดขายรวม (ยืนยัน)</h3>
+              <h3>ยอดขายรวม (สำเร็จ)</h3>
               <p id="stat-sales">฿0</p>
             </div>
           </div>
@@ -973,13 +991,17 @@
             <div class="filter-tabs" id="filterTabs">
               <button class="tab-btn active" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count"
                   id="count-all">0</span></button>
-              <button class="tab-btn" onclick="setFilter('รอตรวจสอบ', this)">⏳ รอตรวจสอบ <span class="tab-count"
+              <button class="tab-btn" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span class="tab-count"
                   id="count-pending">0</span></button>
-              <button class="tab-btn" onclick="setFilter('รอชำระเงิน', this)">💳 รอชำระเงิน <span class="tab-count"
+              <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
+              <button class="tab-btn" onclick="setFilter('เตรียมออเดอร์', this)">👨‍🍳 เตรียมออเดอร์ <span class="tab-count"
+                  id="count-preparing">0</span></button>
+              <button class="tab-btn" onclick="setFilter('เตรียมจัดส่ง', this)">🛍️ เตรียมจัดส่ง <span class="tab-count"
+                  id="count-ready-to-ship">0</span></button>
               <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count"
                   id="count-shipping">0</span></button>
-              <button class="tab-btn" onclick="setFilter('ยืนยันแล้ว', this)">✅ ยืนยันแล้ว <span class="tab-count"
+              <button class="tab-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">✅ จัดส่งสำเร็จ <span class="tab-count"
                   id="count-confirmed">0</span></button>
               <button class="tab-btn" onclick="setFilter('ยกเลิก', this)">❌ ยกเลิก <span class="tab-count"
                   id="count-cancelled">0</span></button>
@@ -1354,17 +1376,46 @@
         });
     }
 
+    function getStatusMeta(status) {
+      const s = (status || '').trim();
+      if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
+        return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+      } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
+        return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
+      } else if (s === 'เตรียมออเดอร์') {
+        return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '👨‍🍳' };
+      } else if (s === 'เตรียมจัดส่ง') {
+        return { name: 'เตรียมจัดส่ง', class: 'status-ready-to-ship', icon: '🛍️' };
+      } else if (s === 'กำลังจัดส่ง') {
+        return { name: 'กำลังจัดส่ง', class: 'status-shipping', icon: '🚚' };
+      } else if (s === 'จัดส่งสำเร็จ' || s === 'ยืนยันแล้ว') {
+        return { name: 'จัดส่งสำเร็จ', class: 'status-completed', icon: '✅' };
+      } else if (s === 'ยกเลิก') {
+        return { name: 'ยกเลิก', class: 'status-cancelled', icon: '❌' };
+      }
+      return { name: s || 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+    }
+
     function renderOrders() {
       const tbody = document.getElementById('ordersBody');
       tbody.innerHTML = '';
 
       const filtered = allOrders.filter(order => {
-        const statusMatch = (activeFilter === 'all') || (order.status === activeFilter);
+        const meta = getStatusMeta(order.status);
+        let statusMatch = (activeFilter === 'all');
+        if (!statusMatch) {
+          if (activeFilter === meta.name) statusMatch = true;
+          else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
+          else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
+          else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
+          else statusMatch = (order.status === activeFilter);
+        }
         const searchMatch = !searchQuery ||
           (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
           (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
           (order.phone && order.phone.includes(searchQuery)) ||
-          (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery));
+          (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery)) ||
+          (meta.name.toLowerCase().includes(searchQuery));
         return statusMatch && searchMatch;
       });
 
@@ -1382,32 +1433,26 @@
 
       filtered.forEach(order => {
         const tr = document.createElement('tr');
-
-        let statusClass = 'status-pending';
-        let statusIcon = '⏳';
-
-        if (order.status === 'รอชำระเงิน') {
-          statusClass = 'status-payment'; statusIcon = '💳';
-        } else if (order.status === 'กำลังจัดส่ง') {
-          statusClass = 'status-shipping'; statusIcon = '🚚';
-        } else if (order.status === 'ยืนยันแล้ว') {
-          statusClass = 'status-confirmed'; statusIcon = '✅';
-        } else if (order.status === 'ยกเลิก') {
-          statusClass = 'status-cancelled'; statusIcon = '❌';
-        }
+        const meta = getStatusMeta(order.status);
 
         const dateStr = order.timestamp ? new Date(order.timestamp).toLocaleString('th-TH') : '-';
         const cleanPhone = (order.phone || '').replace(/'/g, "");
         const isUnread = !readOrderIds.includes(order.orderId);
         const unreadDot = isUnread ? `<span class="unread-badge" title="ยังไม่ได้เปิดดู"></span>` : '';
 
+        const isTransfer = order.paymentMethod === 'โอนจ่าย';
+        const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+
         tr.innerHTML = `
           <td>
             <div style="display: flex; align-items: center;">
               ${unreadDot}
               <div>
-                <div style="font-weight: 600; color: var(--text-main);">${order.orderId || '-'}</div>
-                <div style="font-size: 12px; color: var(--text-muted);">${order.paymentMethod || 'ปลายทาง'} • ${order.shippingOption || 'จัดส่ง'}</div>
+                <strong style="color: var(--primary); font-size: 14px;">${order.orderId || '-'}</strong>
+                <div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
+                  ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
+                </div>
               </div>
             </div>
           </td>
@@ -1418,8 +1463,8 @@
           </td>
           <td style="font-weight: 600; color: var(--text-main);">฿${Number(order.totalPrice || 0).toLocaleString()}</td>
           <td>
-            <span class="status-badge ${statusClass}">
-              ${statusIcon} ${order.status || 'รอตรวจสอบ'}
+            <span class="status-badge ${meta.class}">
+              ${meta.icon} ${meta.name}
             </span>
           </td>
           <td>
@@ -1431,41 +1476,46 @@
     }
 
     function updateStats() {
-      let pendingCount = 0;
+      let checkingCount = 0;
       let paymentCount = 0;
+      let preparingCount = 0;
+      let readyToShipCount = 0;
       let shippingCount = 0;
-      let confirmedCount = 0;
+      let completedCount = 0;
       let cancelledCount = 0;
       let totalSales = 0;
-
       let unreadCount = 0;
 
       allOrders.forEach(o => {
-        const s = o.status || 'รอตรวจสอบ';
-        if (s === 'รอตรวจสอบ') pendingCount++;
-        else if (s === 'รอชำระเงิน') paymentCount++;
-        else if (s === 'กำลังจัดส่ง') shippingCount++;
-        else if (s === 'ยืนยันแล้ว') {
-          confirmedCount++;
+        const meta = getStatusMeta(o.status);
+        if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+        else if (meta.name === 'ชำระเงิน') paymentCount++;
+        else if (meta.name === 'เตรียมออเดอร์') preparingCount++;
+        else if (meta.name === 'เตรียมจัดส่ง') readyToShipCount++;
+        else if (meta.name === 'กำลังจัดส่ง') shippingCount++;
+        else if (meta.name === 'จัดส่งสำเร็จ') {
+          completedCount++;
           totalSales += Number(o.totalPrice || 0);
-        } else if (s === 'ยกเลิก') cancelledCount++;
+        } else if (meta.name === 'ยกเลิก') cancelledCount++;
 
         if (o.orderId && !readOrderIds.includes(o.orderId)) {
           unreadCount++;
         }
       });
 
-      document.getElementById('stat-pending').textContent = pendingCount;
-      document.getElementById('stat-payment').textContent = paymentCount;
-      document.getElementById('stat-confirmed').textContent = shippingCount + confirmedCount;
-      document.getElementById('stat-sales').textContent = `฿${totalSales.toLocaleString()}`;
+      if (document.getElementById('stat-pending')) document.getElementById('stat-pending').textContent = checkingCount;
+      if (document.getElementById('stat-payment')) document.getElementById('stat-payment').textContent = paymentCount;
+      if (document.getElementById('stat-confirmed')) document.getElementById('stat-confirmed').textContent = shippingCount + completedCount;
+      if (document.getElementById('stat-sales')) document.getElementById('stat-sales').textContent = `฿${totalSales.toLocaleString()}`;
 
-      document.getElementById('count-all').textContent = allOrders.length;
-      document.getElementById('count-pending').textContent = pendingCount;
-      document.getElementById('count-payment').textContent = paymentCount;
-      document.getElementById('count-shipping').textContent = shippingCount;
-      document.getElementById('count-confirmed').textContent = confirmedCount;
-      document.getElementById('count-cancelled').textContent = cancelledCount;
+      if (document.getElementById('count-all')) document.getElementById('count-all').textContent = allOrders.length;
+      if (document.getElementById('count-pending')) document.getElementById('count-pending').textContent = checkingCount;
+      if (document.getElementById('count-payment')) document.getElementById('count-payment').textContent = paymentCount;
+      if (document.getElementById('count-preparing')) document.getElementById('count-preparing').textContent = preparingCount;
+      if (document.getElementById('count-ready-to-ship')) document.getElementById('count-ready-to-ship').textContent = readyToShipCount;
+      if (document.getElementById('count-shipping')) document.getElementById('count-shipping').textContent = shippingCount;
+      if (document.getElementById('count-confirmed')) document.getElementById('count-confirmed').textContent = completedCount;
+      if (document.getElementById('count-cancelled')) document.getElementById('count-cancelled').textContent = cancelledCount;
 
       const navBadge = document.getElementById('navUnreadBadge');
       if (navBadge) {
@@ -1475,6 +1525,61 @@
         } else {
           navBadge.style.display = 'none';
         }
+      }
+    }
+
+    function renderModalActions(order) {
+      const actionsDiv = document.getElementById('modalActions');
+      if (!actionsDiv) return;
+      actionsDiv.innerHTML = '';
+
+      if (isModalEditMode) {
+        actionsDiv.innerHTML = `
+          <button id="btnSaveEditOrder" class="btn-success" onclick="saveOrderChanges()">💾 บันทึกการแก้ไข & แจ้งลูกค้า</button>
+          <button id="btnCancelEditOrder" class="btn-secondary" onclick="toggleModalEditMode()">↩️ ยกเลิกการแก้ไข</button>
+        `;
+        actionsDiv.style.display = 'flex';
+      } else {
+        let buttonsHtml = '';
+        const isEditable = order.status !== 'จัดส่งสำเร็จ' && order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
+        if (isEditable) {
+          buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
+        }
+
+        const isCod = order.paymentMethod !== 'โอนจ่าย';
+        const statuses = isCod ? [
+          { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
+          { val: 'เตรียมออเดอร์', label: '👨‍🍳 2. เตรียมออเดอร์' },
+          { val: 'เตรียมจัดส่ง', label: '🛍️ 3. เตรียมจัดส่ง' },
+          { val: 'กำลังจัดส่ง', label: '🚚 4. กำลังจัดส่ง' },
+          { val: 'จัดส่งสำเร็จ', label: '✅ 5. จัดส่งสำเร็จ' },
+          { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
+        ] : [
+          { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
+          { val: 'ชำระเงิน', label: '💳 2. ชำระเงิน (ส่ง QR)' },
+          { val: 'เตรียมออเดอร์', label: '👨‍🍳 3. เตรียมออเดอร์' },
+          { val: 'เตรียมจัดส่ง', label: '🛍️ 4. เตรียมจัดส่ง' },
+          { val: 'กำลังจัดส่ง', label: '🚚 5. กำลังจัดส่ง' },
+          { val: 'จัดส่งสำเร็จ', label: '✅ 6. จัดส่งสำเร็จ' },
+          { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
+        ];
+
+        const currentMeta = getStatusMeta(order.status);
+        let optionsHtml = statuses.map(s => `
+          <option value="${s.val}" ${currentMeta.name === s.val ? 'selected' : ''}>${s.label}</option>
+        `).join('');
+
+        buttonsHtml += `
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label style="font-weight: 600; font-size: 13px;">เปลี่ยนสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
+            <select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">
+              ${optionsHtml}
+            </select>
+          </div>
+        `;
+
+        actionsDiv.innerHTML = buttonsHtml;
+        actionsDiv.style.display = 'flex';
       }
     }
 
