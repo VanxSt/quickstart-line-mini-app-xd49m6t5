@@ -674,54 +674,51 @@ function addSavedAddress(address) {
   }
 }
 
-function deleteSavedAddress(index) {
+async function deleteSavedAddress(index) {
+  const confirmDelete = confirm("⚠️ คุณต้องการลบที่อยู่นี้ใช่หรือไม่?");
+  if (!confirmDelete) return false;
+
   const addresses = getSavedAddresses();
   addresses.splice(index, 1);
   saveSavedAddresses(addresses);
-}
 
-function toggleShippingFields() {
-  const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
-  const savedAddressesSection = document.getElementById('savedAddressesSection');
-  const newAddressSection = document.getElementById('newAddressSection');
-  
-  if (shippingOption === 'รับหน้าร้าน') {
-    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-    if (newAddressSection) newAddressSection.style.display = 'none';
-  } else {
-    const savedAddresses = getSavedAddresses();
-    if (savedAddresses.length > 0 && selectedSavedAddressIndex !== -1) {
-      if (savedAddressesSection) savedAddressesSection.style.display = 'block';
-      if (newAddressSection) newAddressSection.style.display = 'none';
-    } else {
-      if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-      if (newAddressSection) newAddressSection.style.display = 'block';
-    }
+  let userId = 'web-test-user';
+  if (typeof liff !== 'undefined' && liff && liff.isLoggedIn()) {
+    try {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    } catch (e) {}
   }
-  validateCheckoutForm();
-}
-
-function getAddressIcon(label) {
-  const l = (label || '').toLowerCase();
-  if (l.includes('บ้าน') || l.includes('home')) return '🏠';
-  if (l.includes('ทำงาน') || l.includes('ออฟฟิศ') || l.includes('work') || l.includes('office')) return '🏢';
-  if (l.includes('คอนโด') || l.includes('condo') || l.includes('หอ')) return '🏬';
-  return '📍';
+  try {
+    const payload = {
+      action: 'updateSavedAddresses',
+      userId: userId,
+      savedAddresses: JSON.stringify(addresses)
+    };
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {}
+  return true;
 }
 
 window.selectSavedAddress = function(idx) {
-  selectSavedAddress(idx);
+  selectSavedAddress(Number(idx));
 };
 
 window.handleDeleteSavedAddress = function(e, idx) {
   if (e) e.stopPropagation();
-  deleteSavedAddress(idx).then(deleted => {
+  deleteSavedAddress(Number(idx)).then(deleted => {
     if (deleted) {
-      if (selectedSavedAddressIndex === idx) {
+      const numIdx = Number(idx);
+      if (selectedSavedAddressIndex === numIdx) {
         selectedSavedAddressIndex = -1;
         const newAddressSection = document.getElementById('newAddressSection');
         if (newAddressSection) newAddressSection.style.display = 'block';
-      } else if (selectedSavedAddressIndex > idx) {
+      } else if (selectedSavedAddressIndex > numIdx) {
         selectedSavedAddressIndex--;
       }
       renderSavedAddresses();
@@ -750,8 +747,7 @@ function renderSavedAddresses() {
       const isSelected = selectedSavedAddressIndex === idx;
       const card = document.createElement('div');
       card.className = 'saved-address-card' + (isSelected ? ' selected' : '');
-      card.setAttribute('onclick', `window.selectSavedAddress(${idx})`);
-      
+
       let coordsText = '';
       if (addr.gpsLocation) {
         const coords = parseCoords(addr.gpsLocation);
@@ -765,7 +761,7 @@ function renderSavedAddresses() {
         </div>
         <div class="address-detail">${addr.addressDetails || '-'}</div>
         ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
-        <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้" onclick="window.handleDeleteSavedAddress(event, ${idx})">
+        <button type="button" class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -773,6 +769,19 @@ function renderSavedAddresses() {
         </button>
         <div class="address-check">${isSelected ? '✓' : ''}</div>
       `;
+
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-delete-address')) return;
+        selectSavedAddress(idx);
+      });
+
+      const delBtn = card.querySelector('.btn-delete-address');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.handleDeleteSavedAddress(e, idx);
+        });
+      }
 
       listEl.appendChild(card);
     });
@@ -786,27 +795,31 @@ function renderSavedAddresses() {
 }
 
 function selectSavedAddress(idx) {
+  const numIdx = Number(idx);
   const addresses = getSavedAddresses();
-  const addr = addresses[idx];
+  const addr = addresses[numIdx];
   if (!addr) return;
 
-  selectedSavedAddressIndex = idx;
+  selectedSavedAddressIndex = numIdx;
 
-  // เติมข้อมูลจากที่อยู่ที่เลือก
-  document.getElementById('gpsLocationLink').value = addr.gpsLocation || '';
-  document.getElementById('checkoutAddressDetails').value = addr.addressDetails || '';
+  const gpsInput = document.getElementById('gpsLocationLink');
+  const detailsInput = document.getElementById('checkoutAddressDetails');
+  if (gpsInput) gpsInput.value = addr.gpsLocation || '';
+  if (detailsInput) detailsInput.value = addr.addressDetails || '';
 
   const statusBadge = document.getElementById('locationStatus');
   const coords = parseCoords(addr.gpsLocation);
   if (coords) {
-    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
-    statusBadge.className = 'location-status-badge success';
-    // อัปเดตแผนที่
+    if (statusBadge) {
+      statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
+      statusBadge.className = 'location-status-badge success';
+    }
     updateMapPin(coords.lat, coords.lng, true);
   } else {
-    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (ไม่มีพิกัดแผนที่)`;
-    statusBadge.className = 'location-status-badge success';
-    // เคลียร์หมุดแผนที่ถ้าไม่มีพิกัด
+    if (statusBadge) {
+      statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (ไม่มีพิกัดแผนที่)`;
+      statusBadge.className = 'location-status-badge success';
+    }
     if (mapMarker && mapInstance) {
       mapInstance.removeLayer(mapMarker);
       mapMarker = null;
@@ -815,8 +828,8 @@ function selectSavedAddress(idx) {
     if (instructionOverlay) instructionOverlay.classList.remove('hidden');
   }
 
-  // ซ่อนฟอร์มที่อยู่ใหม่
-  document.getElementById('newAddressSection').style.display = 'none';
+  const newAddressSection = document.getElementById('newAddressSection');
+  if (newAddressSection) newAddressSection.style.display = 'none';
 
   renderSavedAddresses();
   validateCheckoutForm();

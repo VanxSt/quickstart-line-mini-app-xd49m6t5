@@ -1084,6 +1084,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.saved-address-card * {
+  pointer-events: none;
+}
+
+.saved-address-card .btn-delete-address {
+  pointer-events: auto;
+}
+
 .saved-address-card:hover {
   border-color: var(--primary-color);
   background: rgba(56, 139, 194, 0.03);
