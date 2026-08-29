@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtyxhOgF165ZuOlSdbo2mfCklOCgMX5eANSaUXntinmOnocx9nSiWgY_YfAfXJrzx6/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzA0BChMjMBDvcpkAKegyAUMCH5l20EtvWgzvxtTavWkwy6KgiMhWHJBwropWipQUE/exec';
 
 let PRODUCTS = [];
 
@@ -2121,23 +2121,11 @@ async function loadProducts() {
     } catch (e) { }
   }
 
-  // 2. ถ้ายังไม่มี cache ให้แสดง loading
-  if (!hasValidCache && productsGrid) {
-    productsGrid.innerHTML = `
-      <div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-light);">
-        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block;">
-          <line x1="12" y1="2" x2="12" y2="6"></line>
-          <line x1="12" y1="18" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-          <line x1="2" y1="12" x2="6" y2="12"></line>
-          <line x1="18" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-        </svg>
-        <span>กำลังโหลดเมนูสินค้า...</span>
-      </div>
-    `;
+  // 2. ถ้ายังไม่มี cache ให้ใช้ Mock Products แสดงผลทันที
+  if (!hasValidCache) {
+    PRODUCTS = getMockProducts();
+    initCategoryFilters();
+    renderProducts();
   }
 
   // 3. ดึงข้อมูลใหม่จาก Google Sheets ถ้า cache หมดอายุหรือยังไม่มี
