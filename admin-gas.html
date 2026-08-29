@@ -995,7 +995,7 @@
                   id="count-pending">0</span></button>
               <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
-              <button class="tab-btn" onclick="setFilter('เตรียมออเดอร์', this)">👨‍🍳 เตรียมออเดอร์ <span class="tab-count"
+              <button class="tab-btn" onclick="setFilter('เตรียมออเดอร์', this)">📦 เตรียมออเดอร์ <span class="tab-count"
                   id="count-preparing">0</span></button>
               <button class="tab-btn" onclick="setFilter('เตรียมจัดส่ง', this)">🛍️ เตรียมจัดส่ง <span class="tab-count"
                   id="count-ready-to-ship">0</span></button>
@@ -1383,7 +1383,7 @@
       } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
         return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
       } else if (s === 'เตรียมออเดอร์') {
-        return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '👨‍🍳' };
+        return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '📦' };
       } else if (s === 'เตรียมจัดส่ง') {
         return { name: 'เตรียมจัดส่ง', class: 'status-ready-to-ship', icon: '🛍️' };
       } else if (s === 'กำลังจัดส่ง') {
@@ -1762,7 +1762,7 @@
         let nextStepBtn = '';
         if (isCod) {
           if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
           } else if (normStatus === 'เตรียมออเดอร์') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
           } else if (normStatus === 'เตรียมจัดส่ง') {
@@ -1774,7 +1774,7 @@
           if (normStatus === 'กำลังตรวจสอบออเดอร์') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
           } else if (normStatus === 'ชำระเงิน') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
           } else if (normStatus === 'เตรียมออเดอร์') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
           } else if (normStatus === 'เตรียมจัดส่ง') {

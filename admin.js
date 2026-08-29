@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4fcy31G6OAlBQhNJCQuYFXjXjRv5yNz5c_unvHSqJKeEfsJuXEyi5tRBBazPCnWXu/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWIVonghpM_TgZs4JMbTbGaMfuqpxqy1bbpTZyDqWAevVvFxhuzz3xjTVZ0v5nHzAW/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -278,7 +278,7 @@ function getStatusMeta(status) {
   } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
     return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
   } else if (s === 'เตรียมออเดอร์') {
-    return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '👨‍🍳' };
+    return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '📦' };
   } else if (s === 'เตรียมจัดส่ง') {
     return { name: 'เตรียมจัดส่ง', class: 'status-ready-to-ship', icon: '🛍️' };
   } else if (s === 'กำลังจัดส่ง') {
@@ -532,7 +532,7 @@ function renderModalActions(order) {
     let nextStepBtn = '';
     if (isCod) {
       if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
       } else if (normStatus === 'เตรียมออเดอร์') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
       } else if (normStatus === 'เตรียมจัดส่ง') {
@@ -544,7 +544,7 @@ function renderModalActions(order) {
       if (normStatus === 'กำลังตรวจสอบออเดอร์') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
       } else if (normStatus === 'ชำระเงิน') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">👨‍🍳 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
       } else if (normStatus === 'เตรียมออเดอร์') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
       } else if (normStatus === 'เตรียมจัดส่ง') {
