@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpGmtRnbiNOrpz6z4qt61MsjsWW9DRsKfvUFy8v1HHLG7h2oIW2j51iTe1HmYXC8d4/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKgbF5frJj9ieIFq-lbpe6LQ9-QRhhy3JTs2zMTSs887vP12XONlCtpF4haA7HFZtI/exec';
 
 let PRODUCTS = [];
 
@@ -972,6 +972,32 @@ async function fetchMemberInfo(userId) {
         addressDetails: data.addressDetails || '',
         addressLabel: data.addressLabel || ''
       };
+
+      // ซิงค์ saved addresses จาก Google Sheet ลง LocalStorage เพื่อให้ลูกค้ามีที่อยู่ใช้บนทุกอุปกรณ์
+      if (data.savedAddresses) {
+        try {
+          const remoteSaved = JSON.parse(data.savedAddresses);
+          if (Array.isArray(remoteSaved)) {
+            const localSaved = getSavedAddresses();
+            const merged = [...localSaved];
+            remoteSaved.forEach(remoteAddr => {
+              const isDuplicate = merged.some(localAddr => 
+                localAddr.gpsLocation === remoteAddr.gpsLocation && 
+                localAddr.addressDetails === remoteAddr.addressDetails
+              );
+              if (!isDuplicate) {
+                merged.push(remoteAddr);
+              }
+            });
+            if (merged.length > 5) {
+              merged.splice(5);
+            }
+            localStorage.setItem('saved_addresses', JSON.stringify(merged));
+          }
+        } catch(err) {
+          console.error("Error parsing remote saved addresses:", err);
+        }
+      }
 
       // บันทึก cache ใหม่
       localStorage.setItem('member_info_cache', JSON.stringify({

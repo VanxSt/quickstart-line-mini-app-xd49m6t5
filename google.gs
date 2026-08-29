@@ -119,11 +119,12 @@ function createOrderHandler(ss, data) {
       try {
         var membersSheet = ss.getSheetByName("Members") || ss.getSheets()[0];
         if (membersSheet) {
-          // ตรวจสอบและสร้างหัวข้อตารางคอลัมน์ H, I, J ของชีต Members ถ้ายังไม่มี
-          if (membersSheet.getLastColumn() < 10 || !membersSheet.getRange(1, 10).getValue()) {
+          // ตรวจสอบและสร้างหัวข้อตารางคอลัมน์ H, I, J, K ของชีต Members ถ้ายังไม่มี
+          if (membersSheet.getLastColumn() < 11 || !membersSheet.getRange(1, 11).getValue()) {
             membersSheet.getRange(1, 8).setValue("GPS Location");
             membersSheet.getRange(1, 9).setValue("Address Details");
             membersSheet.getRange(1, 10).setValue("Address Label");
+            membersSheet.getRange(1, 11).setValue("Saved Addresses JSON");
           }
           
           var mValues = membersSheet.getDataRange().getValues();
@@ -147,6 +148,40 @@ function createOrderHandler(ss, data) {
               membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
               // คอลัมน์ 10 (J) = Address Label (ตั้งชื่อที่อยู่)
               membersSheet.getRange(mRow, 10).setValue(addressLabel || "");
+              
+              // คอลัมน์ 11 (K) = Saved Addresses JSON (เก็บสูงสุด 5 ที่อยู่)
+              var savedAddressesStr = membersSheet.getRange(mRow, 11).getValue() || "[]";
+              var savedAddresses = [];
+              try {
+                savedAddresses = JSON.parse(savedAddressesStr);
+              } catch(e) {
+                savedAddresses = [];
+              }
+              if (!Array.isArray(savedAddresses)) {
+                savedAddresses = [];
+              }
+              
+              var isDuplicate = false;
+              for (var s = 0; s < savedAddresses.length; s++) {
+                if (savedAddresses[s].gpsLocation === gpsLocation && savedAddresses[s].addressDetails === addressDetails) {
+                  isDuplicate = true;
+                  savedAddresses[s].label = addressLabel || savedAddresses[s].label || 'ที่อยู่ของฉัน';
+                  break;
+                }
+              }
+              
+              if (!isDuplicate) {
+                savedAddresses.unshift({
+                  label: addressLabel || 'ที่อยู่ของฉัน',
+                  gpsLocation: gpsLocation,
+                  addressDetails: addressDetails
+                });
+                if (savedAddresses.length > 5) {
+                  savedAddresses.pop(); // เก็บสูงสุด 5 ที่อยู่
+                }
+              }
+              
+              membersSheet.getRange(mRow, 11).setValue(JSON.stringify(savedAddresses));
             }
           }
         }
@@ -440,7 +475,8 @@ function doGet(e) {
           phone: values[i][6],
           gpsLocation: values[i][7] || '',
           addressDetails: values[i][8] || '',
-          addressLabel: values[i][9] || ''
+          addressLabel: values[i][9] || '',
+          savedAddresses: values[i][10] || '[]'
         };
         return ContentService.createTextOutput(JSON.stringify(userData))
           .setMimeType(ContentService.MimeType.JSON);
