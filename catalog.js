@@ -865,12 +865,17 @@ document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
 });
 
 function openCheckoutModal() {
+  if (!checkoutModal) return;
+
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  document.getElementById('checkoutTotalText').textContent = `฿${totalAmount}`;
+  const checkoutTotalText = document.getElementById('checkoutTotalText');
+  if (checkoutTotalText) checkoutTotalText.textContent = `฿${totalAmount}`;
 
   // Prefill default info from member profile
-  document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
-  document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
+  const nameInput = document.getElementById('checkoutName');
+  const phoneInput = document.getElementById('checkoutPhone');
+  if (nameInput) nameInput.value = currentMemberInfo.displayName || '';
+  if (phoneInput) phoneInput.value = currentMemberInfo.phone || '';
 
   // รีเซ็ตตัวเลือกช่องทางการรับสินค้า
   const defaultShippingOption = document.querySelector('input[name="shippingOption"][value="จัดส่ง"]');
@@ -913,32 +918,38 @@ function openCheckoutModal() {
     setTimeout(() => { selectSavedAddress(0); }, 50);
   } else {
     selectedSavedAddressIndex = -1;
-    // หากไม่มีที่อยู่เซฟใน LocalStorage ให้ลองดึงจาก member profile ใน Google Sheet
+    const gpsInput = document.getElementById('gpsLocationLink');
+    const detailsInput = document.getElementById('checkoutAddressDetails');
+    const statusBadge = document.getElementById('locationStatus');
+
     if (currentMemberInfo.gpsLocation) {
-      document.getElementById('gpsLocationLink').value = currentMemberInfo.gpsLocation;
-      document.getElementById('checkoutAddressDetails').value = currentMemberInfo.addressDetails || '';
-      const addressLabelInput = document.getElementById('addressLabel');
+      if (gpsInput) gpsInput.value = currentMemberInfo.gpsLocation;
+      if (detailsInput) detailsInput.value = currentMemberInfo.addressDetails || '';
       if (addressLabelInput) addressLabelInput.value = currentMemberInfo.addressLabel || '';
       
       const gpsLocation = currentMemberInfo.gpsLocation;
       const coords = parseCoords(gpsLocation);
       if (coords) {
-        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
-        document.getElementById('locationStatus').className = 'location-status-badge success';
-        // เติมพิกัดลงแผนที่หลังจากแผนที่โหลดเสร็จ
+        if (statusBadge) {
+          statusBadge.textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
+          statusBadge.className = 'location-status-badge success';
+        }
         setTimeout(() => {
           updateMapPin(coords.lat, coords.lng, true);
         }, 500);
       } else {
-        document.getElementById('locationStatus').textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (ไม่มีพิกัดแผนที่)`;
-        document.getElementById('locationStatus').className = 'location-status-badge success';
+        if (statusBadge) {
+          statusBadge.textContent = `📍 ใช้ที่อยู่จากโปรไฟล์ (ไม่มีพิกัดแผนที่)`;
+          statusBadge.className = 'location-status-badge success';
+        }
       }
     } else {
-      document.getElementById('gpsLocationLink').value = '';
-      document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
-      document.getElementById('locationStatus').className = 'location-status-badge';
-      document.getElementById('checkoutAddressDetails').value = '';
-      const addressLabelInput = document.getElementById('addressLabel');
+      if (gpsInput) gpsInput.value = '';
+      if (statusBadge) {
+        statusBadge.textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
+        statusBadge.className = 'location-status-badge';
+      }
+      if (detailsInput) detailsInput.value = '';
       if (addressLabelInput) addressLabelInput.value = '';
     }
     renderSavedAddresses();
