@@ -18,6 +18,8 @@ function doPost(e) {
       return createOrderHandler(ss, data);
     } else if (action === 'updateOrderStatus') {
       return updateOrderStatusHandler(ss, data);
+    } else if (action === 'updateOrderItems') {
+      return updateOrderItemsHandler(ss, data);
     } else {
       // Default: register/update member profile
       return registerMemberHandler(ss, data);
@@ -40,6 +42,51 @@ function updateOrderStatusHandler(ss, data) {
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Handler สำหรับแก้ไขรายการสินค้าในออเดอร์ (ลบสินค้าบางรายการ)
+function updateOrderItemsHandler(ss, data) {
+  try {
+    var orderId = data.orderId;
+    var newItems = data.items || [];
+    var newTotalPrice = Number(data.totalPrice || 0);
+    
+    var ordersSheet = ss.getSheetByName("Orders");
+    if (!ordersSheet) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ไม่พบชีต Orders' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var values = ordersSheet.getDataRange().getValues();
+    var foundRow = -1;
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][1] && values[i][1].toString() === orderId) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+    
+    if (foundRow === -1) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ไม่พบออเดอร์: ' + orderId }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // สร้างข้อความรายการสินค้าให้อ่านง่าย
+    var itemsText = newItems.map(function(item) {
+      return item.name + " x" + item.qty;
+    }).join(", ");
+    
+    // อัปเดต 3 คอลัมน์: Total Price (col 9), Order Items Text (col 12), Items JSON (col 13)
+    ordersSheet.getRange(foundRow, 9).setValue(newTotalPrice);    // Total Price
+    ordersSheet.getRange(foundRow, 12).setValue(itemsText);       // Order Items (readable)
+    ordersSheet.getRange(foundRow, 13).setValue(JSON.stringify(newItems)); // Items JSON
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'อัปเดตรายการสินค้าสำเร็จ' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 

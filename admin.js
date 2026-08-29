@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLq9JR7VKEDlFsc3q8jaDJdWA2gijP_WE39zRoC-CfkrU7-rkk1HMeY0Cd9Ptf9oO3/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMn9j7CiZaOBJSJSHvQ_ROSY2KZTnk2IFPGS5jOhMBnpM3HMC0uhcO6eCiHPMusinK/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -261,40 +261,41 @@ function viewOrder(orderId) {
   document.getElementById('modalCustomerName').textContent = order.customerName;
   document.getElementById('modalPhone').textContent = order.phone.replace(/'/g, ""); // Remove quote if present
 
-  // Format GPS
-  let gpsText = order.gpsLocation;
-  if (gpsText.includes('HYPERLINK')) {
-    const match = gpsText.match(/HYPERLINK\("([^"]+)"/);
-    if (match) {
-      gpsText = `<a href="${match[1]}" target="_blank" style="color: #3b82f6; text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
-    }
-  } else if (gpsText.startsWith('http')) {
-    gpsText = `<a href="${gpsText}" target="_blank" style="color: #3b82f6; text-decoration: underline;">📍 เปิดแผนที่บน Google Maps</a>`;
+  // === GPS / Map Section ===
+  let gpsUrl = '';
+  let gpsRaw = order.gpsLocation || '';
+
+  // Extract URL from HYPERLINK formula or raw URL
+  if (gpsRaw.includes('HYPERLINK')) {
+    const match = gpsRaw.match(/HYPERLINK\("([^"]+)"/);
+    if (match) gpsUrl = match[1];
+  } else if (gpsRaw.startsWith('http')) {
+    gpsUrl = gpsRaw;
   }
-  document.getElementById('modalGps').innerHTML = gpsText || '-';
+
+  const gpsEl = document.getElementById('modalGps');
+  const mapContainer = document.getElementById('modalMapContainer');
+  const mapFrame = document.getElementById('modalMapFrame');
+
+  // Hide map by default on open
+  mapContainer.style.display = 'none';
+  mapFrame.innerHTML = '';
+
+  if (gpsUrl) {
+    // Store GPS URL in data attribute for later use
+    mapContainer.dataset.gpsUrl = gpsUrl;
+    gpsEl.innerHTML = `
+      <a href="${gpsUrl}" target="_blank" class="gps-link">📍 เปิดแผนที่บน Google Maps</a>
+      <button class="btn-open-map" onclick="toggleMapEmbed(true)">🗺️ ดูแผนที่ในหน้านี้</button>
+    `;
+  } else {
+    gpsEl.textContent = gpsRaw || '-';
+  }
+
   document.getElementById('modalAddress').textContent = order.addressDetails || '-';
 
-  // Render Items
-  const itemsBody = document.getElementById('modalItemsBody');
-  itemsBody.innerHTML = '';
-
-  order.items.forEach(item => {
-    const itemPrice = Number(item.price || 0);
-    const itemQty = Number(item.qty || 1);
-    const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.id || '-'}</td>
-      <td><strong>${item.name || '-'}</strong></td>
-      <td>x${itemQty}</td>
-      <td>฿${itemSubtotal.toLocaleString()}</td>
-    `;
-    itemsBody.appendChild(tr);
-  });
-
-  const grandTotal = Number(order.totalPrice || 0);
-  document.getElementById('modalTotalPrice').textContent = `฿${grandTotal.toLocaleString()}`;
+  // === Render Items (with delete buttons) ===
+  renderModalItems(order);
 
   // Dynamic action buttons
   const actionsDiv = document.getElementById('modalActions');
@@ -332,8 +333,153 @@ function viewOrder(orderId) {
   document.getElementById('orderModal').classList.add('active');
 }
 
+// === Render Items in Modal (with delete button per row) ===
+function renderModalItems(order) {
+  const itemsBody = document.getElementById('modalItemsBody');
+  itemsBody.innerHTML = '';
+
+  const isEditable = order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
+
+  order.items.forEach((item, index) => {
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.qty || 1);
+    const itemSubtotal = Number(item.subtotal || (itemPrice * itemQty));
+
+    const tr = document.createElement('tr');
+    tr.dataset.index = index;
+    tr.innerHTML = `
+      <td>${item.id || '-'}</td>
+      <td><strong>${item.name || '-'}</strong></td>
+      <td>x${itemQty}</td>
+      <td>฿${itemSubtotal.toLocaleString()}</td>
+      <td style="text-align:center;">
+        ${isEditable && order.items.length > 1
+          ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+          : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+        }
+      </td>
+    `;
+    itemsBody.appendChild(tr);
+  });
+
+  const grandTotal = Number(order.totalPrice || 0);
+  document.getElementById('modalTotalPrice').textContent = `฿${grandTotal.toLocaleString()}`;
+}
+
+// === Delete a single item from the order ===
+async function deleteOrderItem(orderId, itemIndex) {
+  const order = allOrders.find(o => o.orderId === orderId);
+  if (!order || !order.items) return;
+
+  const itemToDelete = order.items[itemIndex];
+  if (!itemToDelete) return;
+
+  const itemName = itemToDelete.name || 'รายการนี้';
+  if (!confirm(`ต้องการลบ "${itemName}" ออกจากออเดอร์นี้หรือไม่?\n\n⚠️ ยอดรวมจะถูกคำนวณใหม่อัตโนมัติ`)) return;
+
+  // Animate the row being deleted
+  const row = document.querySelector(`#modalItemsBody tr[data-index="${itemIndex}"]`);
+  if (row) {
+    row.classList.add('item-row-deleting');
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  // Remove item from array
+  const newItems = order.items.filter((_, i) => i !== itemIndex);
+
+  // Recalculate total
+  let newTotal = 0;
+  newItems.forEach(item => {
+    newTotal += Number(item.subtotal || (Number(item.price || 0) * Number(item.qty || 1)));
+  });
+
+  // Save to backend
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'updateOrderItems',
+        orderId: orderId,
+        items: newItems,
+        totalPrice: newTotal
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.status === 'success') {
+      // Update local data
+      order.items = newItems;
+      order.totalPrice = newTotal;
+
+      // Re-render items
+      renderModalItems(order);
+
+      // Update table row total
+      renderOrders();
+      updateStats();
+    } else {
+      alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Delete item error:', error);
+    alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+  }
+}
+
+// === Toggle Embedded Map ===
+function toggleMapEmbed(show) {
+  const mapContainer = document.getElementById('modalMapContainer');
+  const mapFrame = document.getElementById('modalMapFrame');
+
+  if (show) {
+    const gpsUrl = mapContainer.dataset.gpsUrl || '';
+    if (!gpsUrl) return;
+
+    // Extract lat/lng from Google Maps URL
+    let lat = '', lng = '';
+    
+    // Try pattern: @lat,lng
+    const atMatch = gpsUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    // Try pattern: ?q=lat,lng or place/lat,lng
+    const qMatch = gpsUrl.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/) ||
+                   gpsUrl.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+
+    if (atMatch) {
+      lat = atMatch[1]; lng = atMatch[2];
+    } else if (qMatch) {
+      lat = qMatch[1]; lng = qMatch[2];
+    }
+
+    if (lat && lng) {
+      // Embed Google Maps with pin
+      mapFrame.innerHTML = `<iframe 
+        src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" 
+        allowfullscreen loading="lazy" 
+        referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+    } else {
+      // Fallback: embed the URL directly as search query
+      const searchQuery = encodeURIComponent(gpsUrl);
+      mapFrame.innerHTML = `<iframe 
+        src="https://maps.google.com/maps?q=${searchQuery}&z=15&output=embed" 
+        allowfullscreen loading="lazy"></iframe>`;
+    }
+
+    mapContainer.style.display = 'block';
+  } else {
+    mapContainer.style.display = 'none';
+    mapFrame.innerHTML = '';
+  }
+}
+
 function closeModal() {
   document.getElementById('orderModal').classList.remove('active');
+  // Clean up map
+  const mapContainer = document.getElementById('modalMapContainer');
+  const mapFrame = document.getElementById('modalMapFrame');
+  if (mapContainer) mapContainer.style.display = 'none';
+  if (mapFrame) mapFrame.innerHTML = '';
   currentViewingOrderId = null;
 }
 

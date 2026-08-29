@@ -196,6 +196,10 @@
           <p><strong>ชื่อผู้รับ:</strong> <span id="modalCustomerName"></span></p>
           <p><strong>เบอร์ติดต่อ:</strong> <span id="modalPhone"></span></p>
           <p><strong>พิกัดจัดส่ง:</strong> <span id="modalGps"></span></p>
+          <div id="modalMapContainer" class="modal-map-container" style="display:none;">
+            <div id="modalMapFrame" class="modal-map-frame"></div>
+            <button class="btn-close-map" id="btnCloseMap" onclick="toggleMapEmbed(false)">✕ ปิดแผนที่</button>
+          </div>
           <p><strong>ที่อยู่เพิ่มเติม:</strong> <span id="modalAddress"></span></p>
         </div>
         <div class="order-items">
@@ -207,6 +211,7 @@
                 <th>รายการ</th>
                 <th>จำนวน</th>
                 <th>รวม</th>
+                <th style="text-align:center; width:60px;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="modalItemsBody">
