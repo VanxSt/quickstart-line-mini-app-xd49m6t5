@@ -753,24 +753,31 @@ function renderSavedAddresses() {
 
     // คลิกเลือกที่อยู่
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-delete-address')) return;
+      console.log(`[SavedAddress] Card clicked. Index: ${idx}`, addr);
+      if (e.target.closest('.btn-delete-address')) {
+        console.log(`[SavedAddress] Click was on delete button, ignoring selection.`);
+        return;
+      }
       selectSavedAddress(idx);
     });
 
     // ปุ่มลบ
     const deleteBtn = card.querySelector('.btn-delete-address');
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteSavedAddress(idx);
-      if (selectedSavedAddressIndex === idx) {
-        selectedSavedAddressIndex = -1;
-        newAddressSection.style.display = 'block';
-      } else if (selectedSavedAddressIndex > idx) {
-        selectedSavedAddressIndex--;
-      }
-      renderSavedAddresses();
-      validateCheckoutForm();
-    });
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log(`[SavedAddress] Delete clicked for index: ${idx}`);
+        deleteSavedAddress(idx);
+        if (selectedSavedAddressIndex === idx) {
+          selectedSavedAddressIndex = -1;
+          newAddressSection.style.display = 'block';
+        } else if (selectedSavedAddressIndex > idx) {
+          selectedSavedAddressIndex--;
+        }
+        renderSavedAddresses();
+        validateCheckoutForm();
+      });
+    }
 
     listEl.appendChild(card);
   });
@@ -784,40 +791,58 @@ function renderSavedAddresses() {
 }
 
 function selectSavedAddress(idx) {
-  const addresses = getSavedAddresses();
-  const addr = addresses[idx];
-  if (!addr) return;
-
-  selectedSavedAddressIndex = idx;
-
-  // เติมข้อมูลจากที่อยู่ที่เลือก
-  document.getElementById('gpsLocationLink').value = addr.gpsLocation || '';
-  document.getElementById('checkoutAddressDetails').value = addr.addressDetails || '';
-
-  const statusBadge = document.getElementById('locationStatus');
-  const coords = parseCoords(addr.gpsLocation);
-  if (coords) {
-    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
-    statusBadge.className = 'location-status-badge success';
-    // อัปเดตแผนที่
-    updateMapPin(coords.lat, coords.lng, true);
-  } else {
-    statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (ไม่มีพิกัดแผนที่)`;
-    statusBadge.className = 'location-status-badge success';
-    // เคลียร์หมุดแผนที่ถ้าไม่มีพิกัด
-    if (mapMarker && mapInstance) {
-      mapInstance.removeLayer(mapMarker);
-      mapMarker = null;
+  console.log(`[SavedAddress] selectSavedAddress starting for index: ${idx}`);
+  try {
+    const addresses = getSavedAddresses();
+    const addr = addresses[idx];
+    if (!addr) {
+      console.warn(`[SavedAddress] Address at index ${idx} not found!`);
+      return;
     }
-    const instructionOverlay = document.getElementById('mapInstructionOverlay');
-    if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+
+    selectedSavedAddressIndex = idx;
+    console.log(`[SavedAddress] Set selectedSavedAddressIndex to: ${selectedSavedAddressIndex}`);
+
+    // เติมข้อมูลจากที่อยู่ที่เลือก
+    const gpsLinkEl = document.getElementById('gpsLocationLink');
+    const addrDetailsEl = document.getElementById('checkoutAddressDetails');
+    
+    if (gpsLinkEl) gpsLinkEl.value = addr.gpsLocation || '';
+    if (addrDetailsEl) addrDetailsEl.value = addr.addressDetails || '';
+
+    const statusBadge = document.getElementById('locationStatus');
+    if (statusBadge) {
+      const coords = parseCoords(addr.gpsLocation);
+      if (coords) {
+        statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
+        statusBadge.className = 'location-status-badge success';
+        console.log(`[SavedAddress] Valid coords parsed: ${coords.lat}, ${coords.lng}. Updating map...`);
+        updateMapPin(coords.lat, coords.lng, true);
+      } else {
+        statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (ไม่มีพิกัดแผนที่)`;
+        statusBadge.className = 'location-status-badge success';
+        console.log(`[SavedAddress] No valid coords found for address. Clearing pin.`);
+        if (mapMarker && mapInstance) {
+          mapInstance.removeLayer(mapMarker);
+          mapMarker = null;
+        }
+        const instructionOverlay = document.getElementById('mapInstructionOverlay');
+        if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+      }
+    }
+
+    // ซ่อนฟอร์มที่อยู่ใหม่
+    const newAddressSection = document.getElementById('newAddressSection');
+    if (newAddressSection) {
+      newAddressSection.style.display = 'none';
+    }
+
+    console.log(`[SavedAddress] Re-rendering list with selected index: ${selectedSavedAddressIndex}`);
+    renderSavedAddresses();
+    validateCheckoutForm();
+  } catch (err) {
+    console.error("[SavedAddress] Critical error inside selectSavedAddress:", err);
   }
-
-  // ซ่อนฟอร์มที่อยู่ใหม่
-  document.getElementById('newAddressSection').style.display = 'none';
-
-  renderSavedAddresses();
-  validateCheckoutForm();
 }
 
 // ปุ่ม "เพิ่มที่อยู่ใหม่"
@@ -1391,27 +1416,31 @@ function updateMapPin(lat, lng, flyTo = true) {
     instructionOverlay.classList.add('hidden');
   }
 
-  if (mapInstance) {
-    if (mapMarker) {
-      mapMarker.setLatLng([lat, lng]);
-    } else {
-      mapMarker = L.marker([lat, lng], {
-        icon: createMapPinIcon(),
-        draggable: true
-      }).addTo(mapInstance);
+  try {
+    if (mapInstance) {
+      if (mapMarker) {
+        mapMarker.setLatLng([lat, lng]);
+      } else {
+        mapMarker = L.marker([lat, lng], {
+          icon: createMapPinIcon(),
+          draggable: true
+        }).addTo(mapInstance);
 
-      // ลากหมุดเพื่อย้ายตำแหน่ง
-      mapMarker.on('dragend', function (e) {
-        const pos = e.target.getLatLng();
-        updateMapPin(pos.lat, pos.lng, false);
-      });
+        // ลากหมุดเพื่อย้ายตำแหน่ง
+        mapMarker.on('dragend', function (e) {
+          const pos = e.target.getLatLng();
+          updateMapPin(pos.lat, pos.lng, false);
+        });
 
-      mapMarker.bindPopup('<b>📍 ตำแหน่งจัดส่ง</b><br>ลากหมุดเพื่อปรับตำแหน่ง').openPopup();
+        mapMarker.bindPopup('<b>📍 ตำแหน่งจัดส่ง</b><br>ลากหมุดเพื่อปรับตำแหน่ง').openPopup();
+      }
+
+      if (flyTo) {
+        mapInstance.flyTo([lat, lng], 16, { duration: 1 });
+      }
     }
-
-    if (flyTo) {
-      mapInstance.flyTo([lat, lng], 16, { duration: 1 });
-    }
+  } catch (mapErr) {
+    console.error("Leaflet Map Error: ", mapErr);
   }
 
   validateCheckoutForm();
