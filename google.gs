@@ -119,12 +119,9 @@ function createOrderHandler(ss, data) {
       try {
         var membersSheet = ss.getSheetByName("Members") || ss.getSheets()[0];
         if (membersSheet) {
-          // ตรวจสอบและสร้างหัวข้อตารางคอลัมน์ H, I, J, K ของชีต Members ถ้ายังไม่มี
-          if (membersSheet.getLastColumn() < 11 || !membersSheet.getRange(1, 11).getValue()) {
-            membersSheet.getRange(1, 8).setValue("GPS Location");
-            membersSheet.getRange(1, 9).setValue("Address Details");
-            membersSheet.getRange(1, 10).setValue("Address Label");
-            membersSheet.getRange(1, 11).setValue("Saved Addresses JSON");
+          // ตรวจสอบและสร้างหัวข้อตารางคอลัมน์ H ของชีต Members ถ้ายังไม่มี
+          if (membersSheet.getLastColumn() < 8 || !membersSheet.getRange(1, 8).getValue()) {
+            membersSheet.getRange(1, 8).setValue("Saved Addresses JSON");
           }
           
           var mValues = membersSheet.getDataRange().getValues();
@@ -142,20 +139,22 @@ function createOrderHandler(ss, data) {
             
             // อัปเดตพิกัดและที่อยู่ลงประวัติสมาชิกเฉพาะเมื่อเป็นออเดอร์แบบ "จัดส่ง" เท่านั้น
             if (shippingOption !== 'รับหน้าร้าน') {
-              // คอลัมน์ 8 (H) = GPS Location
-              membersSheet.getRange(mRow, 8).setValue(gpsLocation || "");
-              // คอลัมน์ 9 (I) = Address Details
-              membersSheet.getRange(mRow, 9).setValue(addressDetails || "");
-              // คอลัมน์ 10 (J) = Address Label (ตั้งชื่อที่อยู่)
-              membersSheet.getRange(mRow, 10).setValue(addressLabel || "");
-              
-              // คอลัมน์ 11 (K) = Saved Addresses JSON (เก็บสูงสุด 5 ที่อยู่)
-              var savedAddressesStr = membersSheet.getRange(mRow, 11).getValue() || "[]";
+              // คอลัมน์ 8 (H) = Saved Addresses JSON (เก็บสูงสุด 5 ที่อยู่)
+              var savedAddressesStr = membersSheet.getRange(mRow, 8).getValue() || "[]";
               var savedAddresses = [];
               try {
                 savedAddresses = JSON.parse(savedAddressesStr);
               } catch(e) {
-                savedAddresses = [];
+                // หากข้อมูลเก่าในช่อง H ไม่ใช่ JSON (เช่น เป็นลิงก์ Google Maps) ให้ลองสร้างเป็นรายการแรกแทน
+                if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+                  savedAddresses = [{
+                    label: 'ที่อยู่เก่า',
+                    gpsLocation: savedAddressesStr.toString(),
+                    addressDetails: ''
+                  }];
+                } else {
+                  savedAddresses = [];
+                }
               }
               if (!Array.isArray(savedAddresses)) {
                 savedAddresses = [];
@@ -181,7 +180,7 @@ function createOrderHandler(ss, data) {
                 }
               }
               
-              membersSheet.getRange(mRow, 11).setValue(JSON.stringify(savedAddresses));
+              membersSheet.getRange(mRow, 8).setValue(JSON.stringify(savedAddresses));
             }
           }
         }
@@ -399,6 +398,26 @@ function doGet(e) {
         if (!mRow[1]) continue;
         var mTs = mRow[0];
         if (mTs instanceof Date) mTs = mTs.toISOString();
+        var savedAddressesStr = mRow[7] || '[]';
+        var gpsLoc = '';
+        var addrDetails = '';
+        var addrLabel = '';
+        var parsed = [];
+        try {
+          parsed = JSON.parse(savedAddressesStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            gpsLoc = parsed[0].gpsLocation || '';
+            addrDetails = parsed[0].addressDetails || '';
+            addrLabel = parsed[0].label || '';
+          } else if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+            gpsLoc = savedAddressesStr.toString();
+          }
+        } catch(e) {
+          if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+            gpsLoc = savedAddressesStr.toString();
+          }
+        }
+
         members.push({
           registeredAt: mTs,
           userId: mRow[1],
@@ -407,9 +426,14 @@ function doGet(e) {
           email: mRow[4] || '',
           pictureUrl: mRow[5] || '',
           phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : '',
-          gpsLocation: mRow[7] || '',
-          addressDetails: mRow[8] || '',
-          addressLabel: mRow[9] || ''
+          gpsLocation: gpsLoc,
+          addressDetails: addrDetails,
+          addressLabel: addrLabel,
+          savedAddresses: Array.isArray(parsed) ? savedAddressesStr : JSON.stringify([{
+            label: addrLabel || 'ที่อยู่ของฉัน',
+            gpsLocation: gpsLoc,
+            addressDetails: addrDetails
+          }])
         });
       }
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', members: members })).setMimeType(ContentService.MimeType.JSON);
@@ -464,6 +488,26 @@ function doGet(e) {
     
     for (var i = 1; i < values.length; i++) {
       if (values[i][1] && values[i][1].toString().trim() === userId.toString().trim()) {
+        var savedAddressesStr = values[i][7] || '[]';
+        var gpsLoc = '';
+        var addrDetails = '';
+        var addrLabel = '';
+        var parsed = [];
+        try {
+          parsed = JSON.parse(savedAddressesStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            gpsLoc = parsed[0].gpsLocation || '';
+            addrDetails = parsed[0].addressDetails || '';
+            addrLabel = parsed[0].label || '';
+          } else if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+            gpsLoc = savedAddressesStr.toString();
+          }
+        } catch(e) {
+          if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+            gpsLoc = savedAddressesStr.toString();
+          }
+        }
+
         var userData = {
           status: 'success',
           found: true,
@@ -473,10 +517,14 @@ function doGet(e) {
           email: values[i][4],
           pictureUrl: values[i][5],
           phone: values[i][6],
-          gpsLocation: values[i][7] || '',
-          addressDetails: values[i][8] || '',
-          addressLabel: values[i][9] || '',
-          savedAddresses: values[i][10] || '[]'
+          gpsLocation: gpsLoc,
+          addressDetails: addrDetails,
+          addressLabel: addrLabel,
+          savedAddresses: Array.isArray(parsed) ? savedAddressesStr : JSON.stringify([{
+            label: addrLabel || 'ที่อยู่ของฉัน',
+            gpsLocation: gpsLoc,
+            addressDetails: addrDetails
+          }])
         };
         return ContentService.createTextOutput(JSON.stringify(userData))
           .setMimeType(ContentService.MimeType.JSON);
@@ -675,6 +723,26 @@ function getAllMembersNative() {
     if (!mRow[1]) continue;
     var mTs = mRow[0];
     if (mTs instanceof Date) mTs = mTs.toISOString();
+    var savedAddressesStr = mRow[7] || '[]';
+    var gpsLoc = '';
+    var addrDetails = '';
+    var addrLabel = '';
+    var parsed = [];
+    try {
+      parsed = JSON.parse(savedAddressesStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        gpsLoc = parsed[0].gpsLocation || '';
+        addrDetails = parsed[0].addressDetails || '';
+        addrLabel = parsed[0].label || '';
+      } else if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+        gpsLoc = savedAddressesStr.toString();
+      }
+    } catch(e) {
+      if (savedAddressesStr && savedAddressesStr.toString().indexOf("http") === 0) {
+        gpsLoc = savedAddressesStr.toString();
+      }
+    }
+
     members.push({
       registeredAt: mTs,
       userId: mRow[1],
@@ -683,9 +751,14 @@ function getAllMembersNative() {
       email: mRow[4] || '',
       pictureUrl: mRow[5] || '',
       phone: mRow[6] ? mRow[6].toString().replace(/'/g, "") : '',
-      gpsLocation: mRow[7] || '',
-      addressDetails: mRow[8] || '',
-      addressLabel: mRow[9] || ''
+      gpsLocation: gpsLoc,
+      addressDetails: addrDetails,
+      addressLabel: addrLabel,
+      savedAddresses: Array.isArray(parsed) ? savedAddressesStr : JSON.stringify([{
+        label: addrLabel || 'ที่อยู่ของฉัน',
+        gpsLocation: gpsLoc,
+        addressDetails: addrDetails
+      }])
     });
   }
   return members;
