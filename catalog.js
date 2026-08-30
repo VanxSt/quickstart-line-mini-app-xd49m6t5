@@ -1074,6 +1074,8 @@ function openCheckoutModal() {
 
   // โหลดที่อยู่ที่บันทึกไว้
   const savedAddresses = getSavedAddresses();
+  renderSavedAddresses(); // Render always so it shows up in the DOM
+  
   if (savedAddresses.length > 0) {
     selectedSavedAddressIndex = 0; // Default to first saved address
     setTimeout(() => { selectSavedAddress(0); }, 50);
@@ -1107,7 +1109,6 @@ function openCheckoutModal() {
       const addressLabelInput = document.getElementById('addressLabel');
       if (addressLabelInput) addressLabelInput.value = '';
     }
-    renderSavedAddresses();
   }
 
   toggleShippingFields();
