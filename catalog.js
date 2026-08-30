@@ -668,7 +668,7 @@ function addSavedAddress(address) {
   );
   if (!isDuplicate) {
     addresses.unshift(address); // เพิ่มล่าสุดไว้ด้านบน
-    if (addresses.length > 5) addresses.pop(); // เก็บสูงสุด 5 ที่อยู่
+    if (addresses.length > 3) addresses.length = 3; // เก็บสูงสุด 3 ที่อยู่
     saveSavedAddresses(addresses);
   }
 }
@@ -865,6 +865,40 @@ document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
   setTimeout(() => { initMapPicker(); }, 450);
 });
 
+// ปุ่ม "บันทึกที่อยู่นี้ทันที"
+const btnSaveAddressNow = document.getElementById('btnSaveAddressNow');
+if (btnSaveAddressNow) {
+  btnSaveAddressNow.addEventListener('click', () => {
+    const addressDetails = document.getElementById('checkoutAddressDetails').value.trim();
+    const addressLabel = document.getElementById('addressLabel').value.trim();
+    const gpsLocation = document.getElementById('gpsLocationLink').value.trim();
+
+    if (!addressDetails || !addressLabel) {
+      alert('⚠️ กรุณากรอกรายละเอียดที่อยู่ และตั้งชื่อที่อยู่ก่อนกดบันทึกครับ');
+      return;
+    }
+
+    btnSaveAddressNow.disabled = true;
+    const originalHTML = btnSaveAddressNow.innerHTML;
+    btnSaveAddressNow.innerHTML = '⏳ กำลังบันทึก...';
+
+    addSavedAddress({
+      label: addressLabel,
+      gpsLocation: gpsLocation,
+      addressDetails: addressDetails
+    });
+
+    renderSavedAddresses();
+    selectSavedAddress(0); // เลือกที่อยู่ที่เพิ่งบันทึกทันที
+
+    btnSaveAddressNow.innerHTML = '✅ บันทึกสำเร็จ!';
+    setTimeout(() => {
+      btnSaveAddressNow.innerHTML = originalHTML;
+      btnSaveAddressNow.disabled = false;
+    }, 1500);
+  });
+}
+
 // ตั้งค่าระยะทางจัดส่งตามปุ่ม preset
 function setDeliveryDistance(km) {
   const input = document.getElementById('deliveryDistance');
@@ -1026,11 +1060,9 @@ function openCheckoutModal() {
     preorderDateInput.value = `${year}-${month}-${day}`;
   }
 
-  // Reset address label + checkbox
+  // Reset address label
   const addressLabelInput = document.getElementById('addressLabel');
   if (addressLabelInput) addressLabelInput.value = '';
-  const chkSave = document.getElementById('chkSaveAddress');
-  if (chkSave) chkSave.checked = true;
 
   // Reset map marker
   if (mapMarker && mapInstance) {
@@ -1183,8 +1215,8 @@ async function fetchMemberInfo(userId) {
                 merged.push(remoteAddr);
               }
             });
-            if (merged.length > 5) {
-              merged.splice(5);
+            if (merged.length > 3) {
+              merged.splice(3);
             }
             localStorage.setItem('saved_addresses', JSON.stringify(merged));
           }
@@ -1922,17 +1954,7 @@ if (btnSubmitOrder) {
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
       } catch (e) { }
 
-      // บันทึกที่อยู่ใหม่ (ถ้าเลือก checkbox บันทึก + ไม่ได้ใช้ที่อยู่เดิม)
-      const chkSave = document.getElementById('chkSaveAddress');
-      if (chkSave && chkSave.checked && selectedSavedAddressIndex === -1 && gpsLocation && shippingOption !== 'รับหน้าร้าน') {
-        const addressLabelInput = document.getElementById('addressLabel');
-        const label = (addressLabelInput ? addressLabelInput.value.trim() : '') || 'ที่อยู่ของฉัน';
-        addSavedAddress({
-          label: label,
-          gpsLocation: gpsLocation,
-          addressDetails: addressDetails
-        });
-      }
+      // ไม่มีการบันทึกที่อยู่อัตโนมัติอีกต่อไป ผู้ใช้ต้องกดปุ่ม "บันทึกที่อยู่นี้ทันที" เอง
 
       // ถือว่าสั่งซื้อสำเร็จทันที (Instant feedback) ทำให้แอพลื่นไหล ไม่ค้าง
       alert(`✅ ส่งออเดอร์ให้แอดมินตรวจสอบเรียบร้อยแล้ว!\nหมายเลขสั่งซื้อของคุณคือ: ${orderId}`);
