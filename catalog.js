@@ -746,6 +746,11 @@ function renderSavedAddresses() {
     if (deleteBtn) {
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        
+        if (!confirm('คุณต้องการลบที่อยู่นี้ใช่หรือไม่?')) {
+          return; // ถ้ายกเลิก ไม่ต้องทำอะไรต่อ
+        }
+        
         console.log(`[SavedAddress] Delete clicked for index: ${idx}`);
         deleteSavedAddress(idx);
         if (selectedSavedAddressIndex === idx) {
