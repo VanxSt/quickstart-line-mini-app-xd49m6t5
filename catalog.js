@@ -1068,6 +1068,7 @@ function calculateCheckoutTotal() {
 }
 
 function openCheckoutModal() {
+  const checkoutModal = document.getElementById('checkoutModal');
   calculateCheckoutTotal();
 
   // Prefill default info from member profile
@@ -1146,7 +1147,6 @@ function openCheckoutModal() {
   }
 
   toggleShippingFields();
-
   checkoutModal.classList.add('show');
 
   // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ
@@ -1156,12 +1156,14 @@ function openCheckoutModal() {
 }
 
 function closeCheckoutModal() {
+  const checkoutModal = document.getElementById('checkoutModal');
   checkoutModal.classList.remove('show');
 }
 
 function validateCheckoutForm() {
   const name = document.getElementById('checkoutName')?.value.trim() || '';
   const phone = document.getElementById('checkoutPhone')?.value.trim() || '';
+  const btnSubmitOrder = document.getElementById('btnSubmitOrder');
 
   // ตรวจสอบการสั่งล่วงหน้า
   const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
@@ -1282,7 +1284,6 @@ async function fetchMemberInfo(userId) {
   }
 }
 
-
 async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0) {
   const calcSubtotal = subtotal || cartItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   const calcShippingFee = shippingOption === 'รับหน้าร้าน' ? 0 : (shippingFee || Math.max(0, totalPrice - calcSubtotal));
@@ -1313,7 +1314,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
           contents: [
             {
               type: "text",
-              text: item.name,
+              text: String(item.name || 'สินค้า'),
               size: "sm",
               wrap: true,
               weight: "bold",
@@ -1350,7 +1351,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
 
   const flexPayload = {
     type: "flex",
-    altText: `🧾 คำสั่งซื้อใหม่ ${orderId}`,
+    altText: `🛒 คำสั่งซื้อใหม่ ${orderId}`,
     contents: {
       type: "bubble",
       size: "mega",
@@ -1412,7 +1413,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 layout: "horizontal",
                 contents: [
                   { type: "text", text: "👤 ผู้รับ", size: "xs", color: "#64748b", flex: 2 },
-                  { type: "text", text: name, size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
+                  { type: "text", text: String(name || '-'), size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
                 ]
               },
               {
@@ -1420,7 +1421,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 layout: "horizontal",
                 contents: [
                   { type: "text", text: "📞 เบอร์ติดต่อ", size: "xs", color: "#64748b", flex: 2 },
-                  { type: "text", text: phone, size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
+                  { type: "text", text: String(phone || '-'), size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
                 ]
               },
               {
@@ -1484,7 +1485,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
         type: "box",
         layout: "vertical",
         backgroundColor: "#f8fafc",
-        paddingAll: "md",
+        paddingAll: "12px",
         contents: [
           {
             type: "text",
