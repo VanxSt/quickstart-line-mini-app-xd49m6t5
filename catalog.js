@@ -1300,17 +1300,8 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
       spacing: "md",
       contents: [
         {
-          type: "image",
-          url: (item.image && typeof item.image === 'string' && item.image.startsWith('https://')) ? item.image : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&auto=format&fit=crop&q=80",
-          size: "sm",
-          aspectRatio: "1:1",
-          aspectMode: "cover",
-          flex: 1
-        },
-        {
           type: "box",
           layout: "vertical",
-          flex: 4,
           contents: [
             {
               type: "text",
