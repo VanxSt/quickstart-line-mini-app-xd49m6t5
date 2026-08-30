@@ -420,11 +420,17 @@ function doGet(e) {
       for (var i = values.length - 1; i >= 1; i--) {
         var row = values[i];
         if (row[2] && row[2].toString().trim() === userIdParam.toString().trim()) {
+          var orderItems = [];
+          try {
+            if (row[12]) orderItems = JSON.parse(row[12]);
+          } catch(e) {}
+          
           myOrders.push({
             timestamp: row[0],
             orderId: row[1],
             totalPrice: row[8],
-            status: row[9] || 'รอตรวจสอบ'
+            status: row[9] || 'รอตรวจสอบ',
+            items: orderItems
           });
         }
       }

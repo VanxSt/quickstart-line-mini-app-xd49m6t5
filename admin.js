@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBIuvxP2D5ZHqyT8tuxwuvXUm83aYtPC8lHtGtZvxs1gunLltbuxe87y0jAWaqzA/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_efd9d_m1qq1Tu7M8tJwz4vtq2kl-XLVNHDWJpBPGeCvNmVNqUDP26eLX4eB0oIRI/exec';
 
 let allOrders = [];
 let allMembers = [];

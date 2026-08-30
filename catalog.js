@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBIuvxP2D5ZHqyT8tuxwuvXUm83aYtPC8lHtGtZvxs1gunLltbuxe87y0jAWaqzA/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_efd9d_m1qq1Tu7M8tJwz4vtq2kl-XLVNHDWJpBPGeCvNmVNqUDP26eLX4eB0oIRI/exec';
 
 let PRODUCTS = [];
 
@@ -89,6 +89,8 @@ let searchQuery = '';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
 let cart = [];
+let favoriteOrderIds = JSON.parse(localStorage.getItem('favoriteOrderIds') || '[]');
+let currentOrderTab = 'all';
 let currentMemberInfo = { displayName: '', phone: '' };
 
 // โหลดข้อมูลสมาชิกจาก Cache ทันทีตั้งแต่ตอนเริ่มแอป (ก่อน LIFF init เสร็จ)
@@ -1571,9 +1573,15 @@ async function loadMyOrders() {
 
   // ฟังก์ชันแยกสำหรับวาด UI
   const renderOrdersUI = (orders) => {
-    if (orders && orders.length > 0) {
+    // กรองข้อมูลตามแท็บปัจจุบัน
+    let displayOrders = orders;
+    if (currentOrderTab === 'fav') {
+      displayOrders = orders.filter(o => favoriteOrderIds.includes(o.orderId));
+    }
+
+    if (displayOrders && displayOrders.length > 0) {
       ordersBody.innerHTML = '';
-      orders.forEach(order => {
+      displayOrders.forEach(order => {
         let statusColor = '#aaaaaa';
         if (order.status === 'รอตรวจสอบ') statusColor = '#f59e0b';
         else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว' || order.status === 'กำลังจัดส่ง') statusColor = '#10b981';
@@ -1582,6 +1590,21 @@ async function loadMyOrders() {
 
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
+        const isFav = favoriteOrderIds.includes(order.orderId);
+        
+        let itemsHtml = '';
+        if (order.items && order.items.length > 0) {
+          itemsHtml = order.items.map(item => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85em;">
+              <span style="color: var(--text-main); flex: 1;">${item.name}</span>
+              <span style="color: var(--text-light); width: 40px; text-align: right;">x${item.qty}</span>
+            </div>
+          `).join('');
+        } else {
+          itemsHtml = `<div style="font-size: 0.85em; color: var(--text-light);">ไม่มีรายละเอียดสินค้า</div>`;
+        }
+
+        const itemsJsonStr = encodeURIComponent(JSON.stringify(order.items || []));
 
         const row = document.createElement('div');
         row.className = 'cart-item';
@@ -1596,13 +1619,29 @@ async function loadMyOrders() {
             <span>${dateStr}</span>
             <span style="font-weight: 600; color: var(--primary-color);">฿${order.totalPrice}</span>
           </div>
+          
+          <!-- รายละเอียดสินค้า (Accordion style) -->
+          <div style="width: 100%; margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div style="font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: #475569;">รายการสินค้า:</div>
+            ${itemsHtml}
+          </div>
+          
+          <!-- ปุ่ม Action -->
+          <div style="display: flex; gap: 8px; width: 100%; margin-top: 12px;">
+            <button onclick="toggleFavoriteOrder('${order.orderId}')" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid ${isFav ? '#f59e0b' : '#cbd5e1'}; background: ${isFav ? '#fffbeb' : '#ffffff'}; color: ${isFav ? '#f59e0b' : '#64748b'}; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+              ${isFav ? '⭐ โปรด' : '☆ ถูกใจ'}
+            </button>
+            <button onclick="reorderItems('${itemsJsonStr}')" style="flex: 2; padding: 8px; border-radius: 8px; border: none; background: var(--primary-color); color: white; font-weight: bold; cursor: pointer;">
+              🛒 สั่งเซ็ตนี้อีกครั้ง
+            </button>
+          </div>
         `;
         ordersBody.appendChild(row);
       });
     } else {
       ordersBody.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
-          ไม่พบประวัติการสั่งซื้อของคุณ
+          ${currentOrderTab === 'fav' ? 'คุณยังไม่มีรายการสั่งซื้อโปรด' : 'ไม่พบประวัติการสั่งซื้อของคุณ'}
         </div>
       `;
     }
@@ -1660,6 +1699,83 @@ async function loadMyOrders() {
     }
     console.error('Error fetching orders:', error);
   }
+}
+
+// ========================
+// REORDER & FAVORITES LOGIC
+// ========================
+window.toggleFavoriteOrder = function(orderId) {
+  if (favoriteOrderIds.includes(orderId)) {
+    favoriteOrderIds = favoriteOrderIds.filter(id => id !== orderId);
+  } else {
+    favoriteOrderIds.push(orderId);
+  }
+  localStorage.setItem('favoriteOrderIds', JSON.stringify(favoriteOrderIds));
+  // Re-render UI
+  const cachedStr = localStorage.getItem('myOrdersCache');
+  if (cachedStr) {
+    try {
+      const cachedOrders = JSON.parse(cachedStr);
+      // Since renderOrdersUI is inside loadMyOrders and might not be globally accessible, 
+      // we can just call loadMyOrders() again to refresh, which will hit the cache instantly.
+      loadMyOrders(); 
+    } catch(e) {}
+  }
+};
+
+window.reorderItems = function(itemsJsonStr) {
+  try {
+    const items = JSON.parse(decodeURIComponent(itemsJsonStr));
+    if (!items || items.length === 0) return;
+    
+    // เคลียร์ตะกร้าเดิม แล้วนำของใหม่ใส่
+    cart = [];
+    items.forEach(item => {
+      cart.push({
+        id: item.id || Date.now(),
+        name: item.name,
+        price: Number(item.price || 0),
+        qty: Number(item.qty || 1),
+        img: item.img || ''
+      });
+    });
+    
+    // ปิด Modal ประวัติ แล้วอัปเดต Badge และเปิด Cart Modal
+    closeOrdersModal();
+    if (typeof updateCartBadge === 'function') {
+      updateCartBadge();
+    } else {
+      const badge = document.getElementById('cartBadge');
+      if (badge) badge.textContent = cart.reduce((sum, it) => sum + it.qty, 0);
+    }
+    openCartModal();
+  } catch (e) {
+    console.error("Reorder failed:", e);
+    alert('เกิดข้อผิดพลาดในการนำเข้ารายการสินค้า');
+  }
+};
+
+const tabAllOrders = document.getElementById('tabAllOrders');
+const tabFavOrders = document.getElementById('tabFavOrders');
+
+if (tabAllOrders && tabFavOrders) {
+  tabAllOrders.addEventListener('click', () => {
+    currentOrderTab = 'all';
+    tabAllOrders.style.color = 'var(--primary-color)';
+    tabAllOrders.style.borderBottom = '2px solid var(--primary-color)';
+    tabFavOrders.style.color = '#64748b';
+    tabFavOrders.style.borderBottom = '2px solid transparent';
+    loadMyOrders();
+  });
+  
+  tabFavOrders.addEventListener('click', () => {
+    currentOrderTab = 'fav';
+    tabFavOrders.style.color = 'var(--primary-color)';
+    tabFavOrders.style.borderBottom = '2px solid var(--primary-color)';
+    tabAllOrders.style.color = '#64748b';
+    tabAllOrders.style.borderBottom = '2px solid transparent';
+    loadMyOrders();
+  });
 }
 
 // Cart Modal Backdrop Close
