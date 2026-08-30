@@ -271,27 +271,6 @@
             </ul>
           </div>
 
-          <!-- Distance Input Section (shows when shippingOption is 'จัดส่ง') -->
-          <div id="deliveryDistanceSection"
-            style="margin-top: 14px; display: block; background: var(--bg-card, #ffffff); border: 1px dashed var(--primary, #388BC2); border-radius: 12px; padding: 14px;">
-            <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 8px;">
-              📏 ระยะทางจัดส่งโดยประมาณ (กิโลเมตร) <span style="color: #ef4444;">*</span>
-            </label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="number" id="deliveryDistance" min="0.1" max="100" step="0.1" value="1"
-                style="width: 110px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color, #cbd5e1); font-size: 16px; font-weight: bold; text-align: center;">
-              <span style="font-size: 14px; font-weight: 600;">กิโลเมตร (กม.)</span>
-            </div>
-            <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
-              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(1)">1 กม.</button>
-              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(3)">3 กม.</button>
-              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(5)">5 กม.</button>
-              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(7)">7 กม.</button>
-              <button type="button" class="btn-dist-preset" onclick="setDeliveryDistance(10)">10 กม.</button>
-            </div>
-          </div>
-        </div>
-
         <!-- Saved Addresses Section -->
         <div class="checkout-section" id="savedAddressesSection" style="display: none;">
           <h3>🏠 เลือกที่อยู่ที่บันทึกไว้</h3>
@@ -306,6 +285,19 @@
             </svg>
             เพิ่มที่อยู่ใหม่
           </button>
+        </div>
+
+        <!-- Distance Display Section (shows when shippingOption is 'จัดส่ง') -->
+        <div id="deliveryDistanceSection"
+          style="margin-top: 14px; margin-bottom: 14px; display: block; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px;">
+          <div style="font-weight: 600; font-size: 14px; color: #166534; display: flex; align-items: center; gap: 6px;">
+            <span>🛵 ระยะทางจัดส่งจากร้านถึงที่อยู่ของลูกค้า</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
+            <span id="deliveryDistanceText" style="font-size: 22px; font-weight: 800; color: #15803d;">0 กม.</span>
+            <span style="font-size: 13px; color: #166534;">(คำนวณตามพิกัดจริง)</span>
+          </div>
+          <input type="hidden" id="deliveryDistance" value="0" />
         </div>
 
         <!-- Location Geolocation Pinning Section (New Address) -->

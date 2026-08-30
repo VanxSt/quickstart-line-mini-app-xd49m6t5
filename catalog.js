@@ -708,11 +708,17 @@ function renderSavedAddresses() {
     const card = document.createElement('div');
     card.className = 'saved-address-card' + (selectedSavedAddressIndex === idx ? ' selected' : '');
 
-    // ดึงพิกัดจาก GPS URL
+    // ดึงพิกัดจาก GPS URL และคำนวณระยะทางจากร้าน
     let coordsText = '';
+    let distBadgeText = '';
     if (addr.gpsLocation) {
       const coords = parseCoords(addr.gpsLocation);
-      if (coords) coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+      if (coords) {
+        coordsText = `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+        const rawDist = calculateHaversineDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, coords.lat, coords.lng);
+        const distKm = rawDist < 0.1 ? 0.1 : Math.round(rawDist * 10) / 10;
+        distBadgeText = `🛵 ห่างจากร้าน ~${distKm} กม.`;
+      }
     }
 
     card.innerHTML = `
@@ -721,7 +727,7 @@ function renderSavedAddresses() {
         ${addr.label || 'ที่อยู่ #' + (idx + 1)}
       </div>
       <div class="address-detail">${addr.addressDetails || '-'}</div>
-      ${coordsText ? `<div class="address-gps">${coordsText}</div>` : ''}
+      ${distBadgeText ? `<div class="address-gps" style="color: #166534; font-weight: 600;">${distBadgeText}</div>` : (coordsText ? `<div class="address-gps">${coordsText}</div>` : '')}
       <button class="btn-delete-address" data-idx="${idx}" title="ลบที่อยู่นี้">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -795,6 +801,19 @@ function selectSavedAddress(idx) {
     if (gpsLinkEl) gpsLinkEl.value = addr.gpsLocation || '';
     if (addrDetailsEl) addrDetailsEl.value = addr.addressDetails || '';
 
+    // คำนวณระยะทางจัดส่งจากร้านสำหรับที่อยู่ที่เลือก
+    if (addr.gpsLocation) {
+      const coords = parseCoords(addr.gpsLocation);
+      if (coords) {
+        const rawDistance = calculateHaversineDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, coords.lat, coords.lng);
+        const calcDistance = rawDistance < 0.1 ? 0.1 : Math.round(rawDistance * 10) / 10;
+        const distInput = document.getElementById('deliveryDistance');
+        if (distInput) distInput.value = calcDistance;
+        const distText = document.getElementById('deliveryDistanceText');
+        if (distText) distText.textContent = `${calcDistance} กม.`;
+      }
+    }
+
     const statusBadge = document.getElementById('locationStatus');
     if (statusBadge) {
       const coords = parseCoords(addr.gpsLocation);
@@ -851,6 +870,12 @@ document.getElementById('btnUseNewAddress')?.addEventListener('click', () => {
   document.getElementById('addressLabel').value = '';
   document.getElementById('locationStatus').textContent = 'ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง';
   document.getElementById('locationStatus').className = 'location-status-badge';
+
+  const distInput = document.getElementById('deliveryDistance');
+  if (distInput) distInput.value = 0;
+  const distText = document.getElementById('deliveryDistanceText');
+  if (distText) distText.textContent = '0 กม.';
+  calculateCheckoutTotal();
 
   // Reset map marker
   if (mapMarker && mapInstance) {
@@ -980,6 +1005,10 @@ function calculateCheckoutTotal() {
   const distanceLabel = document.getElementById('checkoutDistanceLabel');
   if (distanceLabel) {
     distanceLabel.textContent = `${distKm} กม.`;
+  }
+  const distanceText = document.getElementById('deliveryDistanceText');
+  if (distanceText) {
+    distanceText.textContent = `${distKm} กม.`;
   }
 
   if (shippingOption === 'รับหน้าร้าน') {
@@ -1648,6 +1677,10 @@ function updateMapPin(lat, lng, flyTo = true) {
   const distInput = document.getElementById('deliveryDistance');
   if (distInput) {
     distInput.value = calcDistance;
+  }
+  const distText = document.getElementById('deliveryDistanceText');
+  if (distText) {
+    distText.textContent = `${calcDistance} กม.`;
   }
 
   statusBadge.textContent = `📍 ปักหมุดจัดส่งสำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)}) • ระยะทาง ~${calcDistance} กม. จากร้าน`;
