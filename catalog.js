@@ -1354,12 +1354,11 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
     altText: `🛒 คำสั่งซื้อใหม่ ${orderId}`,
     contents: {
       type: "bubble",
-      size: "mega",
       header: {
         type: "box",
         layout: "vertical",
         backgroundColor: "#10b981",
-        paddingAll: "lg",
+        paddingAll: "16px",
         contents: [
           {
             type: "box",
@@ -1369,7 +1368,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 type: "text",
                 text: "🛒 คำสั่งซื้อใหม่",
                 weight: "bold",
-                size: "xxl",
+                size: "xl",
                 color: "#ffffff",
                 flex: 4
               },
@@ -1380,7 +1379,6 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 color: "#ffffff",
                 weight: "bold",
                 align: "right",
-                gravity: "center",
                 flex: 2
               }
             ]
