@@ -1338,7 +1338,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                   size: "xs",
                   weight: "bold",
                   color: "#0f172a",
-                  align: "right",
+                  align: "end",
                   flex: 2
                 }
               ]
@@ -1378,7 +1378,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 size: "xs",
                 color: "#ffffff",
                 weight: "bold",
-                align: "right",
+                align: "end",
                 flex: 2
               }
             ]
@@ -1456,7 +1456,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
             layout: "horizontal",
             contents: [
               { type: "text", text: "รวมค่าสินค้า", size: "sm", color: "#64748b", flex: 3 },
-              { type: "text", text: `฿${calcSubtotal.toLocaleString()}`, size: "sm", color: "#0f172a", align: "right", flex: 3 }
+              { type: "text", text: `฿${calcSubtotal.toLocaleString()}`, size: "sm", color: "#0f172a", align: "end", flex: 3 }
             ]
           },
           {
@@ -1464,7 +1464,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
             layout: "horizontal",
             contents: [
               { type: "text", text: "ค่าจัดส่ง", size: "sm", color: "#64748b", flex: 3 },
-              { type: "text", text: calcShippingFee > 0 ? `฿${calcShippingFee.toLocaleString()}` : "ฟรี (฿0)", size: "sm", color: calcShippingFee > 0 ? "#0f172a" : "#16a34a", weight: "bold", align: "right", flex: 3 }
+              { type: "text", text: calcShippingFee > 0 ? `฿${calcShippingFee.toLocaleString()}` : "ฟรี (฿0)", size: "sm", color: calcShippingFee > 0 ? "#0f172a" : "#16a34a", weight: "bold", align: "end", flex: 3 }
             ]
           },
           { type: "separator", margin: "sm" },
@@ -1474,7 +1474,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
             margin: "md",
             contents: [
               { type: "text", text: "ยอดเงินรวมสุทธิ", size: "md", color: "#0f172a", weight: "bold", flex: 3 },
-              { type: "text", text: `฿${totalPrice.toLocaleString()}`, size: "xl", color: "#10b981", weight: "bold", align: "right", flex: 3 }
+              { type: "text", text: `฿${totalPrice.toLocaleString()}`, size: "xl", color: "#10b981", weight: "bold", align: "end", flex: 3 }
             ]
           }
         ]
