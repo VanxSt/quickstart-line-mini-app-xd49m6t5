@@ -1284,144 +1284,198 @@ async function fetchMemberInfo(userId) {
 
 
 async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0) {
-  // สร้างรายการสินค้าสำหรับ Flex Message
-  const itemBoxes = cartItems.map(item => ({
-    type: "box",
-    layout: "horizontal",
-    margin: "md",
-    spacing: "md",
-    contents: [
-      {
-        type: "image",
-        url: (item.image && item.image.startsWith('http')) ? item.image : "https://placehold.co/600x600/f3f0ec/a88b62.png?text=No+Image",
-        size: "sm",
-        aspectRatio: "1:1",
-        aspectMode: "cover",
-        flex: 1
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        flex: 3,
-        contents: [
-          {
-            type: "text",
-            text: `รหัส: ${item.id}`,
-            size: "xxs",
-            color: "#aaaaaa"
-          },
-          {
-            type: "text",
-            text: item.name,
-            size: "sm",
-            wrap: true,
-            weight: "bold",
-            color: "#1a202c"
-          },
-          {
-            type: "text",
-            text: `${item.qty} x ฿${item.price}`,
-            size: "sm",
-            color: "#388BC2"
-          }
-        ]
-      }
-    ]
-  }));
+  const calcSubtotal = subtotal || cartItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  const calcShippingFee = shippingOption === 'รับหน้าร้าน' ? 0 : (shippingFee || Math.max(0, totalPrice - calcSubtotal));
+
+  // สร้างรายการสินค้าสำหรับ Flex Message (พร้อมรูป และรายละเอียด)
+  const itemBoxes = cartItems.map(item => {
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.qty || 1);
+    const itemTotal = itemPrice * itemQty;
+    return {
+      type: "box",
+      layout: "horizontal",
+      margin: "md",
+      spacing: "md",
+      contents: [
+        {
+          type: "image",
+          url: (item.image && item.image.startsWith('http')) ? item.image : "https://placehold.co/600x600/f3f0ec/a88b62.png?text=No+Image",
+          size: "sm",
+          aspectRatio: "1:1",
+          aspectMode: "cover",
+          flex: 1
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          flex: 4,
+          contents: [
+            {
+              type: "text",
+              text: item.name,
+              size: "sm",
+              wrap: true,
+              weight: "bold",
+              color: "#1e293b"
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              margin: "xs",
+              contents: [
+                {
+                  type: "text",
+                  text: `x${itemQty}  •  ฿${itemPrice.toLocaleString()}`,
+                  size: "xs",
+                  color: "#64748b",
+                  flex: 3
+                },
+                {
+                  type: "text",
+                  text: `฿${itemTotal.toLocaleString()}`,
+                  size: "xs",
+                  weight: "bold",
+                  color: "#0f172a",
+                  align: "right",
+                  flex: 2
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  });
 
   const flexPayload = {
     type: "flex",
-    altText: `🧾 สั่งซื้อใหม่ ${orderId}`,
+    altText: `🧾 คำสั่งซื้อใหม่ ${orderId}`,
     contents: {
       type: "bubble",
+      size: "mega",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: "#10b981",
+        paddingAll: "lg",
+        contents: [
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "text",
+                text: "🛒 คำสั่งซื้อใหม่",
+                weight: "bold",
+                size: "xxl",
+                color: "#ffffff",
+                flex: 4
+              },
+              {
+                type: "text",
+                text: "รอตรวจสอบ",
+                size: "xs",
+                color: "#ffffff",
+                weight: "bold",
+                align: "right",
+                gravity: "center",
+                flex: 2
+              }
+            ]
+          },
+          {
+            type: "text",
+            text: `เลขที่: ${orderId}`,
+            size: "xs",
+            color: "#d1fae5",
+            margin: "xs"
+          }
+        ]
+      },
       body: {
         type: "box",
         layout: "vertical",
+        paddingAll: "lg",
+        spacing: "md",
         contents: [
-          {
-            type: "text",
-            text: "🛒 คำสั่งซื้อใหม่ (รอตรวจสอบ)",
-            weight: "bold",
-            size: "xl",
-            color: "#388BC2"
-          },
           {
             type: "box",
             layout: "vertical",
-            margin: "md",
-            spacing: "sm",
+            backgroundColor: "#f8fafc",
+            cornerRadius: "md",
+            paddingAll: "md",
+            spacing: "xs",
             contents: [
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "เลขที่สั่งซื้อ", size: "sm", color: "#aaaaaa", flex: 2 },
-                  { type: "text", text: orderId, size: "sm", color: "#1a202c", flex: 4, weight: "bold" }
+                  { type: "text", text: "👤 ผู้รับ", size: "xs", color: "#64748b", flex: 2 },
+                  { type: "text", text: name, size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
                 ]
               },
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "ผู้รับ", size: "sm", color: "#aaaaaa", flex: 2 },
-                  { type: "text", text: name, size: "sm", color: "#1a202c", flex: 4 }
+                  { type: "text", text: "📞 เบอร์ติดต่อ", size: "xs", color: "#64748b", flex: 2 },
+                  { type: "text", text: phone, size: "xs", color: "#0f172a", weight: "bold", flex: 4 }
                 ]
               },
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "เบอร์ติดต่อ", size: "sm", color: "#aaaaaa", flex: 2 },
-                  { type: "text", text: phone, size: "sm", color: "#1a202c", flex: 4 }
+                  { type: "text", text: "🚚 การรับสินค้า", size: "xs", color: "#64748b", flex: 2 },
+                  { type: "text", text: shippingOption === 'รับหน้าร้าน' ? "🏪 รับสินค้าเองที่หน้าร้าน" : "🚚 จัดส่งตามที่อยู่", size: "xs", color: "#059669", weight: "bold", flex: 4 }
                 ]
               },
               {
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "การรับสินค้า", size: "sm", color: "#aaaaaa", flex: 2 },
-                  { type: "text", text: shippingOption === 'รับหน้าร้าน' ? "🏪 รับสินค้าเองที่หน้าร้าน" : "🚚 จัดส่งตามที่อยู่", size: "sm", color: "#1a202c", flex: 4, weight: "bold" }
-                ]
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                contents: [
-                  { type: "text", text: "เวลาส่ง/รับ", size: "sm", color: "#aaaaaa", flex: 2 },
-                  { type: "text", text: deliveryType === 'ล่วงหน้า' ? `🕒 สั่งล่วงหน้า (${preorderTime} น.)` : "🚀 ส่งทันที (ด่วนที่สุด)", size: "sm", color: "#e11d48", flex: 4, weight: "bold", wrap: true }
-                ]
-              },
-              { type: "separator", margin: "md" },
-              // ใส่รายการสินค้าที่นี่
-              ...itemBoxes,
-              { type: "separator", margin: "md" },
-              {
-                type: "box",
-                layout: "horizontal",
-                margin: "xs",
-                contents: [
-                  { type: "text", text: "รวมสินค้า", size: "sm", color: "#666666", flex: 3 },
-                  { type: "text", text: `฿${subtotal || totalPrice}`, size: "sm", color: "#1a202c", align: "right", flex: 3 }
-                ]
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                margin: "xs",
-                contents: [
-                  { type: "text", text: "ค่าจัดส่ง", size: "sm", color: "#666666", flex: 3 },
-                  { type: "text", text: shippingFee > 0 ? `฿${shippingFee}` : "ฟรี (฿0)", size: "sm", color: shippingFee > 0 ? "#1a202c" : "#16a34a", weight: "bold", align: "right", flex: 3 }
-                ]
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                margin: "sm",
-                contents: [
-                  { type: "text", text: "ยอดเงินรวมสุทธิ", size: "md", color: "#1a202c", weight: "bold", flex: 3 },
-                  { type: "text", text: `฿${totalPrice}`, size: "md", color: "#388BC2", weight: "bold", align: "right", flex: 3 }
+                  { type: "text", text: "🕒 เวลาจัดส่ง/รับ", size: "xs", color: "#64748b", flex: 2 },
+                  { type: "text", text: deliveryType === 'ล่วงหน้า' ? `🕒 สั่งล่วงหน้า (${preorderTime} น.)` : "🚀 ส่งทันที (ด่วนที่สุด)", size: "xs", color: "#dc2626", weight: "bold", flex: 4, wrap: true }
                 ]
               }
+            ]
+          },
+          { type: "separator", margin: "md" },
+          {
+            type: "text",
+            text: "📦 รายการสินค้าที่สั่งซื้อ",
+            weight: "bold",
+            size: "sm",
+            color: "#334155",
+            margin: "sm"
+          },
+          ...itemBoxes,
+          { type: "separator", margin: "md" },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              { type: "text", text: "รวมค่าสินค้า", size: "sm", color: "#64748b", flex: 3 },
+              { type: "text", text: `฿${calcSubtotal.toLocaleString()}`, size: "sm", color: "#0f172a", align: "right", flex: 3 }
+            ]
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              { type: "text", text: "ค่าจัดส่ง", size: "sm", color: "#64748b", flex: 3 },
+              { type: "text", text: calcShippingFee > 0 ? `฿${calcShippingFee.toLocaleString()}` : "ฟรี (฿0)", size: "sm", color: calcShippingFee > 0 ? "#0f172a" : "#16a34a", weight: "bold", align: "right", flex: 3 }
+            ]
+          },
+          { type: "separator", margin: "sm" },
+          {
+            type: "box",
+            layout: "horizontal",
+            margin: "md",
+            contents: [
+              { type: "text", text: "ยอดเงินรวมสุทธิ", size: "md", color: "#0f172a", weight: "bold", flex: 3 },
+              { type: "text", text: `฿${totalPrice.toLocaleString()}`, size: "xl", color: "#10b981", weight: "bold", align: "right", flex: 3 }
             ]
           }
         ]
@@ -1429,16 +1483,16 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
       footer: {
         type: "box",
         layout: "vertical",
-        spacing: "md",
+        backgroundColor: "#f8fafc",
+        paddingAll: "md",
         contents: [
           {
             type: "text",
-            text: "แอดมินกำลังตรวจสอบคำสั่งซื้อและหลักฐานการโอนเงิน กรุณารอสักครู่ครับ 😊",
+            text: "✨ ทางร้านกำลังตรวจสอบรายการออเดอร์ กรุณารอสักครู่ครับ 🙏",
             size: "xs",
-            color: "#aaaaaa",
+            color: "#64748b",
             wrap: true,
-            align: "center",
-            margin: "sm"
+            align: "center"
           }
         ]
       }
@@ -1449,12 +1503,34 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
     await liff.sendMessages([flexPayload]);
   } catch (err) {
     console.error("Error sending order Flex Message:", err);
-    // Fallback: สร้างข้อความแสดงรายการสินค้า
-    let itemsText = cartItems.map(item => `- [${item.id}] ${item.name} (x${item.qty})`).join('\n');
+    let itemsText = cartItems.map(item => {
+      const p = Number(item.price || 0);
+      const q = Number(item.qty || 1);
+      return `• ${item.name}\n  จำนวน: ${q} ชิ้น (฿${(p * q).toLocaleString()})`;
+    }).join('\n');
+
+    const formattedText = 
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `🛒  คำสั่งซื้อใหม่ (รอตรวจสอบ)\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `🧾 รหัสออเดอร์: ${orderId}\n` +
+      `👤 ผู้รับ: ${name}\n` +
+      `📞 เบอร์ติดต่อ: ${phone}\n` +
+      `🚚 การรับสินค้า: ${shippingOption === 'รับหน้าร้าน' ? '🏪 รับสินค้าเองที่หน้าร้าน' : '🚚 จัดส่งตามที่อยู่'}\n` +
+      `🕒 เวลา: ${deliveryType === 'ล่วงหน้า' ? `สั่งล่วงหน้า (${preorderTime} น.)` : '🚀 ส่งทันที'}\n\n` +
+      `📦 รายการสินค้า:\n` +
+      `-----------------------------------\n` +
+      `${itemsText}\n` +
+      `-----------------------------------\n` +
+      `💵 รวมค่าสินค้า: ฿${calcSubtotal.toLocaleString()}\n` +
+      `🚚 ค่าจัดส่ง: ${calcShippingFee > 0 ? '฿' + calcShippingFee.toLocaleString() : 'ฟรี (฿0)'}\n` +
+      `💰 ยอดเงินรวมสุทธิ: ฿${totalPrice.toLocaleString()}\n` +
+      `━━━━━━━━━━━━━━━━━━━`;
+
     try {
       await liff.sendMessages([{
         type: 'text',
-        text: `🛒 คำสั่งซื้อใหม่\nรหัส: ${orderId}\nผู้รับ: ${name}\nเบอร์: ${phone}\n\nรายการสินค้า:\n${itemsText}\n\nยอดรวม: ฿${totalPrice}`
+        text: formattedText
       }]);
     } catch (err2) {
       console.error("Fallback text message also failed", err2);
