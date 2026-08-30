@@ -634,8 +634,36 @@ function renderModalItems(order, isEditMode = false) {
     itemsBody.appendChild(tr);
   });
 
+  let itemsSubtotal = 0;
+  order.items.forEach((item) => {
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.qty || 1);
+    itemsSubtotal += Number(item.subtotal || (itemPrice * itemQty));
+  });
+
   const grandTotal = Number(order.totalPrice || 0);
-  document.getElementById('modalTotalPrice').textContent = `฿${grandTotal.toLocaleString()}`;
+  const isPickup = order.shippingOption === 'รับหน้าร้าน';
+  const shippingFee = isPickup ? 0 : Math.max(0, grandTotal - itemsSubtotal);
+
+  const subtotalEl = document.getElementById('modalSubtotalPrice');
+  if (subtotalEl) subtotalEl.textContent = `฿${itemsSubtotal.toLocaleString()}`;
+
+  const feeEl = document.getElementById('modalShippingFee');
+  if (feeEl) {
+    if (isPickup) {
+      feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>`;
+    } else if (shippingFee === 0) {
+      feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0</span>`;
+    } else {
+      feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+    }
+  }
+
+  const optionLabelEl = document.getElementById('modalShippingOptionLabel');
+  if (optionLabelEl) optionLabelEl.textContent = isPickup ? 'รับหน้าร้าน' : 'จัดส่ง';
+
+  const totalEl = document.getElementById('modalTotalPrice');
+  if (totalEl) totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
 }
 
 // Handle real-time input change for price and quantity
@@ -659,7 +687,7 @@ function onRowEditChange(index) {
 
 // Recalculate grand total from all editable row inputs
 function recalculateModalTotalFromInputs() {
-  let grandTotal = 0;
+  let itemsSubtotal = 0;
   const qtyInputs = document.querySelectorAll('.input-edit-qty');
   const priceInputs = document.querySelectorAll('.input-edit-price');
 
@@ -668,14 +696,33 @@ function recalculateModalTotalFromInputs() {
     if (pEl) {
       const q = Math.max(1, parseInt(qEl.value) || 1);
       const p = Math.max(0, parseFloat(pEl.value) || 0);
-      grandTotal += (q * p);
+      itemsSubtotal += (q * p);
     }
   });
 
-  const totalEl = document.getElementById('modalTotalPrice');
-  if (totalEl) {
-    totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
+  const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+  const isPickup = order && order.shippingOption === 'รับหน้าร้าน';
+  const origTotal = order ? Number(order.totalPrice || 0) : itemsSubtotal;
+  const origItemsSub = order && order.items ? order.items.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) : itemsSubtotal;
+  const shippingFee = isPickup ? 0 : Math.max(0, origTotal - origItemsSub);
+  const newGrandTotal = itemsSubtotal + shippingFee;
+
+  const subtotalEl = document.getElementById('modalSubtotalPrice');
+  if (subtotalEl) subtotalEl.textContent = `฿${itemsSubtotal.toLocaleString()}`;
+
+  const feeEl = document.getElementById('modalShippingFee');
+  if (feeEl) {
+    if (isPickup) {
+      feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>`;
+    } else if (shippingFee === 0) {
+      feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0</span>`;
+    } else {
+      feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+    }
   }
+
+  const totalEl = document.getElementById('modalTotalPrice');
+  if (totalEl) totalEl.textContent = `฿${newGrandTotal.toLocaleString()}`;
 }
 
 // Save order item and price changes, then notify customer via LINE

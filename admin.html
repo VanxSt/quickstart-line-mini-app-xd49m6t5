@@ -234,7 +234,17 @@
             <label for="editChangeNote">📌 หมายเหตุการแก้ไข (ส่งแจ้งเตือนให้ลูกค้าผ่าน LINE):</label>
             <input type="text" id="editChangeNote" placeholder="เช่น ปรับเปลี่ยนราคาตามป้าย / สินค้าหมดเปลี่ยนเป็น..." />
           </div>
-          <h3 class="modal-total">ยอดสุทธิ: <span id="modalTotalPrice"></span></h3>
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <div style="font-size: 14px; color: #64748b;">
+              รวมค่าสินค้า: <strong id="modalSubtotalPrice" style="color: #1e293b;">฿0</strong>
+            </div>
+            <div style="font-size: 14px; color: #64748b;">
+              ค่าจัดส่ง (<span id="modalShippingOptionLabel">จัดส่ง</span>): <strong id="modalShippingFee" style="color: #2563eb;">฿0</strong>
+            </div>
+            <h3 class="modal-total" style="margin-top: 4px; font-size: 18px; font-weight: 700; color: #0f172a;">
+              ยอดสุทธิ: <span id="modalTotalPrice" style="color: #2563eb;">฿0</span>
+            </h3>
+          </div>
         </div>
       </div>
       <footer class="modal-footer">
