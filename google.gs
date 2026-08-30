@@ -709,12 +709,25 @@ function updateOrderStatusNative(orderId, newStatus) {
   var paymentMethod = "";
   var totalPrice = 0;
   
+  var name = "-";
+  var phone = "-";
+  var itemsJson = "[]";
+  var deliveryType = "ทันที";
+  var preorderTime = "";
+  var shippingOption = "จัดส่ง";
+  
   for (var i = 1; i < values.length; i++) {
     if (values[i][1] && values[i][1].toString() === orderId) {
       foundRow = i + 1;
-      userId = values[i][2]; // User ID อยู่คอลัมน์ 3 (index 2)
-      totalPrice = values[i][8] || 0; // Total Price อยู่คอลัมน์ 9 (index 8)
-      paymentMethod = values[i][10] || "ปลายทาง"; // Payment Method อยู่คอลัมน์ 11 (index 10)
+      userId = values[i][2]; // User ID
+      name = values[i][3]; // Name
+      phone = values[i][4]; // Phone
+      totalPrice = values[i][8] || 0; // Total Price
+      paymentMethod = values[i][10] || "ปลายทาง"; // Payment Method
+      itemsJson = values[i][12] || "[]"; // Items JSON
+      deliveryType = values[i][13] || "ทันที"; // Delivery Type
+      preorderTime = values[i][14] || ""; // Preorder Time
+      shippingOption = values[i][15] || "จัดส่ง"; // Shipping Option
       break;
     }
   }
@@ -728,7 +741,7 @@ function updateOrderStatusNative(orderId, newStatus) {
         var messages = [];
         
         if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod === "โอนจ่าย" || paymentMethod === "โอนเงินผ่านบัญชีธนาคาร" || paymentMethod === "โอนเงินผสมเงินสด")) {
-           messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb"));
+           messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
            
            var staticQrUrl = "https://i.postimg.cc/zDFp1Dpk/Screenshot-10.png";
            messages.push({
@@ -738,19 +751,19 @@ function updateOrderStatusNative(orderId, newStatus) {
            });
         }
         else if (newStatus === "เตรียมออเดอร์") {
-           messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "ทางร้านกำลังเตรียมสินค้าของคุณอย่างพิถีพิถันครับ อดใจรออีกสักครู่นะครับ! 📦✨", "#d97706"));
+           messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "ทางร้านกำลังเตรียมสินค้าของคุณอย่างพิถีพิถันครับ อดใจรออีกสักครู่นะครับ! 📦✨", "#d97706", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         else if (newStatus === "เตรียมจัดส่ง") {
-           messages.push(buildStatusFlexMessage("🛍️ จัดเตรียมสินค้าพร้อมส่ง", orderId, "สินค้าแพ็คเสร็จเรียบร้อยแล้ว พร้อมส่งมอบให้ไรเดอร์แล้วครับ! 📦💨", "#0284c7"));
+           messages.push(buildStatusFlexMessage("🛍️ จัดเตรียมสินค้าพร้อมส่ง", orderId, "สินค้าแพ็คเสร็จเรียบร้อยแล้ว พร้อมส่งมอบให้ไรเดอร์แล้วครับ! 📦💨", "#0284c7", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         else if (newStatus === "กำลังจัดส่ง") {
-           messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6"));
+           messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         else if (newStatus === "จัดส่งสำเร็จ" || newStatus === "ยืนยันแล้ว") {
-           messages.push(buildStatusFlexMessage("🎉 จัดส่งสินค้าสำเร็จเรียบร้อย", orderId, "สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️", "#16a34a"));
+           messages.push(buildStatusFlexMessage("🎉 จัดส่งสินค้าสำเร็จเรียบร้อย", orderId, "สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️", "#16a34a", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         else if (newStatus === "ยกเลิก") {
-           messages.push(buildStatusFlexMessage("🥺 แจ้งยกเลิกออเดอร์", orderId, "ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨", "#dc2626"));
+           messages.push(buildStatusFlexMessage("🥺 แจ้งยกเลิกออเดอร์", orderId, "ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨", "#dc2626", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         
         if (messages.length > 0) {
@@ -855,14 +868,80 @@ function getAllMembersNative() {
   return members;
 }
 
-// สร้าง Flex Message สำหรับการแจ้งเตือนเปลี่ยนสถานะออเดอร์ (หัวข้อใหญ่ โดดเด่น สวยงาม)
-function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor) {
+// สร้าง Flex Message สำหรับการแจ้งเตือนเปลี่ยนสถานะออเดอร์ (เต็มรูปแบบ)
+function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor, name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice) {
+  var cartItems = [];
+  try {
+    cartItems = JSON.parse(itemsJson);
+  } catch(e) {}
+  
+  var calcSubtotal = 0;
+  var itemBoxes = [];
+  
+  cartItems.forEach(function(item) {
+    var itemPrice = Number(item.price || 0);
+    var itemQty = Number(item.qty || 1);
+    var itemTotal = itemPrice * itemQty;
+    calcSubtotal += itemTotal;
+    
+    itemBoxes.push({
+      "type": "box",
+      "layout": "horizontal",
+      "margin": "md",
+      "spacing": "md",
+      "contents": [
+        {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "text",
+              "text": String(item.name || 'สินค้า'),
+              "size": "sm",
+              "wrap": true,
+              "weight": "bold",
+              "color": "#1e293b"
+            },
+            {
+              "type": "box",
+              "layout": "horizontal",
+              "margin": "xs",
+              "contents": [
+                {
+                  "type": "text",
+                  "text": "x" + itemQty + "  •  ฿" + itemPrice.toLocaleString(),
+                  "size": "xs",
+                  "color": "#64748b",
+                  "flex": 3
+                },
+                {
+                  "type": "text",
+                  "text": "฿" + itemTotal.toLocaleString(),
+                  "size": "xs",
+                  "weight": "bold",
+                  "color": "#0f172a",
+                  "align": "end",
+                  "flex": 2
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+  });
+  
+  var calcShippingFee = Number(totalPrice) - calcSubtotal;
+  if (calcShippingFee < 0) calcShippingFee = 0;
+  
+  var deliveryText = (shippingOption === 'รับหน้าร้าน') ? "🏪 รับสินค้าเองที่หน้าร้าน" : "🚚 จัดส่งตามที่อยู่";
+  var timeText = (deliveryType === 'ล่วงหน้า') ? "🕒 สั่งล่วงหน้า (" + preorderTime + " น.)" : "🚀 ส่งทันที (ด่วนที่สุด)";
+  
   return {
     "type": "flex",
     "altText": title + " (" + orderId + ")",
     "contents": {
       "type": "bubble",
-      "size": "mega",
       "header": {
         "type": "box",
         "layout": "vertical",
@@ -870,54 +949,129 @@ function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor) {
         "paddingAll": "16px",
         "contents": [
           {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              {
+                "type": "text",
+                "text": title,
+                "weight": "bold",
+                "size": "xl",
+                "color": "#ffffff",
+                "wrap": true,
+                "flex": 4
+              }
+            ]
+          },
+          {
             "type": "text",
-            "text": title,
-            "weight": "bold",
-            "size": "xl",
+            "text": "เลขที่: " + orderId,
+            "size": "xs",
             "color": "#ffffff",
-            "wrap": true
+            "margin": "xs"
           }
         ]
       },
       "body": {
         "type": "box",
         "layout": "vertical",
+        "paddingAll": "lg",
         "spacing": "md",
-        "paddingAll": "16px",
         "contents": [
           {
             "type": "box",
-            "layout": "baseline",
-            "spacing": "sm",
+            "layout": "vertical",
+            "backgroundColor": "#f8fafc",
+            "cornerRadius": "md",
+            "paddingAll": "md",
+            "spacing": "xs",
             "contents": [
               {
-                "type": "text",
-                "text": "รหัสออเดอร์:",
-                "color": "#8c8c8c",
-                "size": "sm",
-                "flex": 0
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                  { "type": "text", "text": "👤 ผู้รับ", "size": "xs", "color": "#64748b", "flex": 2 },
+                  { "type": "text", "text": String(name || '-'), "size": "xs", "color": "#0f172a", "weight": "bold", "flex": 4 }
+                ]
               },
               {
-                "type": "text",
-                "text": orderId,
-                "weight": "bold",
-                "size": "sm",
-                "color": "#1f2937",
-                "flex": 1
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                  { "type": "text", "text": "📞 เบอร์ติดต่อ", "size": "xs", "color": "#64748b", "flex": 2 },
+                  { "type": "text", "text": String(phone || '-'), "size": "xs", "color": "#0f172a", "weight": "bold", "flex": 4 }
+                ]
+              },
+              {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                  { "type": "text", "text": "🚚 การรับสินค้า", "size": "xs", "color": "#64748b", "flex": 2 },
+                  { "type": "text", "text": deliveryText, "size": "xs", "color": "#059669", "weight": "bold", "flex": 4 }
+                ]
+              },
+              {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                  { "type": "text", "text": "🕒 เวลาจัดส่ง/รับ", "size": "xs", "color": "#64748b", "flex": 2 },
+                  { "type": "text", "text": timeText, "size": "xs", "color": "#dc2626", "weight": "bold", "flex": 4, "wrap": true }
+                ]
               }
             ]
           },
-          {
-            "type": "separator",
-            "margin": "md"
-          },
+          { "type": "separator", "margin": "md" },
           {
             "type": "text",
-            "text": bodyText,
-            "size": "md",
-            "color": "#374151",
+            "text": "📦 รายการสินค้าที่สั่งซื้อ",
+            "weight": "bold",
+            "size": "sm",
+            "color": "#334155",
+            "margin": "sm"
+          }
+        ].concat(itemBoxes).concat([
+          { "type": "separator", "margin": "md" },
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              { "type": "text", "text": "รวมค่าสินค้า", "size": "sm", "color": "#64748b", "flex": 3 },
+              { "type": "text", "text": "฿" + calcSubtotal.toLocaleString(), "size": "sm", "color": "#0f172a", "align": "end", "flex": 3 }
+            ]
+          },
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              { "type": "text", "text": "ค่าจัดส่ง", "size": "sm", "color": "#64748b", "flex": 3 },
+              { "type": "text", "text": calcShippingFee > 0 ? "฿" + calcShippingFee.toLocaleString() : "ฟรี (฿0)", "size": "sm", "color": calcShippingFee > 0 ? "#0f172a" : "#16a34a", "weight": "bold", "align": "end", "flex": 3 }
+            ]
+          },
+          { "type": "separator", "margin": "sm" },
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "margin": "md",
+            "contents": [
+              { "type": "text", "text": "ยอดเงินรวมสุทธิ", "size": "md", "color": "#0f172a", "weight": "bold", "flex": 3 },
+              { "type": "text", "text": "฿" + Number(totalPrice).toLocaleString(), "size": "xl", "color": "#10b981", "weight": "bold", "align": "end", "flex": 3 }
+            ]
+          }
+        ])
+      },
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": "#f8fafc",
+        "paddingAll": "12px",
+        "contents": [
+          {
+            "type": "text",
+            "text": "✨ " + bodyText,
+            "size": "xs",
+            "color": "#64748b",
             "wrap": true,
-            "margin": "md"
+            "align": "center"
           }
         ]
       }
