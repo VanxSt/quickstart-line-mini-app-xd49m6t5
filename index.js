@@ -14,6 +14,7 @@ const btnShortcut = document.querySelector('#btnShortcut');
 const btnSaveData = document.querySelector('#btnSaveData');
 const btnNextPage = document.querySelector('#btnNextPage');
 const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
+const btnFavoriteOrders = document.querySelector('#btnFavoriteOrders');
 
 // Store profile data temporarily
 let userProfileData = null;
@@ -370,5 +371,11 @@ if (btnSavePhoneInline) {
 if (btnNextPage) {
   btnNextPage.addEventListener('click', () => {
     window.location.href = 'second.html';
+  });
+}
+
+if (btnFavoriteOrders) {
+  btnFavoriteOrders.addEventListener('click', () => {
+    window.location.href = 'second.html?open=favorites';
   });
 }

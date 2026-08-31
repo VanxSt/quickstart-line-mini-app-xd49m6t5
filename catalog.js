@@ -2452,6 +2452,16 @@ async function start() {
   if (productId) {
     openProductDetail(parseInt(productId, 10));
   }
+  
+  const openParam = urlParams.get('open');
+  if (openParam === 'favorites') {
+    openOrdersModal();
+    const tabFav = document.getElementById('tabFavOrders');
+    if (tabFav) {
+      // Delay slightly to ensure UI is ready
+      setTimeout(() => tabFav.click(), 100);
+    }
+  }
 }
 
 start();
