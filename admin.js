@@ -286,9 +286,8 @@ function renderOrders() {
     // Payment Method Filter Match
     let paymentMatch = (activePaymentFilter === 'all');
     if (!paymentMatch) {
-      const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
-      if (activePaymentFilter === 'transfer' && isTransfer) paymentMatch = true;
-      if (activePaymentFilter === 'cod' && !isTransfer) paymentMatch = true;
+      const currentMethod = order.paymentMethod || 'โอนจ่าย';
+      paymentMatch = (currentMethod === activePaymentFilter);
     }
 
     const searchMatch = !searchQuery ||
