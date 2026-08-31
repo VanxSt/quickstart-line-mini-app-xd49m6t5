@@ -892,7 +892,7 @@ function closeModal() {
   currentViewingOrderId = null;
 }
 
-// Modern premium non-blocking toast notification helper
+// Modern premium non-blocking toast notification helper (5x Larger)
 function showToast(message, type = 'success') {
   const existing = document.querySelectorAll('.custom-toast');
   existing.forEach(el => el.remove());
@@ -914,30 +914,30 @@ function showToast(message, type = 'success') {
   }
 
   toast.style.position = 'fixed';
-  toast.style.bottom = '24px';
-  toast.style.right = '24px';
+  toast.style.bottom = '40px';
+  toast.style.right = '40px';
   toast.style.backgroundColor = bgColor;
   toast.style.color = '#ffffff';
-  toast.style.padding = '12px 24px';
-  toast.style.borderRadius = '12px';
-  toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+  toast.style.padding = '24px 48px';
+  toast.style.borderRadius = '24px';
+  toast.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25)';
   toast.style.zIndex = '99999';
   toast.style.display = 'flex';
   toast.style.alignItems = 'center';
-  toast.style.gap = '10px';
-  toast.style.fontWeight = '600';
+  toast.style.gap = '20px';
+  toast.style.fontWeight = '700';
   toast.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-  toast.style.fontSize = '14px';
-  toast.style.transition = 'all 0.3s ease';
+  toast.style.fontSize = '30px';
+  toast.style.transition = 'all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
   toast.style.opacity = '0';
-  toast.style.transform = 'translateY(20px)';
+  toast.style.transform = 'translateY(30px) scale(0.9)';
 
-  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  toast.innerHTML = `<span style="font-size: 40px; display: inline-flex; align-items: center;">${icon}</span> <span>${message}</span>`;
   document.body.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
+    toast.style.transform = 'translateY(0) scale(1)';
   }, 10);
 
   if (type !== 'loading') {
