@@ -1244,7 +1244,7 @@ async function fetchMemberInfo(userId) {
 
   // 2. ดึงข้อมูลจริงจาก Server เบื้องหลัง แล้วอัปเดต cache
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${userId}`);
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?userId=${userId}&_t=${Date.now()}`);
     const data = await res.json();
     if (data.status === 'success' && data.found) {
       currentMemberInfo = {
@@ -1697,7 +1697,7 @@ async function loadMyOrders() {
   }
 
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}`);
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMyOrders&userId=${userId}&_t=${Date.now()}`);
     const data = await res.json();
 
     if (data.status === 'success') {

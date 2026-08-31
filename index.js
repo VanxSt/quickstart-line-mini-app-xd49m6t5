@@ -118,7 +118,7 @@ async function getUserProfile() {
     };
 
     // 3. ดึงข้อมูลจริงจาก Google Sheets เป็นเบื้องหลัง (Non-blocking / Background Fetch)
-    fetch(`${GOOGLE_SCRIPT_URL}?userId=${profile.userId}`)
+    fetch(`${GOOGLE_SCRIPT_URL}?userId=${profile.userId}&_t=${Date.now()}`)
       .then(response => response.json())
       .then(dbData => {
         if (dbData.status === 'success') {

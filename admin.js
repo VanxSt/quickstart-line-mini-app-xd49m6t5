@@ -204,7 +204,7 @@ async function fetchOrders(showLoading = true) {
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders`, {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders&_t=${Date.now()}`, {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -952,7 +952,7 @@ async function fetchMembers(showLoading = true) {
   }
 
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllMembers`);
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllMembers&_t=${Date.now()}`);
     const result = await response.json();
 
     if (result.status === 'success') {
