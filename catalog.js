@@ -1591,59 +1591,10 @@ async function loadMyOrders() {
   // ฟังก์ชันแยกสำหรับวาด UI
   const renderOrdersUI = (orders) => {
     // กรองข้อมูลตามแท็บปัจจุบัน
-    if (currentOrderTab === 'fav') {
-      // ดึงสินค้าเฉพาะที่ลูกค้าเคยสั่งมาแสดง โดยไม่ซ้ำกัน
-      const orderedProducts = [];
-      const seenProductIds = new Set();
-      
-      orders.forEach(order => {
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach(item => {
-            const productId = item.id || item.name;
-            if (!seenProductIds.has(productId)) {
-              seenProductIds.add(productId);
-              orderedProducts.push(item);
-            }
-          });
-        }
-      });
-
-      if (orderedProducts.length > 0) {
-        ordersBody.innerHTML = '';
-        orderedProducts.forEach(item => {
-          const productImg = getOptimizedImageUrl(item.img);
-          const row = document.createElement('div');
-          row.className = 'cart-item';
-          row.style.display = 'flex';
-          row.style.alignItems = 'center';
-          row.style.justifyContent = 'space-between';
-          row.style.gap = '12px';
-          row.style.padding = '12px';
-          row.style.borderBottom = '1px solid #e2e8f0';
-          
-          row.innerHTML = `
-            <img src="${productImg}" alt="${item.name}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
-            <div style="flex: 1; min-width: 0; text-align: left;">
-              <div style="font-weight: bold; color: var(--text-main); font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
-              <div style="color: var(--primary-color); font-weight: 600; font-size: 0.9em; margin-top: 4px;">฿${item.price}</div>
-            </div>
-            <button onclick="addSingleItemToCart(${item.id || 0}, '${encodeURIComponent(item.name)}', ${item.price}, '${encodeURIComponent(item.img || '')}')" style="padding: 8px 12px; border-radius: 8px; border: none; background: var(--primary-color); color: white; font-weight: bold; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: background 0.2s;">
-              🛒 ใส่ตะกร้า
-            </button>
-          `;
-          ordersBody.appendChild(row);
-        });
-      } else {
-        ordersBody.innerHTML = `
-          <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
-            คุณยังไม่มีสินค้าที่เคยสั่งซื้อ
-          </div>
-        `;
-      }
-      return;
-    }
-
     let displayOrders = orders;
+    if (currentOrderTab === 'fav') {
+      displayOrders = orders.filter(o => favoriteOrderIds.includes(o.orderId));
+    }
 
     if (displayOrders && displayOrders.length > 0) {
       ordersBody.innerHTML = '';
@@ -1656,6 +1607,7 @@ async function loadMyOrders() {
 
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
+        const isFav = favoriteOrderIds.includes(order.orderId);
         
         let itemsHtml = '';
         if (order.items && order.items.length > 0) {
@@ -1693,7 +1645,10 @@ async function loadMyOrders() {
           
           <!-- ปุ่ม Action -->
           <div style="display: flex; gap: 8px; width: 100%; margin-top: 12px;">
-            <button onclick="reorderItems('${itemsJsonStr}')" style="width: 100%; padding: 10px; border-radius: 8px; border: none; background: var(--primary-color); color: white; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+            <button onclick="toggleFavoriteOrder('${order.orderId}')" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid ${isFav ? '#f59e0b' : '#cbd5e1'}; background: ${isFav ? '#fffbeb' : '#ffffff'}; color: ${isFav ? '#f59e0b' : '#64748b'}; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+              ${isFav ? '⭐ โปรด' : '☆ ถูกใจ'}
+            </button>
+            <button onclick="reorderItems('${itemsJsonStr}')" style="flex: 2; padding: 8px; border-radius: 8px; border: none; background: var(--primary-color); color: white; font-weight: bold; cursor: pointer;">
               🛒 สั่งเซ็ตนี้อีกครั้ง
             </button>
           </div>
@@ -1703,7 +1658,7 @@ async function loadMyOrders() {
     } else {
       ordersBody.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
-          ไม่พบประวัติการสั่งซื้อของคุณ
+          ${currentOrderTab === 'fav' ? 'คุณยังไม่มีรายการสั่งซื้อโปรด' : 'ไม่พบประวัติการสั่งซื้อของคุณ'}
         </div>
       `;
     }
@@ -1766,27 +1721,22 @@ async function loadMyOrders() {
 // ========================
 // REORDER & FAVORITES LOGIC
 // ========================
-window.addSingleItemToCart = function(id, nameEsc, price, imgEsc) {
-  try {
-    const name = decodeURIComponent(nameEsc);
-    const img = decodeURIComponent(imgEsc);
-    
-    // ค้นหาใน PRODUCTS แค็ตตาล็อกหลักก่อน เพื่อเอาข้อมูลล่าสุด (เช่น รูปภาพ, รายละเอียด)
-    const catalogItem = PRODUCTS.find(p => p.id === id || p.name === name);
-    if (catalogItem) {
-      addToCart(catalogItem, 1);
-    } else {
-      // หากไม่เจอก็ใช้ข้อมูลจากประวัติสั่งซื้อเป็นหลัก
-      addToCart({
-        id: id || Date.now(),
-        name: name,
-        price: Number(price || 0),
-        img: img
-      }, 1);
-    }
-  } catch (e) {
-    console.error('Failed to add item to cart:', e);
-    alert('ไม่สามารถใส่ตะกร้าได้');
+window.toggleFavoriteOrder = function(orderId) {
+  if (favoriteOrderIds.includes(orderId)) {
+    favoriteOrderIds = favoriteOrderIds.filter(id => id !== orderId);
+  } else {
+    favoriteOrderIds.push(orderId);
+  }
+  localStorage.setItem('favoriteOrderIds', JSON.stringify(favoriteOrderIds));
+  // Re-render UI
+  const cachedStr = localStorage.getItem('myOrdersCache');
+  if (cachedStr) {
+    try {
+      const cachedOrders = JSON.parse(cachedStr);
+      // Since renderOrdersUI is inside loadMyOrders and might not be globally accessible, 
+      // we can just call loadMyOrders() again to refresh, which will hit the cache instantly.
+      loadMyOrders(); 
+    } catch(e) {}
   }
 };
 
