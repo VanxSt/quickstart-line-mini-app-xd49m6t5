@@ -4,16 +4,33 @@ let PRODUCTS = [];
 
 // Helper สำหรับปรับแต่ง URL รูปภาพเพื่อประสิทธิภาพสูงสุด (แปลงเป็น WebP และย่อขนาดหากมี CDN รองรับ)
 function getOptimizedImageUrl(url) {
-  if (!url || !url.trim().startsWith('http')) {
+  if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
     return 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
   }
 
   let optimizedUrl = url.trim();
 
+  // แปลง Google Drive link ให้เป็น Direct Image Link เพื่อให้โหลดได้และเร็วขึ้น
+  if (optimizedUrl.includes('drive.google.com') || optimizedUrl.includes('docs.google.com')) {
+    let driveId = '';
+    const match1 = optimizedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const match2 = optimizedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    
+    if (match1) {
+      driveId = match1[1];
+    } else if (match2) {
+      driveId = match2[1];
+    }
+    
+    if (driveId) {
+      optimizedUrl = `https://lh3.googleusercontent.com/d/${driveId}`;
+    }
+  }
+
   // ใช้ Image CDN ฟรี (wsrv.nl) ช่วยย่อขนาดและแปลงรูปทุกชนิดเป็น WebP อัตโนมัติ
   // ซึ่งจะช่วยลดขนาดรูปจาก 5MB เหลือไม่เกิน 50KB ทำให้แสดงผลหน้าสินค้าได้ไวขึ้นถึง 100 เท่า
   if (!optimizedUrl.includes('wsrv.nl') && !optimizedUrl.includes('placehold.co')) {
-    optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(optimizedUrl)}&w=400&output=webp&we`;
+    optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(optimizedUrl)}&w=400&output=webp`;
   }
 
   return optimizedUrl;
@@ -191,7 +208,7 @@ function renderProducts() {
     card.className = 'product-card animate-fade-in';
     card.innerHTML = `
       <div class="product-img-wrapper">
-        <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy">
+        <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
         ${product.tag ? `<span class="product-tag">${product.tag}</span>` : ''}
       </div>
       <div class="product-info">
@@ -237,7 +254,7 @@ function openProductDetail(id) {
   const productImg = getOptimizedImageUrl(product.img);
 
   modalContent.innerHTML = `
-    <img class="modal-img" src="${productImg}" alt="${product.name}">
+    <img class="modal-img" src="${productImg}" alt="${product.name}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
     <h2 class="modal-title">${product.name}</h2>
     <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
     <div class="modal-footer">
