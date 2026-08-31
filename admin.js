@@ -238,38 +238,7 @@ async function fetchOrders(showLoading = true) {
   }
 }
 
-function renderOrders() {
-  const tbody = document.getElementById('ordersBody');
-  tbody.innerHTML = '';
 
-  // Filter & Search Logic
-  const filtered = allOrders.filter(order => {
-    const statusMatch = (activeFilter === 'all') || (order.status === activeFilter);
-    const searchMatch = !searchQuery ||
-      (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
-      (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
-      (order.phone && order.phone.includes(searchQuery)) ||
-      (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery));
-    return statusMatch && searchMatch;
-  });
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
-          <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-          <p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  filtered.forEach(order => {
-    const tr = document.createElement('tr');
-
-    let statusClass = 'status-pending';
-    let statusIcon = '⏳';
 
 function getStatusMeta(status) {
   const s = (status || '').trim();
