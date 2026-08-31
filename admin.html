@@ -80,7 +80,7 @@
 
         <!-- Filter Controls & Search -->
         <section class="table-card">
-          <div class="table-header-toolbar">
+          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px;">
             <div class="filter-tabs" id="filterTabs">
               <button class="tab-btn" data-status="all">ทั้งหมด <span class="tab-count"
                   id="count-all">0</span></button>
@@ -99,13 +99,18 @@
               <button class="tab-btn" data-status="ยกเลิก">❌ ยกเลิก <span class="tab-count"
                   id="count-cancelled">0</span></button>
             </div>
-            <div class="search-box">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="adminSearchInput" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="paymentFilterSelect" onchange="setPaymentFilter(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+                <option value="all">💳 ช่องทางชำระเงิน: ทั้งหมด</option>
+                <option value="transfer">🏦 โอนเงินผ่านธนาคาร</option>
+                <option value="cod">💵 เก็บเงินปลายทาง (COD)</option>
+              </select>
+              <div class="search-box" style="margin: 0;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="adminSearchInput" placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+              </div>
             </div>
-          </div>
-
-          <!-- Orders Table -->
+          </div>          <!-- Orders Table -->
           <div class="table-responsive">
             <table id="ordersTable">
               <thead>

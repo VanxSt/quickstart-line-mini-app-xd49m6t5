@@ -987,7 +987,7 @@
 
         <!-- Filter Controls & Search -->
         <section class="table-card">
-          <div class="table-header-toolbar">
+          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px;">
             <div class="filter-tabs" id="filterTabs">
               <button class="tab-btn" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count"
                   id="count-all">0</span></button>
@@ -1006,13 +1006,19 @@
               <button class="tab-btn" onclick="setFilter('ยกเลิก', this)">❌ ยกเลิก <span class="tab-count"
                   id="count-cancelled">0</span></button>
             </div>
-            <div class="search-box">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="adminSearchInput" oninput="onSearch(this.value)"
-                placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="paymentFilterSelect" onchange="setPaymentFilter(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+                <option value="all">💳 ช่องทางชำระเงิน: ทั้งหมด</option>
+                <option value="transfer">🏦 โอนเงินผ่านธนาคาร</option>
+                <option value="cod">💵 เก็บเงินปลายทาง (COD)</option>
+              </select>
+              <div class="search-box" style="margin: 0;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="adminSearchInput" oninput="onSearch(this.value)"
+                  placeholder="ค้นหา รหัสออเดอร์, ชื่อลูกค้า, เบอร์โทร..." />
+              </div>
             </div>
           </div>
-
           <div class="table-responsive">
             <table id="ordersTable">
               <thead>
@@ -1165,6 +1171,7 @@
     let allOrders = [];
     let allMembers = [];
     let activeFilter = 'กำลังตรวจสอบออเดอร์';
+    let activePaymentFilter = 'all';
     let searchQuery = '';
     let memberSearchQuery = '';
     let currentViewingOrderId = null;
@@ -1295,6 +1302,11 @@
       renderOrders();
     }
 
+    function setPaymentFilter(val) {
+      activePaymentFilter = val;
+      renderOrders();
+    }
+
     function onSearch(val) {
       searchQuery = val.toLowerCase().trim();
       renderOrders();
@@ -1420,13 +1432,23 @@
           else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
           else statusMatch = (order.status === activeFilter);
         }
+
+        // Payment Method Filter Match
+        let paymentMatch = (activePaymentFilter === 'all');
+        if (!paymentMatch) {
+          const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+          if (activePaymentFilter === 'transfer' && isTransfer) paymentMatch = true;
+          if (activePaymentFilter === 'cod' && !isTransfer) paymentMatch = true;
+        }
+
         const searchMatch = !searchQuery ||
           (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
           (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
           (order.phone && order.phone.includes(searchQuery)) ||
           (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery)) ||
           (meta.name.toLowerCase().includes(searchQuery));
-        return statusMatch && searchMatch;
+
+        return statusMatch && paymentMatch && searchMatch;
       });
 
       if (filtered.length === 0) {

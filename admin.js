@@ -3,6 +3,7 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_efd9d_m1qq
 let allOrders = [];
 let allMembers = [];
 let activeFilter = 'กำลังตรวจสอบออเดอร์';
+let activePaymentFilter = 'all';
 let searchQuery = '';
 let memberSearchQuery = '';
 let currentViewingOrderId = null;
@@ -167,6 +168,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+function setPaymentFilter(val) {
+  activePaymentFilter = val;
+  renderOrders();
+}
+window.setPaymentFilter = setPaymentFilter;
+
 function processIncomingOrders(orders) {
   allOrders = orders || [];
   try {
@@ -275,13 +282,23 @@ function renderOrders() {
       else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
       else statusMatch = (order.status === activeFilter);
     }
+
+    // Payment Method Filter Match
+    let paymentMatch = (activePaymentFilter === 'all');
+    if (!paymentMatch) {
+      const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+      if (activePaymentFilter === 'transfer' && isTransfer) paymentMatch = true;
+      if (activePaymentFilter === 'cod' && !isTransfer) paymentMatch = true;
+    }
+
     const searchMatch = !searchQuery ||
       (order.orderId && order.orderId.toLowerCase().includes(searchQuery)) ||
       (order.customerName && order.customerName.toLowerCase().includes(searchQuery)) ||
       (order.phone && order.phone.includes(searchQuery)) ||
       (order.paymentMethod && order.paymentMethod.toLowerCase().includes(searchQuery)) ||
       (meta.name.toLowerCase().includes(searchQuery));
-    return statusMatch && searchMatch;
+
+    return statusMatch && paymentMatch && searchMatch;
   });
 
   if (filtered.length === 0) {
