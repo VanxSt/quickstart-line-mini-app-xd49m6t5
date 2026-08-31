@@ -2440,11 +2440,11 @@ async function loadProducts() {
 async function start() {
   loadCart();
 
-  // รัน loadProducts() และ initLiff() พร้อมกันทันที ไม่รอกัน
-  await Promise.all([
-    loadProducts(),
-    initLiff()
-  ]);
+  // โหลดข้อมูลสินค้าเบื้องหลังแบบ Non-blocking (ไม่ต้องรอให้เสร็จก่อน)
+  loadProducts();
+
+  // รอเพียงแค่การเชื่อมต่อกับ LINE LIFF ซึ่งทำงานเร็วกว่ามาก
+  await initLiff();
 
   // Check if URL has a specific product query param (deep link)
   const urlParams = new URLSearchParams(window.location.search);
@@ -2458,8 +2458,7 @@ async function start() {
     openOrdersModal();
     const tabFav = document.getElementById('tabFavOrders');
     if (tabFav) {
-      // Delay slightly to ensure UI is ready
-      setTimeout(() => tabFav.click(), 100);
+      tabFav.click();
     }
   }
 }
