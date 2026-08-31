@@ -892,18 +892,84 @@ function closeModal() {
   currentViewingOrderId = null;
 }
 
+// Modern premium non-blocking toast notification helper
+function showToast(message, type = 'success') {
+  const existing = document.querySelectorAll('.custom-toast');
+  existing.forEach(el => el.remove());
+
+  const toast = document.createElement('div');
+  toast.className = 'custom-toast';
+  
+  let bgColor = '#10b981'; // Green
+  let icon = '✅';
+  if (type === 'error') {
+    bgColor = '#ef4444'; // Red
+    icon = '❌';
+  } else if (type === 'loading') {
+    bgColor = '#2563eb'; // Blue
+    icon = '⏳';
+  } else if (type === 'info') {
+    bgColor = '#f59e0b'; // Amber
+    icon = '🔔';
+  }
+
+  toast.style.position = 'fixed';
+  toast.style.bottom = '24px';
+  toast.style.right = '24px';
+  toast.style.backgroundColor = bgColor;
+  toast.style.color = '#ffffff';
+  toast.style.padding = '12px 24px';
+  toast.style.borderRadius = '12px';
+  toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+  toast.style.zIndex = '99999';
+  toast.style.display = 'flex';
+  toast.style.alignItems = 'center';
+  toast.style.gap = '10px';
+  toast.style.fontWeight = '600';
+  toast.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  toast.style.fontSize = '14px';
+  toast.style.transition = 'all 0.3s ease';
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(20px)';
+
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  }, 10);
+
+  if (type !== 'loading') {
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 300);
+    }, 3500);
+  }
+  return toast;
+}
+
 async function updateStatus(newStatus) {
   if (!currentViewingOrderId) return;
   if (!confirm(`ยืนยันการเปลี่ยนสถานะออเดอร์เป็น "${newStatus}" หรือไม่?`)) return;
 
-  const btnConfirm = document.getElementById('btnConfirmOrder');
-  const btnCancel = document.getElementById('btnCancelOrder');
+  const orderId = currentViewingOrderId;
+  const orderIndex = allOrders.findIndex(o => o.orderId === orderId);
+  if (orderIndex === -1) return;
 
-  const originalConfirmText = btnConfirm ? btnConfirm.textContent : "กำลังบันทึก...";
+  const originalStatus = allOrders[orderIndex].status;
 
-  if (btnConfirm) btnConfirm.disabled = true;
-  if (btnCancel) btnCancel.disabled = true;
-  if (btnConfirm) btnConfirm.textContent = "กำลังบันทึก...";
+  // 1. Optimistic Update (Immediate visual response)
+  allOrders[orderIndex].status = newStatus;
+  renderOrders();
+  updateStats();
+  closeModal();
+
+  // Show temporary loading toast
+  const loadingToast = showToast(`กำลังอัปเดตสถานะออเดอร์เป็น "${newStatus}"...`, 'loading');
 
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -911,35 +977,33 @@ async function updateStatus(newStatus) {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'updateOrderStatus',
-        orderId: currentViewingOrderId,
+        orderId: orderId,
         status: newStatus
       })
     });
 
     const result = await response.json();
+    if (loadingToast && loadingToast.parentNode) loadingToast.remove();
 
     if (result.status === 'success') {
-      let alertMsg = "อัปเดตสถานะออเดอร์สำเร็จ!";
-      if (result.debug && result.debug !== 'No message to send') {
-        alertMsg += "\n\n[LINE API Debug]:\n" + result.debug;
-      }
-      alert(alertMsg);
-      closeModal();
-      fetchOrders(); // Refresh table
+      showToast("อัปเดตสถานะออเดอร์สำเร็จ!");
+      // Fetch silently in background to keep data fully synced
+      fetchOrders(false);
     } else {
-      alert("Error updating order: " + result.message);
+      // Rollback on failure
+      allOrders[orderIndex].status = originalStatus;
+      renderOrders();
+      updateStats();
+      showToast("ไม่สามารถอัปเดตสถานะได้: " + result.message, 'error');
     }
   } catch (error) {
+    if (loadingToast && loadingToast.parentNode) loadingToast.remove();
+    // Rollback on connection failure
+    allOrders[orderIndex].status = originalStatus;
+    renderOrders();
+    updateStats();
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error');
     console.error("Update error:", error);
-    alert("Connection error: ไม่สามารถบันทึกสถานะได้");
-  } finally {
-    if (btnConfirm) {
-      btnConfirm.disabled = false;
-      btnConfirm.textContent = originalConfirmText;
-    }
-    if (btnCancel) {
-      btnCancel.disabled = false;
-    }
   }
 }
 
