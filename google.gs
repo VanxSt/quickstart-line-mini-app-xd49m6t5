@@ -749,11 +749,14 @@ function updateOrderStatusNative(orderId, newStatus) {
         if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod === "โอนจ่าย" || paymentMethod === "โอนเงินผ่านบัญชีธนาคาร" || paymentMethod === "โอนเงินผสมเงินสด")) {
            messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
            
-           var staticQrUrl = "https://i.postimg.cc/zDFp1Dpk/Screenshot-10.png";
+           // สร้าง QR Code PromptPay แบบ Dynamic ตามยอดเงินจริง
+           // รูปแบบ URL: https://promptpay.io/{เบอร์หรือเลขบัตร}/{จำนวนเงิน}.png
+           var qrAmount = Number(totalPrice || 0);
+           var dynamicQrUrl = "https://promptpay.io/" + SHOP_PROMPTPAY_ID + "/" + qrAmount + ".png";
            messages.push({
              "type": "image",
-             "originalContentUrl": staticQrUrl,
-             "previewImageUrl": staticQrUrl
+             "originalContentUrl": dynamicQrUrl,
+             "previewImageUrl": dynamicQrUrl
            });
         }
         else if (newStatus === "เตรียมออเดอร์") {
