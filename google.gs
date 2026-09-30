@@ -25,10 +25,28 @@ function doPost(e) {
             return acc;
           }, {});
           
-          if (params.action === 'cancelOrder' && params.orderId) {
-            updateOrderStatusNative(params.orderId, 'ยกเลิก');
-          } else if (params.action === 'confirmOrder' && params.orderId) {
-            updateOrderStatusNative(params.orderId, 'ลูกค้ายืนยันรับออเดอร์');
+          if (params.action === 'cancelOrder' || params.action === 'confirmOrder') {
+            var ordersSheet = ss.getSheetByName("Orders");
+            var values = ordersSheet.getDataRange().getValues();
+            var isProcessed = false;
+            
+            for (var i = 1; i < values.length; i++) {
+              if (values[i][1] && values[i][1].toString() === params.orderId) {
+                var currentStatus = values[i][9] || "";
+                // ถ้าสถานะเป็นยืนยันหรือยกเลิกไปแล้ว ให้บล็อคการกดปุ่ม
+                if (currentStatus === "ลูกค้ายืนยันรับออเดอร์" || currentStatus === "ยกเลิก" || currentStatus === "ชำระเงิน" || currentStatus === "รอชำระเงิน" || currentStatus === "เตรียมออเดอร์") {
+                  isProcessed = true;
+                }
+                break;
+              }
+            }
+            
+            if (isProcessed) {
+               sendLinePushMessage(event.source.userId, [{type:"text", text:"⚠️ ออเดอร์นี้ถูกยืนยันหรือยกเลิกไปเรียบร้อยแล้ว ไม่สามารถกดซ้ำได้ครับ"}]);
+            } else {
+               var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ลูกค้ายืนยันรับออเดอร์';
+               updateOrderStatusNative(params.orderId, newStatus);
+            }
           }
         }
       });
