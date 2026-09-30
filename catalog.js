@@ -2508,7 +2508,7 @@ async function start() {
           <p style="color:#64748b;">กรุณารอสักครู่ ระบบกำลังจัดการคำสั่งซื้อ ${orderId}</p>
         </div>
       `;
-      const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'ลูกค้ายืนยันรับออเดอร์';
+      const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
       
       try {
         fetch(GOOGLE_SCRIPT_URL, {

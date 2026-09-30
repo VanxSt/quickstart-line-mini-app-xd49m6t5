@@ -34,7 +34,7 @@ function doPost(e) {
               if (values[i][1] && values[i][1].toString() === params.orderId) {
                 var currentStatus = values[i][9] || "";
                 // ถ้าสถานะเป็นยืนยันหรือยกเลิกไปแล้ว ให้บล็อคการกดปุ่ม
-                if (currentStatus === "ลูกค้ายืนยันรับออเดอร์" || currentStatus === "ยกเลิก") {
+                if (currentStatus === "ชำระเงิน" || currentStatus === "ยกเลิก" || currentStatus === "ลูกค้ายืนยันรับออเดอร์") {
                   isProcessed = true;
                 }
                 break;
@@ -45,7 +45,7 @@ function doPost(e) {
                // Silently ignore to prevent LINE webhook retry loops spamming the user
                // If LINE retries because the first run was slow, we don't want to send this error message.
             } else {
-               var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ลูกค้ายืนยันรับออเดอร์';
+               var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
                updateOrderStatusNative(params.orderId, newStatus);
             }
           }
@@ -461,11 +461,11 @@ function doGet(e) {
     // Action: ลูกค้ายืนยันออเดอร์ผ่านลิงก์ LINE
     if (action === 'confirmOrder') {
       var orderId = e.parameter.orderId;
-      if (orderId) updateOrderStatusNative(orderId, 'ลูกค้ายืนยันรับออเดอร์');
+      if (orderId) updateOrderStatusNative(orderId, 'ชำระเงิน');
       var html = '<div style="text-align:center; padding:50px; font-family:sans-serif;">' +
                  '<h1 style="color:#22c55e;">✅ ยืนยันสำเร็จ</h1>' +
-                 '<p>ระบบได้ยืนยันรับออเดอร์ <b>' + orderId + '</b> ของคุณเรียบร้อยแล้วครับ</p>' +
-                 '<p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชทได้เลยครับ</p>' +
+                 '<p>ระบบได้เข้าสู่ขั้นตอนแจ้งชำระเงินสำหรับออเดอร์ <b>' + orderId + '</b> เรียบร้อยแล้วครับ</p>' +
+                 '<p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชท และดู QR Code ชำระเงินได้เลยครับ</p>' +
                  '</div>';
       return HtmlService.createHtmlOutput(html).addMetaTag('viewport', 'width=device-width, initial-scale=1');
     }
