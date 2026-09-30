@@ -2063,6 +2063,28 @@ document.querySelectorAll('input[name="shippingOption"]').forEach(radio => {
   });
 });
 
+// จัดการการแสดงตัวเลือกย่อยของช่องทางการชำระเงิน (COD)
+document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    const codSubOptions = document.getElementById('codSubOptions');
+    if (e.target.value === 'ปลายทาง') {
+      if (codSubOptions) codSubOptions.style.display = 'flex';
+    } else {
+      if (codSubOptions) codSubOptions.style.display = 'none';
+    }
+  });
+});
+
+// จัดการการแสดงช่องกรอกยอดเงินสำหรับ COD แต่ละประเภท
+document.querySelectorAll('input[name="codType"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    const cashInput = document.getElementById('codCashChangeInput');
+    const mixInput = document.getElementById('codMixedInput');
+    if (cashInput) cashInput.style.display = (e.target.value === 'ชำระเงินสดเตรียมเงินทอน') ? 'block' : 'none';
+    if (mixInput) mixInput.style.display = (e.target.value === 'โอนเงินผสมเงินสด') ? 'flex' : 'none';
+  });
+});
+
 // จัดการการสลับรูปแบบการสั่งซื้อ (ส่งทันที / สั่งล่วงหน้า)
 document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
@@ -2131,7 +2153,20 @@ if (btnSubmitOrder) {
       }
     }
 
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+    let paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+    if (paymentMethod === 'ปลายทาง') {
+      const codType = document.querySelector('input[name="codType"]:checked')?.value || 'ปลายทางโอน';
+      if (codType === 'ปลายทางโอน') {
+        paymentMethod = 'เก็บเงินปลายทาง (ปลายทางโอน)';
+      } else if (codType === 'ชำระเงินสดเตรียมเงินทอน') {
+        const cashAmt = document.getElementById('codCashAmount')?.value || '';
+        paymentMethod = `เก็บเงินปลายทาง (ชำระเงินสดเตรียมเงินทอน${cashAmt ? ' - แบงค์ ' + cashAmt : ''})`;
+      } else if (codType === 'โอนเงินผสมเงินสด') {
+        const mixTrans = document.getElementById('codMixedTransfer')?.value || '';
+        const mixCash = document.getElementById('codMixedCash')?.value || '';
+        paymentMethod = `เก็บเงินปลายทาง (โอนเงินผสมเงินสด - โอน ${mixTrans} บาท, เงินสด ${mixCash} บาท)`;
+      }
+    }
 
     const totals = calculateCheckoutTotal();
     const totalAmount = totals.grandTotal;
@@ -2460,8 +2495,40 @@ async function start() {
   // รอเพียงแค่การเชื่อมต่อกับ LINE LIFF ซึ่งทำงานเร็วกว่ามาก
   await initLiff();
 
-  // Check if URL has a specific product query param (deep link)
+  // Check if URL has an auto-process action (Cancel or Confirm Order)
   const urlParams = new URLSearchParams(window.location.search);
+  const actionParam = urlParams.get('action');
+  
+  if (actionParam === 'cancelOrder' || actionParam === 'confirmOrder') {
+    const orderId = urlParams.get('orderId');
+    if (orderId) {
+      document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#f8fafc; font-family:sans-serif;">
+          <h2 style="color:var(--primary-color, #2563eb); margin-bottom:10px;">กำลังประมวลผล...</h2>
+          <p style="color:#64748b;">กรุณารอสักครู่ ระบบกำลังจัดการคำสั่งซื้อ ${orderId}</p>
+        </div>
+      `;
+      const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'ลูกค้ายืนยันรับออเดอร์';
+      
+      try {
+        fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'updateOrderStatus', orderId: orderId, status: statusStr })
+        }).then(() => {
+          setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 600);
+        }).catch(() => {
+          setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 600);
+        });
+      } catch (e) {
+        if (liff.isInClient()) liff.closeWindow();
+      }
+      return; // Stop further execution so the store doesn't load
+    }
+  }
+
+  // Check if URL has a specific product query param (deep link)
   const productId = urlParams.get('product');
   if (productId) {
     openProductDetail(parseInt(productId, 10));

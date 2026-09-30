@@ -248,22 +248,36 @@
           <input type="radio" name="paymentMethod" value="โอนจ่าย" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
           <span style="font-size: 15px;">🏦 โอนเงินผ่านบัญชีธนาคาร</span>
         </label>
-        <label class="radio-label payment-option-delivery" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="radio" name="paymentMethod" value="โอนเงินผสมเงินสด" style="width: 18px; height: 18px; accent-color: var(--primary);">
-          <span style="font-size: 15px;">💵 โอนเงินผสมเงินสด</span>
-        </label>
+
         <label class="radio-label payment-option-delivery" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
           <input type="radio" name="paymentMethod" value="ปลายทาง" style="width: 18px; height: 18px; accent-color: var(--primary);">
           <span style="font-size: 15px;">📦 เก็บเงินปลายทาง (COD)</span>
         </label>
-        <label class="radio-label payment-option-delivery" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="radio" name="paymentMethod" value="ชำระเงินสดเตรียมเงินทอน" style="width: 18px; height: 18px; accent-color: var(--primary);">
-          <span style="font-size: 15px;">💰 ชำระเงินสดเตรียมเงินทอน</span>
-        </label>
-        <label class="radio-label payment-option-delivery" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="radio" name="paymentMethod" value="ปลายทางโอน" style="width: 18px; height: 18px; accent-color: var(--primary);">
-          <span style="font-size: 15px;">📲 ปลายทางโอน</span>
-        </label>
+
+        <div id="codSubOptions" style="display: none; flex-direction: column; gap: 10px; margin-left: 26px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="codType" value="ปลายทางโอน" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <span style="font-size: 14px;">📲 ปลายทางโอน (โอนเงินเมื่อของถึง)</span>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="codType" value="ชำระเงินสดเตรียมเงินทอน" style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <span style="font-size: 14px;">💰 ชำระเงินสด (เตรียมเงินทอน)</span>
+          </label>
+          <div id="codCashChangeInput" style="display: none; margin-left: 24px; margin-top: 4px;">
+            <input type="number" id="codCashAmount" placeholder="ยอดเงินที่จะจ่าย (เช่น 1000)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+          </div>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="codType" value="โอนเงินผสมเงินสด" style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <span style="font-size: 14px;">💵 โอนเงินผสมเงินสด</span>
+          </label>
+          <div id="codMixedInput" style="display: none; margin-left: 24px; margin-top: 4px; flex-direction: column; gap: 8px;">
+            <input type="number" id="codMixedTransfer" placeholder="ยอดโอน (บาท)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+            <input type="number" id="codMixedCash" placeholder="ยอดเงินสด (บาท)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+          </div>
+        </div>
+
         <label class="radio-label payment-option-store" style="display: none; align-items: center; gap: 8px; cursor: pointer;">
           <input type="radio" name="paymentMethod" value="จ่ายเงินหน้าร้าน" style="width: 18px; height: 18px; accent-color: var(--primary);">
           <span style="font-size: 15px;">🏪 จ่ายเงินหน้าร้าน</span>
@@ -434,7 +448,7 @@
     </div>
   </div>
 
-  <script src="catalog.js?v=5"></script>
+  <script src="catalog.js?v=7"></script>
 </body>
 
 </html>

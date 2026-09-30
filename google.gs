@@ -139,14 +139,14 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
             "text": "คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?",
             "actions": [
               {
-                "type": "message",
+                "type": "uri",
                 "label": "✅ ยืนยันรับออเดอร์",
-                "text": "ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ (" + orderId + ")"
+                "uri": "https://liff.line.me/2010951634-lg8G4wUA?action=confirmOrder&orderId=" + orderId
               },
               {
-                "type": "message",
+                "type": "uri",
                 "label": "❌ ไม่รับออเดอร์",
-                "text": "ลูกค้าขอยกเลิกออเดอร์นี้ครับ (" + orderId + ")"
+                "uri": "https://liff.line.me/2010951634-lg8G4wUA?action=cancelOrder&orderId=" + orderId
               }
             ]
           }
