@@ -241,8 +241,34 @@
               ทางร้านให้บริการสั่งล่วงหน้าในช่วงเวลา 09:00 น. ถึง 16:00 น. เท่านั้น</small>
           </div>
         </div>
+    <div class="checkout-section">
+      <h3>💰 เลือกช่องทางการชำระเงิน</h3>
+      <div class="payment-method-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: 8px;">
+        <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="paymentMethod" value="โอนจ่าย" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <span style="font-size: 15px;">🏦 โอนเงินผ่านบัญชีธนาคาร</span>
+        </label>
+        <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="paymentMethod" value="โอนเงินผสมเงินสด" style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <span style="font-size: 15px;">💵 โอนเงินผสมเงินสด</span>
+        </label>
+        <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="paymentMethod" value="ปลายทาง" style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <span style="font-size: 15px;">📦 เก็บเงินปลายทาง (COD)</span>
+        </label>
+        <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="paymentMethod" value="ชำระเงินสดเตรียมเงินทอน" style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <span style="font-size: 15px;">💰 ชำระเงินสดเตรียมเงินทอน</span>
+        </label>
+        <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="paymentMethod" value="ปลายทางโอน" style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <span style="font-size: 15px;">📲 ปลายทางโอน</span>
+        </label>
+      </div>
+    </div>
 
         <!-- Shipping Option Section (เลือกรูปแบบการรับสินค้า) -->
+
         <div class="checkout-section">
           <h3>🚚 ช่องทางการรับสินค้า</h3>
           <div class="shipping-option-group" style="display: flex; gap: 16px; margin-top: 12px; margin-bottom: 12px;">
@@ -347,38 +373,7 @@
           </button>
         </div>
 
-        <!-- Payment Method Selection -->
         <div class="checkout-section">
-          <h3>💰 เลือกช่องทางการชำระเงิน</h3>
-          <div class="payment-method-group"
-            style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: 20px;">
-            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="radio" name="paymentMethod" value="โอนจ่าย" checked
-                style="width: 18px; height: 18px; accent-color: var(--primary);">
-              <span style="font-size: 15px;">🏦 โอนเงินผ่านบัญชีธนาคาร</span>
-            </label>
-            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="radio" name="paymentMethod" value="โอนเงินผสมเงินสด"
-                style="width: 18px; height: 18px; accent-color: var(--primary);">
-              <span style="font-size: 15px;">💵 โอนเงินผสมเงินสด</span>
-            </label>
-            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="radio" name="paymentMethod" value="ปลายทาง"
-                style="width: 18px; height: 18px; accent-color: var(--primary);">
-              <span style="font-size: 15px;">📦 เก็บเงินปลายทาง (COD)</span>
-            </label>
-            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="radio" name="paymentMethod" value="ชำระเงินสดเตรียมเงินทอน"
-                style="width: 18px; height: 18px; accent-color: var(--primary);">
-              <span style="font-size: 15px;">💰 ชำระเงินสดเตรียมเงินทอน</span>
-            </label>
-            <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="radio" name="paymentMethod" value="ปลายทางโอน"
-                style="width: 18px; height: 18px; accent-color: var(--primary);">
-              <span style="font-size: 15px;">📲 ปลายทางโอน</span>
-            </label>
-          </div>
-
           <!-- Checkout Total Summary Card -->
           <div class="checkout-total-banner"
             style="padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; margin-top: 14px;">

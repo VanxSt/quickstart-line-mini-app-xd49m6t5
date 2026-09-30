@@ -187,6 +187,9 @@ function renderProducts() {
     return matchesCategory && matchesSearch;
   });
 
+  // เรียงลำดับสินค้าจากราคาถูกไปหาแพง
+  filtered.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+
   if (filtered.length === 0) {
     productsGrid.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">

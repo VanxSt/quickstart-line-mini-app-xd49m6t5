@@ -118,7 +118,34 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
       
       msgText += "\n\nหากมีข้อสงสัย ทักแชทสอบถามแอดมินได้เลยครับ 😊";
       
-      notifyDebug = sendLinePushMessage(userId, [{ "type": "text", "text": msgText }]);
+      var messagePayload = [
+        {
+          "type": "text",
+          "text": msgText
+        },
+        {
+          "type": "template",
+          "altText": "กรุณายืนยันการเปลี่ยนแปลงออเดอร์",
+          "template": {
+            "type": "buttons",
+            "text": "คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?",
+            "actions": [
+              {
+                "type": "uri",
+                "label": "✅ ยืนยันออเดอร์",
+                "uri": ScriptApp.getService().getUrl() + "?action=confirmOrder&orderId=" + orderId
+              },
+              {
+                "type": "uri",
+                "label": "❌ ไม่รับออเดอร์",
+                "uri": ScriptApp.getService().getUrl() + "?action=cancelOrder&orderId=" + orderId
+              }
+            ]
+          }
+        }
+      ];
+      
+      notifyDebug = sendLinePushMessage(userId, messagePayload);
     } catch(e) {
       notifyDebug = 'Notification Error: ' + e.message;
     }
@@ -356,11 +383,35 @@ function doGet(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = e.parameter.action;
     
-// Action 0: แสดงหน้าเว็บ Admin Dashboard
+    // Action 0: แสดงหน้าเว็บ Admin Dashboard
     if (action === 'admin') {
       return HtmlService.createHtmlOutputFromFile('admin')
         .setTitle('Admin Dashboard - จัดการคำสั่งซื้อ')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+
+    // Action: ลูกค้ายกเลิกออเดอร์ผ่านลิงก์ LINE
+    if (action === 'cancelOrder') {
+      var orderId = e.parameter.orderId;
+      if (orderId) updateOrderStatusNative(orderId, 'ยกเลิก');
+      var html = '<div style="text-align:center; padding:50px; font-family:sans-serif;">' +
+                 '<h1 style="color:#ef4444;">❌ ยกเลิกออเดอร์แล้ว</h1>' +
+                 '<p>ระบบได้ยกเลิกออเดอร์ <b>' + orderId + '</b> เรียบร้อยแล้วครับ</p>' +
+                 '<p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชทได้เลยครับ</p>' +
+                 '</div>';
+      return HtmlService.createHtmlOutput(html).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+    
+    // Action: ลูกค้ายืนยันออเดอร์ผ่านลิงก์ LINE
+    if (action === 'confirmOrder') {
+      var orderId = e.parameter.orderId;
+      if (orderId) updateOrderStatusNative(orderId, 'ลูกค้ายืนยันรับออเดอร์');
+      var html = '<div style="text-align:center; padding:50px; font-family:sans-serif;">' +
+                 '<h1 style="color:#22c55e;">✅ ยืนยันสำเร็จ</h1>' +
+                 '<p>ระบบได้ยืนยันรับออเดอร์ <b>' + orderId + '</b> ของคุณเรียบร้อยแล้วครับ</p>' +
+                 '<p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชทได้เลยครับ</p>' +
+                 '</div>';
+      return HtmlService.createHtmlOutput(html).addMetaTag('viewport', 'width=device-width, initial-scale=1');
     }
     
     // Action 1: ดึงข้อมูลสินค้าจากชีต Catalog
