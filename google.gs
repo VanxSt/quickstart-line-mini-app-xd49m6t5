@@ -72,10 +72,21 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
   var values = ordersSheet.getDataRange().getValues();
   var foundRow = -1;
   var userId = "";
+  var name = "-";
+  var phone = "-";
+  var deliveryType = "ทันที";
+  var preorderTime = "";
+  var shippingOption = "จัดส่ง";
+
   for (var i = 1; i < values.length; i++) {
     if (values[i][1] && values[i][1].toString() === orderId) {
       foundRow = i + 1;
       userId = values[i][2];
+      name = values[i][3] || "-";
+      phone = values[i][4] || "-";
+      deliveryType = values[i][13] || "ทันที";
+      preorderTime = values[i][14] || "";
+      shippingOption = values[i][15] || "จัดส่ง";
       break;
     }
   }
@@ -99,30 +110,27 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
   // ส่งข้อความแจ้งเตือนหาลูกค้าผ่าน LINE เมื่อมีการแก้ไขรายการสินค้า/ราคา
   if (notifyCustomer !== false && userId && userId !== 'unknown' && userId !== 'web-test-user' && LINE_ACCESS_TOKEN !== 'YOUR_LINE_ACCESS_TOKEN_HERE') {
     try {
-      var msgText = "✏️ มีการปรับเปลี่ยนรายการสินค้าในออเดอร์ " + orderId + "\n" +
-                    "ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ\n\n" +
-                    "📋 รายการสินค้าล่าสุด:\n";
-      
-      (newItems || []).forEach(function(item) {
-        var p = Number(item.price || 0);
-        var q = Number(item.qty || 1);
-        var sub = Number(item.subtotal || (p * q));
-        msgText += "• " + (item.name || 'สินค้า') + " x" + q + " (฿" + sub.toLocaleString() + ")\n";
-      });
-      
-      msgText += "\n💰 ยอดสุทธิใหม่: ฿" + newTotalPrice.toLocaleString();
-      
+      var bodyText = "ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ";
       if (changeNote && changeNote.trim() !== '') {
-        msgText += "\n📌 หมายเหตุ: " + changeNote.trim();
+        bodyText += " (หมายเหตุ: " + changeNote.trim() + ")";
       }
       
-      msgText += "\n\nหากมีข้อสงสัย ทักแชทสอบถามแอดมินได้เลยครับ 😊";
+      var flexMsg = buildStatusFlexMessage(
+        "✏️ แจ้งปรับเปลี่ยนออเดอร์", 
+        orderId, 
+        bodyText, 
+        "#0f766e", // Teal Color
+        name, 
+        phone, 
+        shippingOption, 
+        deliveryType, 
+        preorderTime, 
+        JSON.stringify(newItems), 
+        newTotalPrice
+      );
       
       var messagePayload = [
-        {
-          "type": "text",
-          "text": msgText
-        },
+        flexMsg,
         {
           "type": "template",
           "altText": "กรุณายืนยันการเปลี่ยนแปลงออเดอร์",

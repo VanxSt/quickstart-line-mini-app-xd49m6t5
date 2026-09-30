@@ -156,16 +156,9 @@ body {
   display: flex;
   gap: 8px;
   padding: 0 20px 20px 20px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* Hide scrollbar Firefox */
-  -ms-overflow-style: none;
-  /* Hide scrollbar IE/Edge */
-}
-
-.categories::-webkit-scrollbar {
-  display: none;
-  /* Hide scrollbar Chrome/Safari */
+  /* นำ overflow-x: auto ออกเพื่อแก้ปัญหาการกด Dropdown ไม่ติดในมือถือ */
+  overflow: visible;
+  flex-wrap: wrap;
 }
 
 .category-tab {
