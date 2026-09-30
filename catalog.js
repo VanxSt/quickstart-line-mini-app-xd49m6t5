@@ -2423,61 +2423,32 @@ btnBack.addEventListener('click', () => {
 
 // ===== โหลดสินค้าแยกออกมา ทำงานได้ทันทีโดยไม่ต้องรอ LIFF =====
 async function loadProducts() {
-  // 1. โชว์สินค้าจาก Cache ทันที (0ms) ถ้ามี
-  const cachedData = localStorage.getItem('catalog_products_cache');
-  const cachedTime = localStorage.getItem('catalog_products_cache_time');
-  const cacheDuration = 1 * 60 * 1000; // ลดเหลือ 1 นาที เพื่อให้สินค้าอัปเดตไวขึ้น ไม่แสดงผลไม่เท่ากันในแต่ละเครื่อง
-
-  let hasValidCache = false;
-  if (cachedData && cachedTime) {
-    try {
-      const parsed = JSON.parse(cachedData);
-      if (parsed && parsed.length > 0) {
-        PRODUCTS = parsed;
-        hasValidCache = true;
-        initCategoryFilters();
-        renderProducts(); // แสดงผลทันทีจาก cache
-      }
-    } catch (e) { }
+  const productsGrid = document.getElementById('productsGrid');
+  if (productsGrid) {
+    productsGrid.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-light);">กำลังโหลดข้อมูลสินค้า...</div>';
   }
 
-  // 2. ถ้ายังไม่มี cache ให้ใช้ Mock Products แสดงผลทันที
-  if (!hasValidCache) {
+  try {
+    // ใส่ _t=timestamp เพื่อป้องกัน Browser Cache ซ้ำซ้อน
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      PRODUCTS = data.products || [];
+      initCategoryFilters();
+      renderProducts();
+    } else {
+      PRODUCTS = getMockProducts();
+      initCategoryFilters();
+      renderProducts();
+    }
+  } catch (error) {
+    console.error('Fetch error:', error);
     PRODUCTS = getMockProducts();
     initCategoryFilters();
     renderProducts();
   }
-
-  // 3. ดึงข้อมูลใหม่จาก Google Sheets ทุกครั้ง (Stale-while-revalidate)
-  const shouldFetchFresh = true; // บังคับให้เช็คข้อมูลใหม่ทุกครั้งที่เปิดหน้าเว็บ
-  if (shouldFetchFresh) {
-    try {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
-      const data = await response.json();
-      if (data.status === 'success') {
-        const freshProducts = data.products || [];
-        if (JSON.stringify(freshProducts) !== JSON.stringify(PRODUCTS)) {
-          PRODUCTS = freshProducts;
-          initCategoryFilters();
-          renderProducts();
-        }
-        localStorage.setItem('catalog_products_cache', JSON.stringify(PRODUCTS));
-        localStorage.setItem('catalog_products_cache_time', String(Date.now()));
-      } else if (PRODUCTS.length === 0) {
-        PRODUCTS = getMockProducts();
-        initCategoryFilters();
-        renderProducts();
-      }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      if (PRODUCTS.length === 0) {
-        PRODUCTS = getMockProducts();
-        initCategoryFilters();
-        renderProducts();
-      }
-    }
-  }
 }
+
 
 // Start application — โหลดสินค้าและ LIFF พร้อมกัน ไม่รอกัน
 async function start() {
