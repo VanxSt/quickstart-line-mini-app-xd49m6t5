@@ -139,14 +139,14 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
             "text": "คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?",
             "actions": [
               {
-                "type": "uri",
-                "label": "✅ ยืนยันออเดอร์",
-                "uri": ScriptApp.getService().getUrl() + "?action=confirmOrder&orderId=" + orderId
+                "type": "message",
+                "label": "✅ ยืนยันรับออเดอร์",
+                "text": "ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ (" + orderId + ")"
               },
               {
-                "type": "uri",
+                "type": "message",
                 "label": "❌ ไม่รับออเดอร์",
-                "uri": ScriptApp.getService().getUrl() + "?action=cancelOrder&orderId=" + orderId
+                "text": "ลูกค้าขอยกเลิกออเดอร์นี้ครับ (" + orderId + ")"
               }
             ]
           }
