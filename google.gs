@@ -814,45 +814,65 @@ function getAllOrdersNative() {
 }
 
 function updateOrderStatusNative(orderId, newStatus) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var ordersSheet = ss.getSheetByName("Orders");
-  var values = ordersSheet.getDataRange().getValues();
-  var foundRow = -1;
-  var userId = "";
-  var paymentMethod = "";
-  var totalPrice = 0;
-  
-  var name = "-";
-  var phone = "-";
-  var itemsJson = "[]";
-  var deliveryType = "ทันที";
-  var preorderTime = "";
-  var shippingOption = "จัดส่ง";
-  
-  for (var i = 1; i < values.length; i++) {
-    if (values[i][1] && values[i][1].toString() === orderId) {
-      foundRow = i + 1;
-      userId = values[i][2]; // User ID
-      name = values[i][3]; // Name
-      phone = values[i][4]; // Phone
-      totalPrice = values[i][8] || 0; // Total Price
-      paymentMethod = values[i][10] || "ปลายทาง"; // Payment Method
-      itemsJson = values[i][12] || "[]"; // Items JSON
-      deliveryType = values[i][13] || "ทันที"; // Delivery Type
-      preorderTime = values[i][14] || ""; // Preorder Time
-      shippingOption = values[i][15] || "จัดส่ง"; // Shipping Option
-      break;
-    }
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000); // Wait up to 10 seconds for other processes to finish
+  } catch (e) {
+    return { status: 'error', message: 'System busy, please try again.' };
   }
   
-  if (foundRow !== -1) {
-    // ป้องกันการแจ้งเตือนซ้ำ: ตรวจสอบว่าสถานะปัจจุบันตรงกับที่กำลังจะเปลี่ยนหรือไม่
-    var existingStatus = values[foundRow - 1][9] || "";
-    if (existingStatus === newStatus) {
-      return { status: 'success', debug: 'Status already ' + newStatus };
+  try {
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "order_" + orderId + "_status";
+    var cachedStatus = cache.get(cacheKey);
+    
+    // หากพบว่ามีการแจ้งเตือนสถานะนี้ไปแล้วในแคชช่วง 2 นาทีที่ผ่านมา ให้ข้ามทันที
+    if (cachedStatus === newStatus) {
+      return { status: 'success', debug: 'Status already ' + newStatus + ' (cached)' };
     }
     
-    ordersSheet.getRange(foundRow, 10).setValue(newStatus);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ordersSheet = ss.getSheetByName("Orders");
+    var values = ordersSheet.getDataRange().getValues();
+    var foundRow = -1;
+    var userId = "";
+    var paymentMethod = "";
+    var totalPrice = 0;
+    
+    var name = "-";
+    var phone = "-";
+    var itemsJson = "[]";
+    var deliveryType = "ทันที";
+    var preorderTime = "";
+    var shippingOption = "จัดส่ง";
+    
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][1] && values[i][1].toString() === orderId) {
+        foundRow = i + 1;
+        userId = values[i][2];
+        name = values[i][3];
+        phone = values[i][4];
+        totalPrice = values[i][8] || 0;
+        paymentMethod = values[i][10] || "ปลายทาง";
+        itemsJson = values[i][12] || "[]";
+        deliveryType = values[i][13] || "ทันที";
+        preorderTime = values[i][14] || "";
+        shippingOption = values[i][15] || "จัดส่ง";
+        break;
+      }
+    }
+    
+    if (foundRow !== -1) {
+      // ป้องกันการแจ้งเตือนซ้ำ: ตรวจสอบว่าสถานะปัจจุบันตรงกับที่กำลังจะเปลี่ยนหรือไม่
+      var existingStatus = values[foundRow - 1][9] || "";
+      if (existingStatus === newStatus) {
+        cache.put(cacheKey, newStatus, 120); // จำไว้ 2 นาที
+        return { status: 'success', debug: 'Status already ' + newStatus };
+      }
+      
+      ordersSheet.getRange(foundRow, 10).setValue(newStatus);
+      cache.put(cacheKey, newStatus, 120); // จำสถานะล่าสุดไว้ 2 นาที
+
     
     // ส่งข้อความแจ้งเตือนผ่าน LINE ทันทีที่มีการเปลี่ยนสถานะ
     if (userId && userId !== 'unknown' && userId !== 'web-test-user' && LINE_ACCESS_TOKEN !== 'YOUR_LINE_ACCESS_TOKEN_HERE') {
@@ -871,6 +891,9 @@ function updateOrderStatusNative(orderId, newStatus) {
              "originalContentUrl": dynamicQrUrl,
              "previewImageUrl": dynamicQrUrl
            });
+        }
+        else if (newStatus === "กำลังจัดเตรียมสินค้า" || newStatus === "เตรียมออเดอร์" || newStatus === "จัดเตรียมสินค้าพร้อมส่ง") {
+           messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨", "#f59e0b", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }
         else if (newStatus === "กำลังจัดส่ง") {
            messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
@@ -898,8 +921,12 @@ function updateOrderStatusNative(orderId, newStatus) {
     }
     
     return { status: 'success', debug: 'No message to send' };
+  } else {
+    return { status: 'error', message: 'ไม่พบออเดอร์' };
   }
-  return { status: 'error', message: 'ไม่พบออเดอร์' };
+} finally {
+  lock.releaseLock();
+}
 }
 
 function sendLinePushMessage(userId, messages) {

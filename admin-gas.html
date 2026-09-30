@@ -997,6 +997,8 @@
                   id="count-waiting">0</span></button>
               <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
+              <button class="tab-btn" onclick="setFilter('กำลังจัดเตรียมสินค้า', this)">📦 เตรียมสินค้า <span class="tab-count"
+                  id="count-preparing">0</span></button>
               <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count"
                   id="count-shipping">0</span></button>
               <button class="tab-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">✅ จัดส่งสำเร็จ <span class="tab-count"
@@ -1407,6 +1409,8 @@
         return { name: 'รอการยืนยัน', class: 'status-checking', icon: '⏳' };
       } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
         return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
+      } else if (s === 'กำลังจัดเตรียมสินค้า' || s === 'เตรียมออเดอร์' || s === 'จัดเตรียมสินค้าพร้อมส่ง') {
+        return { name: 'กำลังจัดเตรียมสินค้า', class: 'status-preparing', icon: '📦' };
       } else if (s === 'กำลังจัดส่ง') {
         return { name: 'กำลังจัดส่ง', class: 'status-shipping', icon: '🚚' };
       } else if (s === 'จัดส่งสำเร็จ' || s === 'ยืนยันแล้ว') {
@@ -1522,6 +1526,7 @@
         if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
         else if (meta.name === 'รอการยืนยัน') waitingCount++;
         else if (meta.name === 'ชำระเงิน') paymentCount++;
+        else if (meta.name === 'กำลังจัดเตรียมสินค้า') preparingCount++;
         else if (meta.name === 'กำลังจัดส่ง') shippingCount++;
         else if (meta.name === 'จัดส่งสำเร็จ') {
           completedCount++;
@@ -1581,14 +1586,16 @@
         const isCod = !isTransfer;
         const statuses = isCod ? [
           { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
-          { val: 'กำลังจัดส่ง', label: '🚚 2. กำลังจัดส่ง' },
-          { val: 'จัดส่งสำเร็จ', label: '✅ 3. จัดส่งสำเร็จ' },
+          { val: 'กำลังจัดเตรียมสินค้า', label: '📦 2. กำลังจัดเตรียมสินค้า' },
+          { val: 'กำลังจัดส่ง', label: '🚚 3. กำลังจัดส่ง' },
+          { val: 'จัดส่งสำเร็จ', label: '✅ 4. จัดส่งสำเร็จ' },
           { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
         ] : [
           { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
           { val: 'ชำระเงิน', label: '💳 2. ชำระเงิน (ส่ง QR)' },
-          { val: 'กำลังจัดส่ง', label: '🚚 3. กำลังจัดส่ง' },
-          { val: 'จัดส่งสำเร็จ', label: '✅ 4. จัดส่งสำเร็จ' },
+          { val: 'กำลังจัดเตรียมสินค้า', label: '📦 3. กำลังจัดเตรียมสินค้า' },
+          { val: 'กำลังจัดส่ง', label: '🚚 4. กำลังจัดส่ง' },
+          { val: 'จัดส่งสำเร็จ', label: '✅ 5. จัดส่งสำเร็จ' },
           { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
         ];
 
@@ -1791,7 +1798,9 @@
         let nextStepBtn = '';
         if (isCod) {
           if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ยืนยันออเดอร์ -> กำลังจัดส่ง</button>`;
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดเตรียมสินค้า')">📦 ยืนยันออเดอร์ -> กำลังจัดเตรียมสินค้า</button>`;
+          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>`;
           } else if (normStatus === 'กำลังจัดส่ง') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
           }
@@ -1799,7 +1808,9 @@
           if (normStatus === 'กำลังตรวจสอบออเดอร์') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
           } else if (normStatus === 'ชำระเงิน') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ตรวจสอบยอดแล้ว -> กำลังจัดส่ง</button>`;
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดเตรียมสินค้า')">📦 ตรวจสอบยอดแล้ว -> กำลังจัดเตรียมสินค้า</button>`;
+          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
+            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>`;
           } else if (normStatus === 'กำลังจัดส่ง') {
             nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
           }
