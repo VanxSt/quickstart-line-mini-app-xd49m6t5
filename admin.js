@@ -249,8 +249,10 @@ async function fetchOrders(showLoading = true) {
 
 function getStatusMeta(status) {
   const s = (status || '').trim();
-  if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ' || s === 'รอการยืนยัน') {
+  if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
     return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+  } else if (s === 'รอการยืนยัน') {
+    return { name: 'รอการยืนยัน', class: 'status-checking', icon: '⏳' };
   } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
     return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
   } else if (s === 'เตรียมออเดอร์') {
@@ -277,7 +279,7 @@ function renderOrders() {
     let statusMatch = (activeFilter === 'all');
     if (!statusMatch) {
       if (activeFilter === meta.name) statusMatch = true;
-      else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์' || order.status === 'รอการยืนยัน')) statusMatch = true;
+      else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
       else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
       else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
       else statusMatch = (order.status === activeFilter);
@@ -363,6 +365,7 @@ function renderOrders() {
 
 function updateStats() {
   let checkingCount = 0;
+  let waitingCount = 0;
   let paymentCount = 0;
   let preparingCount = 0;
   let readyToShipCount = 0;
@@ -375,6 +378,7 @@ function updateStats() {
   allOrders.forEach(o => {
     const meta = getStatusMeta(o.status);
     if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+    else if (meta.name === 'รอการยืนยัน') waitingCount++;
     else if (meta.name === 'ชำระเงิน') paymentCount++;
     else if (meta.name === 'เตรียมออเดอร์') preparingCount++;
     else if (meta.name === 'เตรียมจัดส่ง') readyToShipCount++;
@@ -403,16 +407,23 @@ function updateStats() {
   // Filter Tab Badges
   const cAll = document.getElementById('count-all');
   const cPending = document.getElementById('count-pending');
+  const cWaiting = document.getElementById('count-waiting');
   const cPayment = document.getElementById('count-payment');
   const cShipping = document.getElementById('count-shipping');
   const cConfirmed = document.getElementById('count-confirmed');
   const cCancelled = document.getElementById('count-cancelled');
 
+  const cPreparing = document.getElementById('count-preparing');
+  const cReadyToShip = document.getElementById('count-ready-to-ship');
+
   if (cAll) cAll.textContent = allOrders.length;
-  if (cPending) cPending.textContent = pendingCount;
+  if (cPending) cPending.textContent = checkingCount;
+  if (cWaiting) cWaiting.textContent = waitingCount;
   if (cPayment) cPayment.textContent = paymentCount;
+  if (cPreparing) cPreparing.textContent = preparingCount;
+  if (cReadyToShip) cReadyToShip.textContent = readyToShipCount;
   if (cShipping) cShipping.textContent = shippingCount;
-  if (cConfirmed) cConfirmed.textContent = confirmedCount;
+  if (cConfirmed) cConfirmed.textContent = completedCount;
   if (cCancelled) cCancelled.textContent = cancelledCount;
 
   const navBadge = document.getElementById('navUnreadBadge');

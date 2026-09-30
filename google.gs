@@ -42,7 +42,8 @@ function doPost(e) {
             }
             
             if (isProcessed) {
-               sendLinePushMessage(event.source.userId, [{type:"text", text:"⚠️ ออเดอร์นี้ถูกยืนยันหรือยกเลิกไปเรียบร้อยแล้ว ไม่สามารถกดซ้ำได้ครับ"}]);
+               // Silently ignore to prevent LINE webhook retry loops spamming the user
+               // If LINE retries because the first run was slow, we don't want to send this error message.
             } else {
                var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ลูกค้ายืนยันรับออเดอร์';
                updateOrderStatusNative(params.orderId, newStatus);

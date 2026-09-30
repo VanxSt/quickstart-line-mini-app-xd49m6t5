@@ -993,6 +993,8 @@
                   id="count-all">0</span></button>
               <button class="tab-btn active" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span class="tab-count"
                   id="count-pending">0</span></button>
+              <button class="tab-btn" onclick="setFilter('รอการยืนยัน', this)">⏳ รอการยืนยัน <span class="tab-count"
+                  id="count-waiting">0</span></button>
               <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
               <button class="tab-btn" onclick="setFilter('เตรียมออเดอร์', this)">📦 เตรียมออเดอร์ <span class="tab-count"
@@ -1403,8 +1405,10 @@
 
     function getStatusMeta(status) {
       const s = (status || '').trim();
-      if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ' || s === 'รอการยืนยัน') {
+      if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
         return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
+      } else if (s === 'รอการยืนยัน') {
+        return { name: 'รอการยืนยัน', class: 'status-checking', icon: '⏳' };
       } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
         return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
       } else if (s === 'เตรียมออเดอร์') {
@@ -1430,7 +1434,7 @@
         let statusMatch = (activeFilter === 'all');
         if (!statusMatch) {
           if (activeFilter === meta.name) statusMatch = true;
-          else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์' || order.status === 'รอการยืนยัน')) statusMatch = true;
+          else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
           else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
           else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
           else statusMatch = (order.status === activeFilter);
@@ -1511,6 +1515,7 @@
 
     function updateStats() {
       let checkingCount = 0;
+      let waitingCount = 0;
       let paymentCount = 0;
       let preparingCount = 0;
       let readyToShipCount = 0;
@@ -1523,6 +1528,7 @@
       allOrders.forEach(o => {
         const meta = getStatusMeta(o.status);
         if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+        else if (meta.name === 'รอการยืนยัน') waitingCount++;
         else if (meta.name === 'ชำระเงิน') paymentCount++;
         else if (meta.name === 'เตรียมออเดอร์') preparingCount++;
         else if (meta.name === 'เตรียมจัดส่ง') readyToShipCount++;
@@ -1544,6 +1550,7 @@
 
       if (document.getElementById('count-all')) document.getElementById('count-all').textContent = allOrders.length;
       if (document.getElementById('count-pending')) document.getElementById('count-pending').textContent = checkingCount;
+      if (document.getElementById('count-waiting')) document.getElementById('count-waiting').textContent = waitingCount;
       if (document.getElementById('count-payment')) document.getElementById('count-payment').textContent = paymentCount;
       if (document.getElementById('count-preparing')) document.getElementById('count-preparing').textContent = preparingCount;
       if (document.getElementById('count-ready-to-ship')) document.getElementById('count-ready-to-ship').textContent = readyToShipCount;
