@@ -2459,28 +2459,58 @@ btnBack.addEventListener('click', () => {
 // ===== โหลดสินค้าแยกออกมา ทำงานได้ทันทีโดยไม่ต้องรอ LIFF =====
 async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
-  if (productsGrid) {
+  
+  // ⚡ แสดงข้อมูลสินค้าจาก Cache ทันที (0ms) — ลูกค้าเห็นสินค้าเลยไม่ต้องรอ
+  let hasCachedData = false;
+  try {
+    const cached = localStorage.getItem('cached_products');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        PRODUCTS = parsed;
+        initCategoryFilters();
+        renderProducts();
+        hasCachedData = true;
+      }
+    }
+  } catch (e) { }
+
+  // ถ้าไม่มี cache ให้แสดง loading
+  if (!hasCachedData && productsGrid) {
     productsGrid.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-light);">กำลังโหลดข้อมูลสินค้า...</div>';
   }
 
   try {
-    // ใส่ _t=timestamp เพื่อป้องกัน Browser Cache ซ้ำซ้อน
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+    // ดึงข้อมูลล่าสุดจาก server ในเบื้องหลัง
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // timeout 15 วินาที
+    
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     const data = await response.json();
-    if (data.status === 'success') {
-      PRODUCTS = data.products || [];
+    
+    if (data.status === 'success' && data.products) {
+      PRODUCTS = data.products;
+      // เก็บ cache ไว้ให้เปิดครั้งถัดไปเร็วทันที
+      try {
+        localStorage.setItem('cached_products', JSON.stringify(PRODUCTS));
+      } catch (e) { }
       initCategoryFilters();
       renderProducts();
-    } else {
+    } else if (!hasCachedData) {
       PRODUCTS = getMockProducts();
       initCategoryFilters();
       renderProducts();
     }
   } catch (error) {
     console.error('Fetch error:', error);
-    PRODUCTS = getMockProducts();
-    initCategoryFilters();
-    renderProducts();
+    if (!hasCachedData) {
+      PRODUCTS = getMockProducts();
+      initCategoryFilters();
+      renderProducts();
+    }
   }
 }
 
