@@ -976,6 +976,23 @@ function toggleShippingFields() {
   const distanceSection = document.getElementById('deliveryDistanceSection');
   const conditionsBox = document.getElementById('shippingConditionsBox');
 
+  // ควบคุมช่องทางชำระเงิน
+  if (shippingOption === 'รับหน้าร้าน') {
+    document.querySelectorAll('.payment-option-delivery').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.payment-option-store').forEach(el => el.style.display = 'flex');
+    const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
+    if (selectedPayment && selectedPayment.value !== 'โอนจ่าย' && selectedPayment.value !== 'จ่ายเงินหน้าร้าน') {
+      document.querySelector('input[name="paymentMethod"][value="โอนจ่าย"]').checked = true;
+    }
+  } else {
+    document.querySelectorAll('.payment-option-delivery').forEach(el => el.style.display = 'flex');
+    document.querySelectorAll('.payment-option-store').forEach(el => el.style.display = 'none');
+    const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
+    if (selectedPayment && selectedPayment.value === 'จ่ายเงินหน้าร้าน') {
+      document.querySelector('input[name="paymentMethod"][value="โอนจ่าย"]').checked = true;
+    }
+  }
+
   if (shippingOption === 'รับหน้าร้าน') {
     if (savedSection) savedSection.style.display = 'none';
     if (newSection) newSection.style.display = 'none';
@@ -2250,14 +2267,6 @@ function parseProductCategory(categoryStr) {
   if (!categoryStr) return { parent: 'ทั่วไป', sub: 'ทั้งหมด' };
 
   const trimmed = categoryStr.trim();
-  const lower = trimmed.toLowerCase();
-
-  // Custom mapping for mock data & standard English names
-  if (lower === 'coffee') return { parent: 'เครื่องดื่ม', sub: 'กาแฟ' };
-  if (lower === 'tea') return { parent: 'เครื่องดื่ม', sub: 'ชา' };
-  if (lower === 'bakery') return { parent: 'เบเกอรี่', sub: 'เบเกอรี่' };
-  if (lower === 'food') return { parent: 'อาหาร', sub: 'ทั่วไป' };
-  if (lower === 'dessert') return { parent: 'ของหวาน', sub: 'ทั่วไป' };
 
   // Split by common separators: / or > or | or : or -
   const parts = trimmed.split(/[\/>|:-]/).map(p => p.trim());
@@ -2439,8 +2448,8 @@ async function loadProducts() {
     renderProducts();
   }
 
-  // 3. ดึงข้อมูลใหม่จาก Google Sheets ถ้า cache หมดอายุหรือยังไม่มี
-  const shouldFetchFresh = !hasValidCache || (Date.now() - Number(cachedTime) > cacheDuration);
+  // 3. ดึงข้อมูลใหม่จาก Google Sheets ทุกครั้ง (Stale-while-revalidate)
+  const shouldFetchFresh = true; // บังคับให้เช็คข้อมูลใหม่ทุกครั้งที่เปิดหน้าเว็บ
   if (shouldFetchFresh) {
     try {
       const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts`);
