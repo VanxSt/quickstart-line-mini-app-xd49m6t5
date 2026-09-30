@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_efd9d_m1qq1Tu7M8tJwz4vtq2kl-XLVNHDWJpBPGeCvNmVNqUDP26eLX4eB0oIRI/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec';
 
 let allOrders = [];
 let allMembers = [];
@@ -30,7 +30,7 @@ function playNotificationChime(isTest) {
     const ctx = getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
-    [{freq:1047,s:0,d:0.25},{freq:1319,s:0.15,d:0.25},{freq:1568,s:0.3,d:0.5}].forEach(n => {
+    [{ freq: 1047, s: 0, d: 0.25 }, { freq: 1319, s: 0.15, d: 0.25 }, { freq: 1568, s: 0.3, d: 0.5 }].forEach(n => {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = 'sine';
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         processIncomingOrders(parsed);
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   fetchOrders(true);
 
@@ -178,7 +178,7 @@ function processIncomingOrders(orders) {
   allOrders = orders || [];
   try {
     localStorage.setItem('cached_admin_orders', JSON.stringify(allOrders));
-  } catch (e) {}
+  } catch (e) { }
 
   let newCount = 0;
   allOrders.forEach(o => {
@@ -249,7 +249,7 @@ async function fetchOrders(showLoading = true) {
 
 function getStatusMeta(status) {
   const s = (status || '').trim();
-  if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
+  if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ' || s === 'รอการยืนยัน') {
     return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
   } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
     return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
@@ -277,7 +277,7 @@ function renderOrders() {
     let statusMatch = (activeFilter === 'all');
     if (!statusMatch) {
       if (activeFilter === meta.name) statusMatch = true;
-      else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
+      else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์' || order.status === 'รอการยืนยัน')) statusMatch = true;
       else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
       else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
       else statusMatch = (order.status === activeFilter);
@@ -596,9 +596,9 @@ function renderModalItems(order, isEditMode = false) {
         <td><span class="row-subtotal-text" id="rowSubtotal_${index}">฿${itemSubtotal.toLocaleString()}</span></td>
         <td style="text-align:center;">
           ${order.items.length > 1
-            ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
-            : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
-          }
+          ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+          : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+        }
         </td>
       `;
     } else {
@@ -610,9 +610,9 @@ function renderModalItems(order, isEditMode = false) {
         <td>฿${itemSubtotal.toLocaleString()}</td>
         <td style="text-align:center;">
           ${isEditable && order.items.length > 1
-            ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
-            : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
-          }
+          ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
+          : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
+        }
         </td>
       `;
     }
@@ -864,12 +864,12 @@ function toggleMapEmbed(show) {
 
     // Extract lat/lng from Google Maps URL
     let lat = '', lng = '';
-    
+
     // Try pattern: @lat,lng
     const atMatch = gpsUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     // Try pattern: ?q=lat,lng or place/lat,lng
     const qMatch = gpsUrl.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/) ||
-                   gpsUrl.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      gpsUrl.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
 
     if (atMatch) {
       lat = atMatch[1]; lng = atMatch[2];
@@ -915,7 +915,7 @@ function showToast(message, type = 'success') {
 
   const toast = document.createElement('div');
   toast.className = 'custom-toast';
-  
+
   let bgColor = '#10b981'; // Green
   let icon = '✅';
   if (type === 'error') {

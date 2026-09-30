@@ -1403,7 +1403,7 @@
 
     function getStatusMeta(status) {
       const s = (status || '').trim();
-      if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ') {
+      if (s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจสอบ' || s === 'รอการยืนยัน') {
         return { name: 'กำลังตรวจสอบออเดอร์', class: 'status-checking', icon: '⏳' };
       } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
         return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
@@ -1430,7 +1430,7 @@
         let statusMatch = (activeFilter === 'all');
         if (!statusMatch) {
           if (activeFilter === meta.name) statusMatch = true;
-          else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์')) statusMatch = true;
+          else if (activeFilter === 'กำลังตรวจสอบออเดอร์' && (order.status === 'รอตรวจสอบ' || order.status === 'กำลังตรวจสอบออเดอร์' || order.status === 'รอการยืนยัน')) statusMatch = true;
           else if (activeFilter === 'ชำระเงิน' && (order.status === 'รอชำระเงิน' || order.status === 'ชำระเงิน')) statusMatch = true;
           else if (activeFilter === 'จัดส่งสำเร็จ' && (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งสำเร็จ')) statusMatch = true;
           else statusMatch = (order.status === activeFilter);

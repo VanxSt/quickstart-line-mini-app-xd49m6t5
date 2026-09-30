@@ -34,7 +34,7 @@ function doPost(e) {
               if (values[i][1] && values[i][1].toString() === params.orderId) {
                 var currentStatus = values[i][9] || "";
                 // ถ้าสถานะเป็นยืนยันหรือยกเลิกไปแล้ว ให้บล็อคการกดปุ่ม
-                if (currentStatus === "ลูกค้ายืนยันรับออเดอร์" || currentStatus === "ยกเลิก" || currentStatus === "ชำระเงิน" || currentStatus === "รอชำระเงิน" || currentStatus === "เตรียมออเดอร์") {
+                if (currentStatus === "ลูกค้ายืนยันรับออเดอร์" || currentStatus === "ยกเลิก") {
                   isProcessed = true;
                 }
                 break;
@@ -146,6 +146,9 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
   ordersSheet.getRange(foundRow, 9).setValue(newTotalPrice);            // Total Price
   ordersSheet.getRange(foundRow, 12).setValue(itemsText);               // Order Items (readable)
   ordersSheet.getRange(foundRow, 13).setValue(JSON.stringify(newItems)); // Items JSON
+  
+  // เปลี่ยนสถานะเป็น "รอการยืนยัน" เมื่อแอดมินแก้ไขออเดอร์
+  ordersSheet.getRange(foundRow, 10).setValue("รอการยืนยัน");
   
   var notifyDebug = "Skipped notification";
   
