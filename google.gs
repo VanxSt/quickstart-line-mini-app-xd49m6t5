@@ -11,8 +11,32 @@ const SHOP_PROMPTPAY_ID = '0957579454';
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var action = data.action || 'register';
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // ตรวจสอบว่าเป็น Webhook จาก LINE หรือไม่ (มีการส่ง events มา)
+    if (data.events && Array.isArray(data.events)) {
+      data.events.forEach(function(event) {
+        if (event.type === 'postback' && event.postback && event.postback.data) {
+          var pbData = event.postback.data;
+          // แปลง query string เป็น object (เช่น action=cancelOrder&orderId=ORD-123)
+          var params = pbData.split('&').reduce(function(acc, curr) {
+            var parts = curr.split('=');
+            acc[parts[0]] = parts[1];
+            return acc;
+          }, {});
+          
+          if (params.action === 'cancelOrder' && params.orderId) {
+            updateOrderStatusNative(params.orderId, 'ยกเลิก');
+          } else if (params.action === 'confirmOrder' && params.orderId) {
+            updateOrderStatusNative(params.orderId, 'ลูกค้ายืนยันรับออเดอร์');
+          }
+        }
+      });
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok' })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // หากไม่ใช่ Webhook จาก LINE (เป็นการเรียก API จากหน้าเว็บ LIFF ตามปกติ)
+    var action = data.action || 'register';
     
     if (action === 'createOrder') {
       return createOrderHandler(ss, data);
@@ -139,14 +163,16 @@ function updateOrderItemsNative(orderId, newItems, newTotalPrice, notifyCustomer
             "text": "คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?",
             "actions": [
               {
-                "type": "uri",
-                "label": "✅ ยืนยันรับออเดอร์",
-                "uri": "https://liff.line.me/2010951634-lg8G4wUA?action=confirmOrder&orderId=" + orderId
+                "type": "postback",
+                "label": "✅ ยืนยันรายการสั่งซื้อ",
+                "data": "action=confirmOrder&orderId=" + orderId,
+                "displayText": "ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ"
               },
               {
-                "type": "uri",
-                "label": "❌ ไม่รับออเดอร์",
-                "uri": "https://liff.line.me/2010951634-lg8G4wUA?action=cancelOrder&orderId=" + orderId
+                "type": "postback",
+                "label": "❌ ยกเลิกคำสั่งซื้อ",
+                "data": "action=cancelOrder&orderId=" + orderId,
+                "displayText": "ลูกค้าขอยกเลิกออเดอร์นี้ครับ"
               }
             ]
           }
@@ -798,6 +824,12 @@ function updateOrderStatusNative(orderId, newStatus) {
   }
   
   if (foundRow !== -1) {
+    // ป้องกันการแจ้งเตือนซ้ำ: ตรวจสอบว่าสถานะปัจจุบันตรงกับที่กำลังจะเปลี่ยนหรือไม่
+    var existingStatus = values[foundRow - 1][9] || "";
+    if (existingStatus === newStatus) {
+      return { status: 'success', debug: 'Status already ' + newStatus };
+    }
+    
     ordersSheet.getRange(foundRow, 10).setValue(newStatus);
     
     // ส่งข้อความแจ้งเตือนผ่าน LINE ทันทีที่มีการเปลี่ยนสถานะ
