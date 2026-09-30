@@ -872,12 +872,6 @@ function updateOrderStatusNative(orderId, newStatus) {
              "previewImageUrl": dynamicQrUrl
            });
         }
-        else if (newStatus === "เตรียมออเดอร์") {
-           messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "ทางร้านกำลังเตรียมสินค้าของคุณอย่างพิถีพิถันครับ อดใจรออีกสักครู่นะครับ! 📦✨", "#d97706", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
-        }
-        else if (newStatus === "เตรียมจัดส่ง") {
-           messages.push(buildStatusFlexMessage("🛍️ จัดเตรียมสินค้าพร้อมส่ง", orderId, "สินค้าแพ็คเสร็จเรียบร้อยแล้ว พร้อมส่งมอบให้ไรเดอร์แล้วครับ! 📦💨", "#0284c7", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
-        }
         else if (newStatus === "กำลังจัดส่ง") {
            messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
         }

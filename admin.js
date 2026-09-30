@@ -255,10 +255,6 @@ function getStatusMeta(status) {
     return { name: 'รอการยืนยัน', class: 'status-checking', icon: '⏳' };
   } else if (s === 'ชำระเงิน' || s === 'รอชำระเงิน') {
     return { name: 'ชำระเงิน', class: 'status-payment', icon: '💳' };
-  } else if (s === 'เตรียมออเดอร์') {
-    return { name: 'เตรียมออเดอร์', class: 'status-preparing', icon: '📦' };
-  } else if (s === 'เตรียมจัดส่ง') {
-    return { name: 'เตรียมจัดส่ง', class: 'status-ready-to-ship', icon: '🛍️' };
   } else if (s === 'กำลังจัดส่ง') {
     return { name: 'กำลังจัดส่ง', class: 'status-shipping', icon: '🚚' };
   } else if (s === 'จัดส่งสำเร็จ' || s === 'ยืนยันแล้ว') {
@@ -380,8 +376,6 @@ function updateStats() {
     if (meta.name === 'กำลังตรวจสอบออเดอร์') checkingCount++;
     else if (meta.name === 'รอการยืนยัน') waitingCount++;
     else if (meta.name === 'ชำระเงิน') paymentCount++;
-    else if (meta.name === 'เตรียมออเดอร์') preparingCount++;
-    else if (meta.name === 'เตรียมจัดส่ง') readyToShipCount++;
     else if (meta.name === 'กำลังจัดส่ง') shippingCount++;
     else if (meta.name === 'จัดส่งสำเร็จ') {
       completedCount++;
@@ -529,11 +523,7 @@ function renderModalActions(order) {
     let nextStepBtn = '';
     if (isCod) {
       if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ยืนยันออเดอร์ -> เริ่มเตรียมออเดอร์</button>`;
-      } else if (normStatus === 'เตรียมออเดอร์') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
-      } else if (normStatus === 'เตรียมจัดส่ง') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ส่งมอบไรเดอร์ -> กำลังจัดส่ง</button>`;
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ยืนยันออเดอร์ -> กำลังจัดส่ง</button>`;
       } else if (normStatus === 'กำลังจัดส่ง') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
       }
@@ -541,11 +531,7 @@ function renderModalActions(order) {
       if (normStatus === 'กำลังตรวจสอบออเดอร์') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
       } else if (normStatus === 'ชำระเงิน') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมออเดอร์')">📦 ตรวจสอบยอดแล้ว -> เริ่มเตรียมออเดอร์</button>`;
-      } else if (normStatus === 'เตรียมออเดอร์') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('เตรียมจัดส่ง')">🛍️ เตรียมออเดอร์เสร็จแล้ว -> เตรียมจัดส่ง</button>`;
-      } else if (normStatus === 'เตรียมจัดส่ง') {
-        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ส่งมอบไรเดอร์ -> กำลังจัดส่ง</button>`;
+        nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 ตรวจสอบยอดแล้ว -> กำลังจัดส่ง</button>`;
       } else if (normStatus === 'กำลังจัดส่ง') {
         nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
       }
