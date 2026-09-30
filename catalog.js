@@ -27,11 +27,14 @@ function getOptimizedImageUrl(url) {
     }
   }
 
-  // ใช้ Image CDN ฟรี (wsrv.nl) ช่วยย่อขนาดและแปลงรูปทุกชนิดเป็น WebP อัตโนมัติ
-  // ซึ่งจะช่วยลดขนาดรูปจาก 5MB เหลือไม่เกิน 50KB ทำให้แสดงผลหน้าสินค้าได้ไวขึ้นถึง 100 เท่า
-  if (!optimizedUrl.includes('wsrv.nl') && !optimizedUrl.includes('placehold.co')) {
+  // ปิดการใช้ Image CDN (wsrv.nl) ชั่วคราว
+  // เนื่องจากถ้ารูปเป็นลิงก์ API หรือระบบอื่นๆ CDN มักจะเข้าถึงไม่ได้ทำให้รูปไม่โหลด
+  // ปล่อยให้โหลดจากลิงก์ต้นฉบับโดยตรงจะชัวร์ที่สุดครับ
+  /*
+  if (!optimizedUrl.includes('wsrv.nl') && !optimizedUrl.includes('placehold.co') && !optimizedUrl.includes('googleusercontent.com')) {
     optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(optimizedUrl)}&w=400&output=webp`;
   }
+  */
 
   return optimizedUrl;
 }
@@ -231,13 +234,13 @@ function renderProducts() {
     if (imgWrapper) {
       imgWrapper.addEventListener('click', (e) => {
         e.stopPropagation();
-        openProductDetail(product.id);
+        openProductDetail(product);
       });
     }
 
     // Click on card to open detail modal
     card.addEventListener('click', (e) => {
-      openProductDetail(product.id);
+      openProductDetail(product);
     });
 
     productsGrid.appendChild(card);
@@ -245,8 +248,13 @@ function renderProducts() {
 }
 
 // Open Detail Modal
-function openProductDetail(id) {
-  const product = PRODUCTS.find(p => p.id === id);
+function openProductDetail(productOrId) {
+  let product;
+  if (typeof productOrId === 'object' && productOrId !== null) {
+    product = productOrId;
+  } else {
+    product = PRODUCTS.find(p => p.id === productOrId || String(p.id) === String(productOrId));
+  }
   if (!product) return;
 
   activeProduct = product;
@@ -2400,7 +2408,7 @@ async function loadProducts() {
   // 1. โชว์สินค้าจาก Cache ทันที (0ms) ถ้ามี
   const cachedData = localStorage.getItem('catalog_products_cache');
   const cachedTime = localStorage.getItem('catalog_products_cache_time');
-  const cacheDuration = 15 * 60 * 1000; // Cache นาน 15 นาที (เพิ่มจาก 3 นาที)
+  const cacheDuration = 1 * 60 * 1000; // ลดเหลือ 1 นาที เพื่อให้สินค้าอัปเดตไวขึ้น ไม่แสดงผลไม่เท่ากันในแต่ละเครื่อง
 
   let hasValidCache = false;
   if (cachedData && cachedTime) {
