@@ -2288,26 +2288,28 @@ function initCategoryFilters() {
   // Clear and Render Parent Tabs
   parentNav.innerHTML = '';
 
-  // All Parent Tab
-  const allParentTab = document.createElement('button');
-  allParentTab.className = `category-tab ${currentParentCategory === 'all' ? 'active' : ''}`;
-  allParentTab.textContent = 'ทั้งหมด';
-  allParentTab.addEventListener('click', () => {
-    selectParentCategory('all');
+  const parentSelect = document.createElement('select');
+  parentSelect.className = 'category-dropdown';
+  parentSelect.addEventListener('change', (e) => {
+    selectParentCategory(e.target.value);
   });
-  parentNav.appendChild(allParentTab);
 
-  // Render parent tabs
+  const allOption = document.createElement('option');
+  allOption.value = 'all';
+  allOption.textContent = 'หมวดหมู่ทั้งหมด';
+  allOption.selected = currentParentCategory === 'all';
+  parentSelect.appendChild(allOption);
+
   Object.keys(categoryTree).forEach(parent => {
     if (parent === 'all') return;
-    const tab = document.createElement('button');
-    tab.className = `category-tab ${currentParentCategory === parent ? 'active' : ''}`;
-    tab.textContent = parent;
-    tab.addEventListener('click', () => {
-      selectParentCategory(parent);
-    });
-    parentNav.appendChild(tab);
+    const option = document.createElement('option');
+    option.value = parent;
+    option.textContent = parent;
+    option.selected = currentParentCategory === parent;
+    parentSelect.appendChild(option);
   });
+
+  parentNav.appendChild(parentSelect);
 
   // Render Subcategory Tabs
   renderSubCategoriesUI(categoryTree);
@@ -2326,25 +2328,29 @@ function renderSubCategoriesUI(categoryTree) {
   subNav.innerHTML = '';
 
   // Add "ทั้งหมด" for subcategory
-  const allSubTab = document.createElement('button');
-  allSubTab.className = `category-tab ${currentSubCategory === 'all' ? 'active' : ''}`;
-  allSubTab.textContent = 'ทั้งหมด';
-  allSubTab.addEventListener('click', () => {
-    selectSubCategory('all');
+  const subSelect = document.createElement('select');
+  subSelect.className = 'category-dropdown';
+  subSelect.addEventListener('change', (e) => {
+    selectSubCategory(e.target.value);
   });
-  subNav.appendChild(allSubTab);
+
+  const allSubOption = document.createElement('option');
+  allSubOption.value = 'all';
+  allSubOption.textContent = 'หมวดหมู่ย่อยทั้งหมด';
+  allSubOption.selected = currentSubCategory === 'all';
+  subSelect.appendChild(allSubOption);
 
   // Add individual subcategories
   categoryTree[currentParentCategory].forEach(sub => {
     if (sub === 'ทั้งหมด') return; // Skip if 'ทั้งหมด' was added as a string
-    const tab = document.createElement('button');
-    tab.className = `category-tab ${currentSubCategory === sub ? 'active' : ''}`;
-    tab.textContent = sub;
-    tab.addEventListener('click', () => {
-      selectSubCategory(sub);
-    });
-    subNav.appendChild(tab);
+    const option = document.createElement('option');
+    option.value = sub;
+    option.textContent = sub;
+    option.selected = currentSubCategory === sub;
+    subSelect.appendChild(option);
   });
+  
+  subNav.appendChild(subSelect);
 }
 
 function selectParentCategory(parent) {
