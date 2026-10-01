@@ -518,7 +518,7 @@
           if (!row[0] && row[0] !== 0) continue;
           
           products.push({
-            id: Number(row[0]),
+            id: String(row[0] || '').trim(),
             name: String(row[1] || ''),
             category: String(row[2] || ''),
             price: Number(row[3] || 0),
@@ -852,6 +852,26 @@
     return orders;
   }
 
+  function getProductsNative() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var catalogSheet = ss.getSheetByName("Catalog");
+    if (!catalogSheet) return [];
+    
+    var values = catalogSheet.getDataRange().getValues();
+    var products = [];
+    
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      if (!row[0] && row[0] !== 0) continue;
+      
+      products.push({
+        id: String(row[0] || '').trim(),
+        name: String(row[1] || ''),
+        price: Number(row[3] || 0)
+      });
+    }
+    return products;
+  }
   function updateOrderStatusNative(orderId, newStatus) {
     var lock = LockService.getScriptLock();
     try {

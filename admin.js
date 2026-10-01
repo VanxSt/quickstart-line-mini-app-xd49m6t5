@@ -580,15 +580,32 @@ let isAdminProductsLoaded = false;
 
 async function fetchAdminProducts() {
   if (isAdminProductsLoaded) return;
-  try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
-    const data = await res.json();
-    if (data.status === 'success' && data.products) {
-      adminProducts = data.products;
-      isAdminProductsLoaded = true;
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(function(products) {
+          adminProducts = products || [];
+          isAdminProductsLoaded = true;
+          resolve();
+        })
+        .withFailureHandler(function(err) {
+          console.error('Error fetching admin products via GAS:', err);
+          resolve(); // Resolve anyway to avoid blocking
+        })
+        .getProductsNative();
+    });
+  } else {
+    try {
+      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+      const data = await res.json();
+      if (data.status === 'success' && data.products) {
+        adminProducts = data.products;
+        isAdminProductsLoaded = true;
+      }
+    } catch (err) {
+      console.error('Error fetching admin products:', err);
     }
-  } catch (err) {
-    console.error('Error fetching admin products:', err);
   }
 }
 
@@ -609,7 +626,7 @@ async function addNewItemBySku() {
 
   const product = adminProducts.find(p => String(p.id) === String(sku));
   if (!product) {
-    alert('ไม่พบสินค้ารหัส: ' + sku);
+    alert('ไม่พบสินค้ารหัส: ' + sku + '\n(โหลดข้อมูลมาได้ ' + adminProducts.length + ' รายการ)\n*หากเพิ่งเพิ่มรหัสใหม่ กรุณารีเฟรชหน้าเว็บ*');
     return;
   }
 
