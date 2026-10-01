@@ -950,6 +950,9 @@
             <button id="refreshBtn" class="btn-primary" onclick="fetchOrders(true)">
               <span class="icon">🔄</span> รีเฟรชข้อมูล
             </button>
+            <button id="syncCatalogBtn" onclick="syncCatalog()" style="background:#059669;color:white;border:none;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;" title="Export สินค้าจากชีต Catalog เป็น products.json เพื่อโหลดเร็วขึ้น">
+              📦 Sync Catalog
+            </button>
           </div>
         </header>
 
@@ -1643,6 +1646,43 @@
           if (showLoading && loading) loading.style.display = 'none';
         })
         .getAllMembersNative();
+    }
+
+    // ===== Sync Catalog: Export สินค้าจาก GAS → products.json → ให้ Admin Download =====
+    function syncCatalog() {
+      const btn = document.getElementById('syncCatalogBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลัง Sync...'; }
+
+      google.script.run
+        .withSuccessHandler(function(jsonStr) {
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.status !== 'success' || !Array.isArray(data.products)) {
+              alert('❌ Sync ล้มเหลว: ' + (data.message || 'ไม่ได้รับข้อมูลสินค้า'));
+              if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+              return;
+            }
+            // Download products.json
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'products.json';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+            alert(`✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (${data.total} สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!`);
+          } catch(e) {
+            alert('❌ Error parsing JSON: ' + e.message);
+            if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+          }
+        })
+        .withFailureHandler(function(err) {
+          alert('❌ ไม่สามารถดึงข้อมูลสินค้าได้: ' + err.message);
+          if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+        })
+        .exportProductsJson();
     }
 
     function renderMembers() {

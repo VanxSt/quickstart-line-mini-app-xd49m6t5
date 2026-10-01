@@ -16,8 +16,33 @@
       if (sheetName === 'Catalog') {
         var cache = CacheService.getScriptCache();
         cache.remove('catalog_products_json');
+        cache.remove('catalog_products_json_v2'); // ล้าง cache key ใหม่ด้วย
       }
     } catch(err) { }
+  }
+
+  // สร้าง JSON เพื่อใช้เป็น Static File บน Vercel (เรียกจากหน้า Admin)
+  function exportProductsJson() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var catalogSheet = ss.getSheetByName("Catalog");
+    if (!catalogSheet) return JSON.stringify({ status: 'error', message: 'ไม่พบชีต Catalog' });
+    var values = catalogSheet.getDataRange().getValues();
+    var products = [];
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      if (!row[0] || String(row[0]).trim() === '') continue;
+      if (String(row[7] || 'active').toLowerCase() === 'inactive') continue;
+      products.push({
+        id: String(row[0]).trim(),
+        name: String(row[1] || ''),
+        category: String(row[2] || ''),
+        price: Number(row[3] || 0),
+        desc: String(row[4] || ''),
+        img: String(row[5] || ''),
+        tag: String(row[6] || '')
+      });
+    }
+    return JSON.stringify({ status: 'success', products: products, total: products.length, exportedAt: new Date().getTime() });
   }
 
   function doPost(e) {

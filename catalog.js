@@ -207,7 +207,6 @@ function renderProducts() {
   const toRender = filtered.slice(0, visibleLimit);
 
   toRender.forEach(product => {
-    // ดึง URL รูปภาพที่ปรับประสิทธิภาพแล้ว (รองรับ WebP อัตโนมัติสำหรับ CDN)
     const productImg = getOptimizedImageUrl(product.img);
 
     const card = document.createElement('div');
@@ -232,7 +231,6 @@ function renderProducts() {
       </div>
     `;
 
-    // Click on product image or card opens product detail modal
     const imgWrapper = card.querySelector('.product-img-wrapper');
     if (imgWrapper) {
       imgWrapper.addEventListener('click', (e) => {
@@ -240,14 +238,39 @@ function renderProducts() {
         openProductDetail(product);
       });
     }
-
-    // Click on card to open detail modal
-    card.addEventListener('click', (e) => {
-      openProductDetail(product);
-    });
-
+    card.addEventListener('click', () => openProductDetail(product));
     productsGrid.appendChild(card);
   });
+
+  // เพิ่ม Sentinel element สำหรับ IntersectionObserver (ตรวจว่าเลื่อนถึงด้านล่างหรือยัง)
+  if (visibleLimit < filtered.length) {
+    const sentinel = document.createElement('div');
+    sentinel.id = 'scroll-sentinel';
+    sentinel.style.cssText = 'width:100%;height:60px;display:flex;align-items:center;justify-content:center;gap:12px;color:#94a3b8;font-size:13px;grid-column:1/-1;';
+    sentinel.innerHTML = `
+      <div style="width:20px;height:20px;border:2px solid #e2e8f0;border-top-color:#388BC2;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+      <span>โหลดสินค้าเพิ่มเติม...</span>`;
+    productsGrid.appendChild(sentinel);
+    observeSentinel();
+  }
+}
+
+// IntersectionObserver — เร็วกว่า scroll event มาก ไม่บล็อก main thread
+let _scrollObserver = null;
+function observeSentinel() {
+  if (_scrollObserver) _scrollObserver.disconnect();
+  const sentinel = document.getElementById('scroll-sentinel');
+  if (!sentinel) return;
+
+  _scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      _scrollObserver.disconnect();
+      visibleLimit += 20;
+      renderProducts();
+    }
+  }, { rootMargin: '200px' }); // เริ่มโหลดก่อนถึงขอบ 200px
+
+  _scrollObserver.observe(sentinel);
 }
 
 // Open Detail Modal
@@ -2415,17 +2438,9 @@ function selectSubCategory(sub) {
   renderProducts();
 }
 
-// Infinite Scroll - โหลดสินค้าเพิ่มทีละ 20 รายการเมื่อเลื่อนจอถึงด้านล่าง
-window.addEventListener('scroll', () => {
-  // หากแสดงสินค้าครบทั้งหมดในระบบแล้ว ไม่ต้องทำอะไรเพิ่ม
-  if (visibleLimit >= PRODUCTS.length) return;
+// Infinite Scroll — ลบ scroll event เก่าออก แทนด้วย IntersectionObserver ใน renderProducts()
+// (ดูฟังก์ชัน observeSentinel() ด้านบน)
 
-  // ตรวจสอบว่าเลื่อนหน้าจอลงมาใกล้ถึงด้านล่าง (ห่างจากขอบล่าง 250px)
-  if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 250) {
-    visibleLimit += 20;
-    renderProducts();
-  }
-});
 
 // Modal Close logic
 modal.addEventListener('click', (e) => {
@@ -2456,13 +2471,13 @@ btnBack.addEventListener('click', () => {
 });
 
 
-// ===== โหลดสินค้าแยกออกมา ทำงานได้ทันทีโดยไม่ต้องรอ LIFF =====
+// ===== โหลดสินค้า 3 ชั้น: Cache → Static JSON → GAS =====
+// ชั้น 1: localStorage (0ms) | ชั้น 2: products.json จาก Vercel CDN (~50ms) | ชั้น 3: GAS (~3-10s)
 async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
-  
-  // ⚡ แสดงข้อมูลสินค้าจาก Cache ทันที (0ms) — ลูกค้าเห็นสินค้าเลยไม่ต้องรอ
-  // ตรวจ 3 อย่าง: 1)ไม่ใช่ Mock  2)ค่า cachedAt ไม่เกิน 5 นาที  3)มีข้อมูลจริง
   const CACHE_TTL_MS = 5 * 60 * 1000; // 5 นาที
+
+  // ── ชั้น 1: localStorage Cache ──
   let hasCachedData = false;
   try {
     const cachedRaw = localStorage.getItem('cached_products_v2');
@@ -2480,49 +2495,79 @@ async function loadProducts() {
         hasCachedData = true;
       }
     }
-    // ล้าง cache เก่า (v1) ทิ้ง
-    localStorage.removeItem('cached_products');
+    localStorage.removeItem('cached_products'); // ล้าง cache เก่า (v1)
   } catch (e) { }
 
-  // ถ้าไม่มี cache ให้แสดง loading
+  // ── แสดง Loading เฉพาะเมื่อไม่มี Cache ──
   if (!hasCachedData && productsGrid) {
-    productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:12px">⏳</div><p style="font-size:15px">กำลังโหลดข้อมูลสินค้า...</p><p style="font-size:12px;margin-top:6px;opacity:0.6">กรุณารอสักครู่</p></div>';
+    productsGrid.innerHTML = `
+      <div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)">
+        <div style="width:40px;height:40px;border:3px solid var(--primary-color,#388BC2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px"></div>
+        <p style="font-size:15px">กำลังโหลดสินค้า...</p>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
   }
 
+  // ── ชั้น 2: Static products.json จาก Vercel CDN (เร็วมาก) ──
+  if (!hasCachedData) {
+    try {
+      const staticRes = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
+      const staticData = await staticRes.json();
+      if (staticData.status === 'success' && Array.isArray(staticData.products) && staticData.products.length > 0) {
+        PRODUCTS = staticData.products;
+        initCategoryFilters();
+        renderProducts();
+        hasCachedData = true;
+        // เก็บ cache ทันทีเพื่อโหลดเร็วครั้งถัดไป
+        try {
+          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+        } catch (e) { }
+      }
+    } catch (e) { /* Static file ไม่มี → ไปชั้น 3 */ }
+  }
+
+  // ── ชั้น 3: GAS (ดึงข้อมูลสดจาก Google Sheets) ──
+  // ดึงเสมอเพื่ออัปเดต cache แม้ชั้น 2 สำเร็จ (background refresh)
   try {
-    // ดึงข้อมูลล่าสุดจาก server ในเบื้องหลัง
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // timeout 15 วินาที
-    
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
     const data = await response.json();
-    
-    if (data.status === 'success' && data.products && data.products.length > 0) {
+
+    if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+      const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
       PRODUCTS = data.products;
-      // เก็บ cache แบบใหม่ (v2) พร้อม timestamp
       try {
-        localStorage.setItem('cached_products_v2', JSON.stringify({
-          products: PRODUCTS,
-          cachedAt: Date.now()
-        }));
+        localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
       } catch (e) { }
-      initCategoryFilters();
-      renderProducts();
-    } else if (!hasCachedData) {
-      // ไม่มีสินค้าในชีตเลย หรือ Response ผิดพลาด — แสดง Error พร้อมปุ่มลองใหม่
-      if (productsGrid) {
-        productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:12px">📦</div><p style="font-size:15px;font-weight:600">ยังไม่มีสินค้าในระบบ</p><p style="font-size:12px;margin-top:6px;opacity:0.7">หรือไม่สามารถโหลดข้อมูลได้ในขณะนี้</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button></div>';
+      if (changed || !hasCachedData) {
+        initCategoryFilters();
+        renderProducts();
+        hasCachedData = true;
       }
+    } else if (!hasCachedData) {
+      showProductsError(productsGrid, '📦', 'ยังไม่มีสินค้าในระบบ', 'กรุณาเพิ่มสินค้าในชีต Catalog');
     }
   } catch (error) {
-    console.error('Fetch error:', error);
-    if (!hasCachedData && productsGrid) {
-      productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:12px">📡</div><p style="font-size:15px;font-weight:600">ไม่สามารถเชื่อมต่อได้</p><p style="font-size:12px;margin-top:6px;opacity:0.7">กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button></div>';
+    console.error('GAS Fetch error:', error);
+    if (!hasCachedData) {
+      showProductsError(productsGrid, '📡', 'ไม่สามารถเชื่อมต่อได้', 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่');
     }
   }
+}
+
+function showProductsError(grid, icon, title, subtitle) {
+  if (!grid) return;
+  grid.innerHTML = `
+    <div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)">
+      <div style="font-size:40px;margin-bottom:12px">${icon}</div>
+      <p style="font-size:15px;font-weight:600">${title}</p>
+      <p style="font-size:12px;margin-top:6px;opacity:0.7">${subtitle}</p>
+      <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button>
+    </div>`;
 }
 
 
