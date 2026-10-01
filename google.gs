@@ -494,9 +494,9 @@
       
       // Action 1: ดึงข้อมูลสินค้าจากชีต Catalog
       if (action === 'getProducts') {
-        // ใช้ CacheService เพื่อเร่งความเร็ว — ข้อมูลสินค้าจะถูกเก็บไว้ในแคช 5 นาที
+        // ใช้ CacheService เพื่อเร่งความเร็ว — ข้อมูลสินค้าจะถูกเก็บไว้ในแคช 60 วินาที
         var cache = CacheService.getScriptCache();
-        var cachedProducts = cache.get('catalog_products_json');
+        var cachedProducts = cache.get('catalog_products_json_v2');
         
         if (cachedProducts) {
           return ContentService.createTextOutput(cachedProducts).setMimeType(ContentService.MimeType.JSON);
@@ -516,6 +516,7 @@
         for (var i = 1; i < values.length; i++) {
           var row = values[i];
           if (!row[0] && row[0] !== 0) continue;
+          if (String(row[0]).trim() === '') continue; // ข้ามแถวที่ A ว่าง
           
           products.push({
             id: String(row[0] || '').trim(),
@@ -535,12 +536,14 @@
         
         var jsonOutput = JSON.stringify({ 
           status: 'success', 
-          products: activeProducts 
+          products: activeProducts,
+          total: activeProducts.length,
+          cachedAt: new Date().getTime()
         });
         
-        // เก็บไว้ในแคช 5 นาที (300 วินาที) — ถ้าข้อมูลเกิน 100KB จะแบ่ง chunk เก็บ
+        // เก็บไว้ในแคช 60 วินาที — สินค้าใหม่จะปรากฏภายใน 1 นาทีหลังเพิ่มลงชีต
         try {
-          cache.put('catalog_products_json', jsonOutput, 300);
+          cache.put('catalog_products_json_v2', jsonOutput, 60);
         } catch(e) {
           // ถ้าข้อมูลใหญ่เกินไปสำหรับ cache ก็ไม่เป็นไร ส่งข้อมูลกลับเลย
         }

@@ -2461,30 +2461,32 @@ async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
   
   // ⚡ แสดงข้อมูลสินค้าจาก Cache ทันที (0ms) — ลูกค้าเห็นสินค้าเลยไม่ต้องรอ
-  // แต่ต้องมั่นใจว่า Cache ไม่ใช่ข้อมูลจำลอง (Mock) — ตรวจโดยดูว่ามี img ที่เป็น unsplash หรือเปล่า
+  // ตรวจ 3 อย่าง: 1)ไม่ใช่ Mock  2)ค่า cachedAt ไม่เกิน 5 นาที  3)มีข้อมูลจริง
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 นาที
   let hasCachedData = false;
   try {
-    const cached = localStorage.getItem('cached_products');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      const isMockData = Array.isArray(parsed) && parsed.length > 0 &&
-        parsed[0].img && parsed[0].img.includes('unsplash.com');
-      if (isMockData) {
-        // ล้าง cache เก่าที่เป็น Mock Products ทิ้งทันที
-        localStorage.removeItem('cached_products');
-      } else if (Array.isArray(parsed) && parsed.length > 0) {
-        PRODUCTS = parsed;
+    const cachedRaw = localStorage.getItem('cached_products_v2');
+    if (cachedRaw) {
+      const cachedObj = JSON.parse(cachedRaw);
+      const products = cachedObj.products;
+      const cachedAt = cachedObj.cachedAt || 0;
+      const isExpired = (Date.now() - cachedAt) > CACHE_TTL_MS;
+      const isMockData = Array.isArray(products) && products.length > 0 &&
+        products[0].img && products[0].img.includes('unsplash.com');
+      if (!isMockData && !isExpired && Array.isArray(products) && products.length > 0) {
+        PRODUCTS = products;
         initCategoryFilters();
         renderProducts();
         hasCachedData = true;
       }
     }
+    // ล้าง cache เก่า (v1) ทิ้ง
+    localStorage.removeItem('cached_products');
   } catch (e) { }
 
   // ถ้าไม่มี cache ให้แสดง loading
   if (!hasCachedData && productsGrid) {
     productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:12px">⏳</div><p style="font-size:15px">กำลังโหลดข้อมูลสินค้า...</p><p style="font-size:12px;margin-top:6px;opacity:0.6">กรุณารอสักครู่</p></div>';
-  }
   }
 
   try {
@@ -2500,9 +2502,12 @@ async function loadProducts() {
     
     if (data.status === 'success' && data.products && data.products.length > 0) {
       PRODUCTS = data.products;
-      // เก็บ cache ไว้ให้เปิดครั้งถัดไปเร็วทันที (เฉพาะข้อมูลจริงจากชีตเท่านั้น)
+      // เก็บ cache แบบใหม่ (v2) พร้อม timestamp
       try {
-        localStorage.setItem('cached_products', JSON.stringify(PRODUCTS));
+        localStorage.setItem('cached_products_v2', JSON.stringify({
+          products: PRODUCTS,
+          cachedAt: Date.now()
+        }));
       } catch (e) { }
       initCategoryFilters();
       renderProducts();
