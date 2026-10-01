@@ -370,12 +370,22 @@ if (btnSavePhoneInline) {
 
 if (btnNextPage) {
   btnNextPage.addEventListener('click', () => {
+    if (phone && !phone.value.trim()) {
+      showToast('กรุณาระบุเบอร์โทรศัพท์ก่อนเข้าดูเมนู', false);
+      phone.focus();
+      return;
+    }
     window.location.href = 'second.html';
   });
 }
 
 if (btnFavoriteOrders) {
   btnFavoriteOrders.addEventListener('click', () => {
+    if (phone && !phone.value.trim()) {
+      showToast('กรุณาระบุเบอร์โทรศัพท์ก่อนดูรายการโปรด', false);
+      phone.focus();
+      return;
+    }
     window.location.href = 'second.html?open=favorites';
   });
 }
