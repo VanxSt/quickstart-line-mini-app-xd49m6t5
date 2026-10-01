@@ -1285,7 +1285,7 @@
                   "type": "box",
                   "layout": "horizontal",
                   "contents": [
-                    { "type": "text", "text": "💳 ชำระเงิน", "size": "xs", "color": "#64748b", "flex": 2 },
+                    { "type": "text", "text": "💳 ชำระเงินโดย :", "size": "xs", "color": "#64748b", "flex": 2 },
                     { "type": "text", "text": paymentMethod || "-", "size": "xs", "color": "#0f172a", "weight": "bold", "flex": 4, "wrap": true }
                   ]
                 }
