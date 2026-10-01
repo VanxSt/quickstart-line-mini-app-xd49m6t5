@@ -80,11 +80,15 @@
                 }
               }
               
+              var cache = CacheService.getScriptCache();
+              var cacheKey = "notify_dup_" + params.orderId + "_" + params.action;
+              
               if (isProcessed) {
-                // ส่งข้อความแจ้งเตือนลูกค้าว่าไม่สามารถทำรายการย้อนหลังได้ (ใช้ Cache กันการส่งซ้ำจาก webhook retry)
-                var cache = CacheService.getScriptCache();
-                var cacheKey = "notify_dup_" + params.orderId + "_" + params.action;
-                if (!cache.get(cacheKey) && userId && userId !== 'unknown') {
+                // ตรวจสอบว่าเป็น Webhook Retry หรือไม่
+                var isRetry = (event.deliveryContext && event.deliveryContext.isRedelivery);
+                
+                // ส่งข้อความแจ้งเตือนลูกค้าว่ากดซ้ำ เฉพาะกรณีที่ไม่ใช่ Retry และไม่ได้อยู่ในช่วงบล็อค
+                if (!isRetry && !cache.get(cacheKey) && userId && userId !== 'unknown') {
                   var msg = (params.action === 'cancelOrder') 
                     ? "⚠️ ไม่สามารถยกเลิกได้: ออเดอร์ " + params.orderId + " ได้ดำเนินการไปแล้ว หรืออยู่ในขั้นตอนที่ไม่สามารถยกเลิกได้แล้วครับ" 
                     : "⚠️ ออเดอร์ " + params.orderId + " ได้รับการยืนยันและดำเนินการไปแล้วเรียบร้อยครับ ไม่จำเป็นต้องกดยืนยันซ้ำครับ";
@@ -96,6 +100,10 @@
                   cache.put(cacheKey, "sent", 300); // กันส่งซ้ำใน 5 นาที
                 }
               } else {
+                // เมื่อรับคำสั่งครั้งแรกสำเร็จ ให้ตั้ง Cache บล็อคข้อความเตือนไว้ 15 วินาที
+                // เพื่อกันไม่ให้ LINE Webhook Retry (ที่มักเกิดใน 1-5 วินาที) ไปส่งข้อความเตือนผิดพลาดว่ากดซ้ำ
+                cache.put(cacheKey, "sent", 15);
+                
                 var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
                 updateOrderStatusNative(params.orderId, newStatus);
               }
