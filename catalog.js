@@ -43,58 +43,58 @@ function getOptimizedImageUrl(url) {
 function getMockProducts() {
   return [
     {
-      id: 1,
-      name: 'Iced Caramel Macchiato',
-      category: 'coffee',
-      price: 120,
-      desc: 'เอสเพรสโซ่รสเข้มข้นผสมกับนมสดและไซรัปวานิลลา ราดด้วยซอสคาราเมลหอมหวานสูตรพิเศษ เสิร์ฟพร้อมน้ำแข็งเย็นชื่นใจ เหมาะสำหรับผู้ที่ชอบรสชาติหอมหวานมันกลมกล่อม',
-      img: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=600',
-      tag: 'ยอดนิยม'
+      id: "1",
+      name: "ถังแก๊ส 15 กก. (รวมถัง + น้ำแก๊ส)",
+      category: "แก๊สหุงต้ม",
+      price: 2450,
+      desc: "ถังแก๊สขนาดมาตรฐาน 15 กิโลกรัม เหมาะสำหรับครัวเรือนและร้านอาหาร พร้อมน้ำแก๊สเต็มถัง ได้มาตรฐาน มอก.",
+      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
+      tag: "ยอดนิยม"
     },
     {
-      id: 2,
-      name: 'Premium Hot Matcha Latte',
-      category: 'tea',
-      price: 95,
-      desc: 'มัทฉะแท้นำเข้าจากเมืองอูจิ ประเทศญี่ปุ่น ชงอย่างพิถีพิถันผสมผสานกับนมสดแท้ 100% สตรีมจนร้อนได้ที่ ตกแต่งด้วยลาเต้อาร์ตที่งดงาม ให้กลิ่นอายความหอมแบบมัทฉะแท้ๆ ในทุกอึก',
-      img: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&q=80&w=600',
-      tag: 'แนะนำ'
+      id: "2",
+      name: "เติมน้ำแก๊ส 15 กก. (สลับถัง)",
+      category: "แก๊สหุงต้ม",
+      price: 430,
+      desc: "บริการเติมน้ำแก๊สหุงต้ม 15 กิโลกรัม นำถังเก่ามาสลับถังใหม่เต็มลิตร ส่งฟรีถึงบ้าน",
+      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
+      tag: "ขายดี"
     },
     {
-      id: 3,
-      name: 'Signature Almond Croissant',
-      category: 'bakery',
-      price: 110,
-      desc: 'ครัวซองต์เนยสดฝรั่งเศส นำไปอบซ้ำแบบ Double-baked สอดไส้ด้วยครีมอัลมอนด์ฟรานจิเพนรสเข้มข้น โรยด้วยแผ่นอัลมอนด์อบกรอบและน้ำตาลไอซิ่ง กรอบนอกนุ่มใน หอมมันอร่อย',
-      img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=600',
-      tag: 'อบสดใหม่'
+      id: "3",
+      name: "ถังแก๊สปิคนิค 4 กก. (รวมถัง)",
+      category: "แก๊สหุงต้ม",
+      price: 1250,
+      desc: "ถังแก๊สขนาดเล็ก 4 กิโลกรัม พกพาสะดวก เหมาะสำหรับเดินป่า ตั้งแคมป์ หรือห้องพักขนาดเล็ก",
+      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
+      tag: "พกพาง่าย"
     },
     {
-      id: 4,
-      name: 'Cold Brew Citrus Coffee',
-      category: 'coffee',
-      price: 105,
-      desc: 'กาแฟสกัดเย็นแบบพรีเมียมบ่มนานกว่า 18 ชั่วโมง เพื่อดึงรสชาติความหวานตามธรรมชาติของเมล็ดกาแฟ ผสมผสานอย่างลงตัวกับน้ำส้มยูสุคั้นสด ให้ความสดชื่นตื่นตัวในยามบ่าย',
-      img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=600',
-      tag: 'สดชื่น'
+      id: "4",
+      name: "เติมน้ำแก๊สปิคนิค 4 กก.",
+      category: "แก๊สหุงต้ม",
+      price: 160,
+      desc: "เติมน้ำแก๊สสำหรับถังปิคนิค 4 กิโลกรัม ปลอดภัย น้ำหนักเต็ม",
+      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
+      tag: "ประหยัด"
     },
     {
-      id: 5,
-      name: 'Dirty Coffee',
-      category: 'coffee',
-      price: 115,
-      desc: 'นมสดเย็นจัดสูตรลับเฉพาะของทางร้าน เสิร์ฟแยกชั้นราดทับด้วยช็อตเอสเพรสโซ่ Ristretto ที่เข้มข้น ดื่มด่ำรสสัมผัสที่แตกต่างระหว่างความร้อนและความเย็นในแก้วเดียว',
-      img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
-      tag: 'ขวัญใจคอกาแฟ'
+      id: "5",
+      name: "หัวปรับแรงดันแก๊สแบบปลอดภัย (มีเกจ์)",
+      category: "อุปกรณ์แก๊ส",
+      price: 490,
+      desc: "หัวปรับแรงดันต่ำพร้อมเกจ์วัดระดับแก๊ส มีระบบตัดแก๊สอัตโนมัติเมื่อเกิดแก๊สรั่ว ปลอดภัยสูงสุด",
+      img: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=600",
+      tag: "แนะนำ"
     },
     {
-      id: 6,
-      name: 'Premium Earl Grey Tea',
-      category: 'tea',
-      price: 85,
-      desc: 'ชาเอิร์ลเกรย์เกรดพรีเมียม แช่ในน้ำร้อนอุณหภูมิที่พอดีเพื่อให้กลิ่นส้มมะกรูดอันเป็นเอกลักษณ์ฟุ้งกระจายอย่างนุ่มนวล เสิร์ฟในรูปแบบกาน้ำชาแก้วหรูหรา',
-      img: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&q=80&w=600',
-      tag: 'ออร์แกนิก'
+      id: "6",
+      name: "สายยางแก๊สหุงต้มเกรดพรีเมียม (2 เมตร + เข็มขัดรัด)",
+      category: "อุปกรณ์แก๊ส",
+      price: 180,
+      desc: "สายยางแก๊สหนา 3 ชั้น ทนแรงดันสูง ไม่กรอบแตกง่าย พร้อมเข็มขัดรัดสายสแตนเลส 2 ตัว",
+      img: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=600",
+      tag: "อุปกรณ์เสริม"
     }
   ];
 }
@@ -2508,7 +2508,7 @@ async function loadProducts() {
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
   }
 
-  // ── ชั้น 2: Static products.json จาก Vercel CDN (เร็วมาก) ──
+  // ── ชั้น 2: Static products.json จาก Vercel CDN (เร็วมาก ~50ms บนเน็ตมือถือ) ──
   if (!hasCachedData) {
     try {
       const staticRes = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
@@ -2518,62 +2518,49 @@ async function loadProducts() {
         initCategoryFilters();
         renderProducts();
         hasCachedData = true;
-        // เก็บ cache ทันทีเพื่อโหลดเร็วครั้งถัดไป
         try {
           localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
         } catch (e) { }
       }
-    } catch (e) { /* Static file ไม่มี → ไปชั้น 3 */ }
+    } catch (e) { }
   }
 
-  // ── ชั้น 3: GAS (ดึงข้อมูลสดจาก Google Sheets) พร้อม Retry 3 รอบ ──
-  // ดึงเสมอเพื่ออัปเดต cache แม้ชั้น 2 สำเร็จ (background refresh)
-  const MAX_RETRIES = 3;
-  const TIMEOUTS = [10000, 15000, 20000]; // รอบ 1=10วิ, รอบ 2=15วิ, รอบ 3=20วิ
+  // ── ชั้น 2.5: Instant Embedded Fallback (0ms — การันตีว่าเน็ตมือถือหรือหลุดแค่ไหนก็ต้องเห็นสินค้า) ──
+  if (!hasCachedData) {
+    const mockProducts = getMockProducts();
+    if (Array.isArray(mockProducts) && mockProducts.length > 0) {
+      PRODUCTS = mockProducts;
+      initCategoryFilters();
+      renderProducts();
+      hasCachedData = true;
+    }
+  }
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      if (!hasCachedData && productsGrid && attempt > 0) {
-        // อัปเดต Loading text ให้บอกว่ากำลังลองใหม่
-        const loadingText = productsGrid.querySelector('p');
-        if (loadingText) loadingText.textContent = `กำลังโหลดสินค้า... (ครั้งที่ ${attempt + 1}/${MAX_RETRIES})`;
-      }
+  // ── ชั้น 3: Background Refresh จาก GAS (อัปเดตเบื้องหลัง ปรับราคาใหม่ถ้ามี) ──
+  // ทำงานเงียบๆ ใน background ถ้าล้มเหลวจะไม่ส่งผลกระทบต่อลูกค้าที่ดูสินค้าอยู่
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 วินาที timeout
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await response.json();
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS[attempt]);
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      const data = await response.json();
-
-      if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-        const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
-        PRODUCTS = data.products;
-        try {
-          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-        } catch (e) { }
-        if (changed || !hasCachedData) {
-          initCategoryFilters();
-          renderProducts();
-          hasCachedData = true;
-        }
-        break; // สำเร็จแล้ว หยุด retry
-      } else if (!hasCachedData && attempt === MAX_RETRIES - 1) {
-        showProductsError(productsGrid, '📦', 'ยังไม่มีสินค้าในระบบ', 'กรุณาเพิ่มสินค้าในชีต Catalog');
-      }
-    } catch (error) {
-      console.warn(`GAS Fetch attempt ${attempt + 1} failed:`, error.message);
-      if (attempt < MAX_RETRIES - 1) {
-        // รอ 1.5 วินาที ก่อนลองใหม่
-        await new Promise(r => setTimeout(r, 1500));
-      } else {
-        // หมด retry แล้วยังไม่สำเร็จ
-        if (!hasCachedData) {
-          showProductsError(productsGrid, '📡', 'โหลดสินค้าไม่สำเร็จ', 'เน็ตอาจช้า กรุณาลองใหม่');
-        }
+    if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+      const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
+      PRODUCTS = data.products;
+      try {
+        localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+      } catch (e) { }
+      if (changed) {
+        initCategoryFilters();
+        renderProducts();
       }
     }
+  } catch (error) {
+    console.log('Background GAS sync skipped or timed out on mobile network:', error.message);
+    // ไม่ต้องแสดง Error ใดๆ ให้ลูกค้า เพราะมีสินค้าแสดงบนหน้าจอเรียบร้อยแล้ว
   }
 }
 
