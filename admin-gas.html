@@ -1835,6 +1835,8 @@
       }
     }
 
+    let currentEditingOrder = null;
+
     function toggleModalEditMode() {
       if (!currentViewingOrderId) return;
       const order = allOrders.find(o => o.orderId === currentViewingOrderId);
@@ -1842,14 +1844,21 @@
 
       isModalEditMode = !isModalEditMode;
 
+      if (isModalEditMode) {
+        currentEditingOrder = JSON.parse(JSON.stringify(order));
+      } else {
+        currentEditingOrder = null;
+      }
+
       const noteBox = document.getElementById('editNoteContainer');
       if (noteBox) noteBox.style.display = isModalEditMode ? 'block' : 'none';
 
       const addItemContainer = document.getElementById('addItemContainer');
       if (addItemContainer) addItemContainer.style.display = isModalEditMode ? 'flex' : 'none';
 
-      renderModalItems(order, isModalEditMode);
-      renderModalActions(order);
+      const orderToRender = currentEditingOrder || order;
+      renderModalItems(orderToRender, isModalEditMode);
+      renderModalActions(orderToRender);
     }
 
     let adminProducts = [];
@@ -1907,7 +1916,7 @@
         return;
       }
 
-      const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+      const order = currentEditingOrder || allOrders.find(o => o.orderId === currentViewingOrderId);
       if (!order) return;
 
       syncOrderItemsFromDOM(order);
@@ -2079,7 +2088,7 @@
 
     function saveOrderChanges() {
       if (!currentViewingOrderId) return;
-      const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+      const order = currentEditingOrder || allOrders.find(o => o.orderId === currentViewingOrderId);
       if (!order) return;
 
       const qtyInputs = document.querySelectorAll('.input-edit-qty');
@@ -2103,6 +2112,13 @@
         });
       });
 
+      const originalOrder = allOrders.find(o => o.orderId === currentViewingOrderId);
+      const isPickup = originalOrder && originalOrder.shippingOption === 'รับหน้าร้าน';
+      const origTotal = originalOrder ? Number(originalOrder.totalPrice || 0) : newTotal;
+      const origItemsSub = originalOrder && originalOrder.items ? originalOrder.items.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) : newTotal;
+      const shippingFee = isPickup ? 0 : Math.max(0, origTotal - origItemsSub);
+      const newGrandTotal = newTotal + shippingFee;
+
       const changeNoteInput = document.getElementById('editChangeNote');
       const changeNote = changeNoteInput ? changeNoteInput.value.trim() : '';
 
@@ -2119,9 +2135,12 @@
         .withSuccessHandler(function(result) {
           if (result.status === 'success') {
             alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
-            order.items = updatedItems;
-            order.totalPrice = newTotal;
+            if (originalOrder) {
+              originalOrder.items = updatedItems;
+              originalOrder.totalPrice = newGrandTotal;
+            }
             isModalEditMode = false;
+            currentEditingOrder = null;
 
             const noteBox = document.getElementById('editNoteContainer');
             if (noteBox) noteBox.style.display = 'none';
@@ -2142,11 +2161,11 @@
           if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
           if (btnCancel) btnCancel.disabled = false;
         })
-        .updateOrderItemsNative(currentViewingOrderId, updatedItems, newTotal, true, changeNote);
+        .updateOrderItemsNative(currentViewingOrderId, updatedItems, newGrandTotal, true, changeNote);
     }
 
     function deleteOrderItem(orderId, itemIndex) {
-      const order = allOrders.find(o => o.orderId === orderId);
+      const order = currentEditingOrder || allOrders.find(o => o.orderId === orderId);
       if (!order || !order.items) return;
       const itemToDelete = order.items[itemIndex];
       if (!itemToDelete) return;

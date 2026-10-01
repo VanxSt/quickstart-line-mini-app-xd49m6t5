@@ -557,6 +557,8 @@ function renderModalActions(order) {
   }
 }
 
+let currentEditingOrder = null;
+
 // Toggle edit mode in order details modal
 function toggleModalEditMode() {
   if (!currentViewingOrderId) return;
@@ -565,14 +567,21 @@ function toggleModalEditMode() {
 
   isModalEditMode = !isModalEditMode;
 
+  if (isModalEditMode) {
+    currentEditingOrder = JSON.parse(JSON.stringify(order));
+  } else {
+    currentEditingOrder = null;
+  }
+
   const noteBox = document.getElementById('editNoteContainer');
   if (noteBox) noteBox.style.display = isModalEditMode ? 'block' : 'none';
 
   const addItemContainer = document.getElementById('addItemContainer');
   if (addItemContainer) addItemContainer.style.display = isModalEditMode ? 'flex' : 'none';
 
-  renderModalItems(order, isModalEditMode);
-  renderModalActions(order);
+  const orderToRender = currentEditingOrder || order;
+  renderModalItems(orderToRender, isModalEditMode);
+  renderModalActions(orderToRender);
 }
 
 let adminProducts = [];
@@ -630,7 +639,7 @@ async function addNewItemBySku() {
     return;
   }
 
-  const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+  const order = currentEditingOrder || allOrders.find(o => o.orderId === currentViewingOrderId);
   if (!order) return;
 
   syncOrderItemsFromDOM(order);
@@ -806,7 +815,7 @@ function recalculateModalTotalFromInputs() {
 // Save order item and price changes, then notify customer via LINE
 async function saveOrderChanges() {
   if (!currentViewingOrderId) return;
-  const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+  const order = currentEditingOrder || allOrders.find(o => o.orderId === currentViewingOrderId);
   if (!order) return;
 
   const qtyInputs = document.querySelectorAll('.input-edit-qty');
@@ -830,6 +839,13 @@ async function saveOrderChanges() {
     });
   });
 
+  const originalOrder = allOrders.find(o => o.orderId === currentViewingOrderId);
+  const isPickup = originalOrder && originalOrder.shippingOption === 'รับหน้าร้าน';
+  const origTotal = originalOrder ? Number(originalOrder.totalPrice || 0) : newTotal;
+  const origItemsSub = originalOrder && originalOrder.items ? originalOrder.items.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) : newTotal;
+  const shippingFee = isPickup ? 0 : Math.max(0, origTotal - origItemsSub);
+  const newGrandTotal = newTotal + shippingFee;
+
   const changeNoteInput = document.getElementById('editChangeNote');
   const changeNote = changeNoteInput ? changeNoteInput.value.trim() : '';
 
@@ -850,7 +866,7 @@ async function saveOrderChanges() {
         action: 'updateOrderItems',
         orderId: currentViewingOrderId,
         items: updatedItems,
-        totalPrice: newTotal,
+        totalPrice: newGrandTotal,
         notifyCustomer: true,
         changeNote: changeNote
       })
@@ -860,9 +876,12 @@ async function saveOrderChanges() {
 
     if (result.status === 'success') {
       alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
-      order.items = updatedItems;
-      order.totalPrice = newTotal;
+      if (originalOrder) {
+        originalOrder.items = updatedItems;
+        originalOrder.totalPrice = newGrandTotal;
+      }
       isModalEditMode = false;
+      currentEditingOrder = null;
 
       const noteBox = document.getElementById('editNoteContainer');
       if (noteBox) noteBox.style.display = 'none';
