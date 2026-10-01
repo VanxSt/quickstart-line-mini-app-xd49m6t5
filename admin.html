@@ -222,7 +222,13 @@
           <p><strong>ที่อยู่เพิ่มเติม:</strong> <span id="modalAddress"></span></p>
         </div>
         <div class="order-items">
-          <h3>รายการสินค้า</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0;">รายการสินค้า</h3>
+            <div id="addItemContainer" style="display: none; align-items: center; gap: 8px;">
+              <input type="text" id="addSkuInput" placeholder="รหัสสินค้า" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; width: 100px;">
+              <button id="btnAddSku" class="btn" style="padding: 4px 12px; font-size: 14px; background: #3b82f6; color: white; border-radius: 4px; border: none; cursor: pointer;" onclick="addNewItemBySku()">+ เพิ่ม</button>
+            </div>
+          </div>
           <table class="items-table">
             <thead>
               <tr>

@@ -568,9 +568,81 @@ function toggleModalEditMode() {
   const noteBox = document.getElementById('editNoteContainer');
   if (noteBox) noteBox.style.display = isModalEditMode ? 'block' : 'none';
 
+  const addItemContainer = document.getElementById('addItemContainer');
+  if (addItemContainer) addItemContainer.style.display = isModalEditMode ? 'flex' : 'none';
+
   renderModalItems(order, isModalEditMode);
   renderModalActions(order);
 }
+
+let adminProducts = [];
+let isAdminProductsLoaded = false;
+
+async function fetchAdminProducts() {
+  if (isAdminProductsLoaded) return;
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+    const data = await res.json();
+    if (data.status === 'success' && data.products) {
+      adminProducts = data.products;
+      isAdminProductsLoaded = true;
+    }
+  } catch (err) {
+    console.error('Error fetching admin products:', err);
+  }
+}
+
+async function addNewItemBySku() {
+  const skuInput = document.getElementById('addSkuInput');
+  const sku = skuInput ? skuInput.value.trim() : '';
+  if (!sku) {
+    alert('กรุณากรอกรหัสสินค้า');
+    return;
+  }
+
+  const btn = document.getElementById('btnAddSku');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+
+  await fetchAdminProducts();
+  
+  if (btn) { btn.disabled = false; btn.textContent = '+ เพิ่ม'; }
+
+  const product = adminProducts.find(p => String(p.id) === String(sku));
+  if (!product) {
+    alert('ไม่พบสินค้ารหัส: ' + sku);
+    return;
+  }
+
+  const order = allOrders.find(o => o.orderId === currentViewingOrderId);
+  if (!order) return;
+
+  syncOrderItemsFromDOM(order);
+
+  order.items.push({
+    id: product.id,
+    name: product.name,
+    price: Number(product.price || 0),
+    qty: 1,
+    subtotal: Number(product.price || 0)
+  });
+
+  renderModalItems(order, true);
+  if (skuInput) skuInput.value = '';
+}
+
+function syncOrderItemsFromDOM(order) {
+  const qtyInputs = document.querySelectorAll('.input-edit-qty');
+  const priceInputs = document.querySelectorAll('.input-edit-price');
+  
+  order.items.forEach((item, idx) => {
+    const qInput = qtyInputs[idx];
+    const pInput = priceInputs[idx];
+    if (qInput) item.qty = Math.max(1, parseInt(qInput.value) || 1);
+    if (pInput) item.price = Math.max(0, parseFloat(pInput.value) || 0);
+    item.subtotal = item.qty * item.price;
+  });
+}
+
 
 // === Render Items in Modal (supports both view and edit modes) ===
 function renderModalItems(order, isEditMode = false) {
