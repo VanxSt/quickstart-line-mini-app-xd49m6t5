@@ -43,58 +43,58 @@ function getOptimizedImageUrl(url) {
 function getMockProducts() {
   return [
     {
-      id: "1",
-      name: "ถังแก๊ส 15 กก. (รวมถัง + น้ำแก๊ส)",
-      category: "แก๊สหุงต้ม",
-      price: 2450,
-      desc: "ถังแก๊สขนาดมาตรฐาน 15 กิโลกรัม เหมาะสำหรับครัวเรือนและร้านอาหาร พร้อมน้ำแก๊สเต็มถัง ได้มาตรฐาน มอก.",
-      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
-      tag: "ยอดนิยม"
+      id: 1,
+      name: 'Iced Caramel Macchiato',
+      category: 'coffee',
+      price: 120,
+      desc: 'เอสเพรสโซ่รสเข้มข้นผสมกับนมสดและไซรัปวานิลลา ราดด้วยซอสคาราเมลหอมหวานสูตรพิเศษ เสิร์ฟพร้อมน้ำแข็งเย็นชื่นใจ เหมาะสำหรับผู้ที่ชอบรสชาติหอมหวานมันกลมกล่อม',
+      img: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=600',
+      tag: 'ยอดนิยม'
     },
     {
-      id: "2",
-      name: "เติมน้ำแก๊ส 15 กก. (สลับถัง)",
-      category: "แก๊สหุงต้ม",
-      price: 430,
-      desc: "บริการเติมน้ำแก๊สหุงต้ม 15 กิโลกรัม นำถังเก่ามาสลับถังใหม่เต็มลิตร ส่งฟรีถึงบ้าน",
-      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
-      tag: "ขายดี"
+      id: 2,
+      name: 'Premium Hot Matcha Latte',
+      category: 'tea',
+      price: 95,
+      desc: 'มัทฉะแท้นำเข้าจากเมืองอูจิ ประเทศญี่ปุ่น ชงอย่างพิถีพิถันผสมผสานกับนมสดแท้ 100% สตรีมจนร้อนได้ที่ ตกแต่งด้วยลาเต้อาร์ตที่งดงาม ให้กลิ่นอายความหอมแบบมัทฉะแท้ๆ ในทุกอึก',
+      img: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&q=80&w=600',
+      tag: 'แนะนำ'
     },
     {
-      id: "3",
-      name: "ถังแก๊สปิคนิค 4 กก. (รวมถัง)",
-      category: "แก๊สหุงต้ม",
-      price: 1250,
-      desc: "ถังแก๊สขนาดเล็ก 4 กิโลกรัม พกพาสะดวก เหมาะสำหรับเดินป่า ตั้งแคมป์ หรือห้องพักขนาดเล็ก",
-      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
-      tag: "พกพาง่าย"
+      id: 3,
+      name: 'Signature Almond Croissant',
+      category: 'bakery',
+      price: 110,
+      desc: 'ครัวซองต์เนยสดฝรั่งเศส นำไปอบซ้ำแบบ Double-baked สอดไส้ด้วยครีมอัลมอนด์ฟรานจิเพนรสเข้มข้น โรยด้วยแผ่นอัลมอนด์อบกรอบและน้ำตาลไอซิ่ง กรอบนอกนุ่มใน หอมมันอร่อย',
+      img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=600',
+      tag: 'อบสดใหม่'
     },
     {
-      id: "4",
-      name: "เติมน้ำแก๊สปิคนิค 4 กก.",
-      category: "แก๊สหุงต้ม",
-      price: 160,
-      desc: "เติมน้ำแก๊สสำหรับถังปิคนิค 4 กิโลกรัม ปลอดภัย น้ำหนักเต็ม",
-      img: "https://images.unsplash.com/photo-1585863268800-4740f9518868?auto=format&fit=crop&q=80&w=600",
-      tag: "ประหยัด"
+      id: 4,
+      name: 'Cold Brew Citrus Coffee',
+      category: 'coffee',
+      price: 105,
+      desc: 'กาแฟสกัดเย็นแบบพรีเมียมบ่มนานกว่า 18 ชั่วโมง เพื่อดึงรสชาติความหวานตามธรรมชาติของเมล็ดกาแฟ ผสมผสานอย่างลงตัวกับน้ำส้มยูสุคั้นสด ให้ความสดชื่นตื่นตัวในยามบ่าย',
+      img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=600',
+      tag: 'สดชื่น'
     },
     {
-      id: "5",
-      name: "หัวปรับแรงดันแก๊สแบบปลอดภัย (มีเกจ์)",
-      category: "อุปกรณ์แก๊ส",
-      price: 490,
-      desc: "หัวปรับแรงดันต่ำพร้อมเกจ์วัดระดับแก๊ส มีระบบตัดแก๊สอัตโนมัติเมื่อเกิดแก๊สรั่ว ปลอดภัยสูงสุด",
-      img: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=600",
-      tag: "แนะนำ"
+      id: 5,
+      name: 'Dirty Coffee',
+      category: 'coffee',
+      price: 115,
+      desc: 'นมสดเย็นจัดสูตรลับเฉพาะของทางร้าน เสิร์ฟแยกชั้นราดทับด้วยช็อตเอสเพรสโซ่ Ristretto ที่เข้มข้น ดื่มด่ำรสสัมผัสที่แตกต่างระหว่างความร้อนและความเย็นในแก้วเดียว',
+      img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600',
+      tag: 'ขวัญใจคอกาแฟ'
     },
     {
-      id: "6",
-      name: "สายยางแก๊สหุงต้มเกรดพรีเมียม (2 เมตร + เข็มขัดรัด)",
-      category: "อุปกรณ์แก๊ส",
-      price: 180,
-      desc: "สายยางแก๊สหนา 3 ชั้น ทนแรงดันสูง ไม่กรอบแตกง่าย พร้อมเข็มขัดรัดสายสแตนเลส 2 ตัว",
-      img: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=600",
-      tag: "อุปกรณ์เสริม"
+      id: 6,
+      name: 'Premium Earl Grey Tea',
+      category: 'tea',
+      price: 85,
+      desc: 'ชาเอิร์ลเกรย์เกรดพรีเมียม แช่ในน้ำร้อนอุณหภูมิที่พอดีเพื่อให้กลิ่นส้มมะกรูดอันเป็นเอกลักษณ์ฟุ้งกระจายอย่างนุ่มนวล เสิร์ฟในรูปแบบกาน้ำชาแก้วหรูหรา',
+      img: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&q=80&w=600',
+      tag: 'ออร์แกนิก'
     }
   ];
 }
