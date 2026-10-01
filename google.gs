@@ -70,8 +70,8 @@
               for (var i = 1; i < values.length; i++) {
                 if (values[i][1] && values[i][1].toString() === params.orderId) {
                   var currentStatus = values[i][9] || "";
-                  // ถ้าสถานะเป็นยืนยันหรือยกเลิกไปแล้ว ให้บล็อคการกดปุ่ม
-                  if (currentStatus === "ชำระเงิน" || currentStatus === "ยกเลิก" || currentStatus === "ลูกค้ายืนยันรับออเดอร์") {
+                  // ถ้าสถานะไม่ใช่ "รอตรวจสอบ" หรือ "รอการยืนยัน" แสดงว่าออเดอร์นี้ถูกดำเนินการไปแล้ว (เช่น จัดส่งสำเร็จ) ให้บล็อคการกดปุ่มซ้ำ
+                  if (currentStatus !== "รอตรวจสอบ" && currentStatus !== "รอการยืนยัน") {
                     isProcessed = true;
                   }
                   break;
