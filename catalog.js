@@ -2461,12 +2461,18 @@ async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
   
   // ⚡ แสดงข้อมูลสินค้าจาก Cache ทันที (0ms) — ลูกค้าเห็นสินค้าเลยไม่ต้องรอ
+  // แต่ต้องมั่นใจว่า Cache ไม่ใช่ข้อมูลจำลอง (Mock) — ตรวจโดยดูว่ามี img ที่เป็น unsplash หรือเปล่า
   let hasCachedData = false;
   try {
     const cached = localStorage.getItem('cached_products');
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      const isMockData = Array.isArray(parsed) && parsed.length > 0 &&
+        parsed[0].img && parsed[0].img.includes('unsplash.com');
+      if (isMockData) {
+        // ล้าง cache เก่าที่เป็น Mock Products ทิ้งทันที
+        localStorage.removeItem('cached_products');
+      } else if (Array.isArray(parsed) && parsed.length > 0) {
         PRODUCTS = parsed;
         initCategoryFilters();
         renderProducts();
@@ -2477,7 +2483,8 @@ async function loadProducts() {
 
   // ถ้าไม่มี cache ให้แสดง loading
   if (!hasCachedData && productsGrid) {
-    productsGrid.innerHTML = '<div style="text-align: center; width: 100%; padding: 40px; color: var(--text-light);">กำลังโหลดข้อมูลสินค้า...</div>';
+    productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:12px">⏳</div><p style="font-size:15px">กำลังโหลดข้อมูลสินค้า...</p><p style="font-size:12px;margin-top:6px;opacity:0.6">กรุณารอสักครู่</p></div>';
+  }
   }
 
   try {
@@ -2491,25 +2498,24 @@ async function loadProducts() {
     clearTimeout(timeoutId);
     const data = await response.json();
     
-    if (data.status === 'success' && data.products) {
+    if (data.status === 'success' && data.products && data.products.length > 0) {
       PRODUCTS = data.products;
-      // เก็บ cache ไว้ให้เปิดครั้งถัดไปเร็วทันที
+      // เก็บ cache ไว้ให้เปิดครั้งถัดไปเร็วทันที (เฉพาะข้อมูลจริงจากชีตเท่านั้น)
       try {
         localStorage.setItem('cached_products', JSON.stringify(PRODUCTS));
       } catch (e) { }
       initCategoryFilters();
       renderProducts();
     } else if (!hasCachedData) {
-      PRODUCTS = getMockProducts();
-      initCategoryFilters();
-      renderProducts();
+      // ไม่มีสินค้าในชีตเลย หรือ Response ผิดพลาด — แสดง Error พร้อมปุ่มลองใหม่
+      if (productsGrid) {
+        productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:12px">📦</div><p style="font-size:15px;font-weight:600">ยังไม่มีสินค้าในระบบ</p><p style="font-size:12px;margin-top:6px;opacity:0.7">หรือไม่สามารถโหลดข้อมูลได้ในขณะนี้</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button></div>';
+      }
     }
   } catch (error) {
     console.error('Fetch error:', error);
-    if (!hasCachedData) {
-      PRODUCTS = getMockProducts();
-      initCategoryFilters();
-      renderProducts();
+    if (!hasCachedData && productsGrid) {
+      productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:12px">📡</div><p style="font-size:15px;font-weight:600">ไม่สามารถเชื่อมต่อได้</p><p style="font-size:12px;margin-top:6px;opacity:0.7">กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button></div>';
     }
   }
 }
