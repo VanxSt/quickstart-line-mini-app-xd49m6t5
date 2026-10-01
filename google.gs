@@ -67,9 +67,11 @@
               var values = ordersSheet.getDataRange().getValues();
               var isProcessed = false;
               
+              var userId = "";
               for (var i = 1; i < values.length; i++) {
                 if (values[i][1] && values[i][1].toString() === params.orderId) {
                   var currentStatus = values[i][9] || "";
+                  userId = values[i][2] || "";
                   // ถ้าสถานะไม่ใช่ "รอตรวจสอบ" หรือ "รอการยืนยัน" แสดงว่าออเดอร์นี้ถูกดำเนินการไปแล้ว (เช่น จัดส่งสำเร็จ) ให้บล็อคการกดปุ่มซ้ำ
                   if (currentStatus !== "รอตรวจสอบ" && currentStatus !== "รอการยืนยัน") {
                     isProcessed = true;
@@ -79,8 +81,20 @@
               }
               
               if (isProcessed) {
-                // Silently ignore to prevent LINE webhook retry loops spamming the user
-                // If LINE retries because the first run was slow, we don't want to send this error message.
+                // ส่งข้อความแจ้งเตือนลูกค้าว่าไม่สามารถทำรายการย้อนหลังได้ (ใช้ Cache กันการส่งซ้ำจาก webhook retry)
+                var cache = CacheService.getScriptCache();
+                var cacheKey = "notify_dup_" + params.orderId + "_" + params.action;
+                if (!cache.get(cacheKey) && userId && userId !== 'unknown') {
+                  var msg = (params.action === 'cancelOrder') 
+                    ? "⚠️ ไม่สามารถยกเลิกได้: ออเดอร์ " + params.orderId + " ได้ดำเนินการไปแล้ว หรืออยู่ในขั้นตอนที่ไม่สามารถยกเลิกได้แล้วครับ" 
+                    : "⚠️ ออเดอร์ " + params.orderId + " ได้รับการยืนยันและดำเนินการไปแล้วเรียบร้อยครับ ไม่จำเป็นต้องกดยืนยันซ้ำครับ";
+                  
+                  sendLinePushMessage(userId, [{
+                    "type": "text",
+                    "text": msg
+                  }]);
+                  cache.put(cacheKey, "sent", 300); // กันส่งซ้ำใน 5 นาที
+                }
               } else {
                 var newStatus = (params.action === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
                 updateOrderStatusNative(params.orderId, newStatus);
