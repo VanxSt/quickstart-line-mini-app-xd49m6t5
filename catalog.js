@@ -2526,35 +2526,53 @@ async function loadProducts() {
     } catch (e) { /* Static file ไม่มี → ไปชั้น 3 */ }
   }
 
-  // ── ชั้น 3: GAS (ดึงข้อมูลสดจาก Google Sheets) ──
+  // ── ชั้น 3: GAS (ดึงข้อมูลสดจาก Google Sheets) พร้อม Retry 3 รอบ ──
   // ดึงเสมอเพื่ออัปเดต cache แม้ชั้น 2 สำเร็จ (background refresh)
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    const data = await response.json();
+  const MAX_RETRIES = 3;
+  const TIMEOUTS = [10000, 15000, 20000]; // รอบ 1=10วิ, รอบ 2=15วิ, รอบ 3=20วิ
 
-    if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-      const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
-      PRODUCTS = data.products;
-      try {
-        localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-      } catch (e) { }
-      if (changed || !hasCachedData) {
-        initCategoryFilters();
-        renderProducts();
-        hasCachedData = true;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      if (!hasCachedData && productsGrid && attempt > 0) {
+        // อัปเดต Loading text ให้บอกว่ากำลังลองใหม่
+        const loadingText = productsGrid.querySelector('p');
+        if (loadingText) loadingText.textContent = `กำลังโหลดสินค้า... (ครั้งที่ ${attempt + 1}/${MAX_RETRIES})`;
       }
-    } else if (!hasCachedData) {
-      showProductsError(productsGrid, '📦', 'ยังไม่มีสินค้าในระบบ', 'กรุณาเพิ่มสินค้าในชีต Catalog');
-    }
-  } catch (error) {
-    console.error('GAS Fetch error:', error);
-    if (!hasCachedData) {
-      showProductsError(productsGrid, '📡', 'ไม่สามารถเชื่อมต่อได้', 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่');
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS[attempt]);
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      const data = await response.json();
+
+      if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+        const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
+        PRODUCTS = data.products;
+        try {
+          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+        } catch (e) { }
+        if (changed || !hasCachedData) {
+          initCategoryFilters();
+          renderProducts();
+          hasCachedData = true;
+        }
+        break; // สำเร็จแล้ว หยุด retry
+      } else if (!hasCachedData && attempt === MAX_RETRIES - 1) {
+        showProductsError(productsGrid, '📦', 'ยังไม่มีสินค้าในระบบ', 'กรุณาเพิ่มสินค้าในชีต Catalog');
+      }
+    } catch (error) {
+      console.warn(`GAS Fetch attempt ${attempt + 1} failed:`, error.message);
+      if (attempt < MAX_RETRIES - 1) {
+        // รอ 1.5 วินาที ก่อนลองใหม่
+        await new Promise(r => setTimeout(r, 1500));
+      } else {
+        // หมด retry แล้วยังไม่สำเร็จ
+        if (!hasCachedData) {
+          showProductsError(productsGrid, '📡', 'โหลดสินค้าไม่สำเร็จ', 'เน็ตอาจช้า กรุณาลองใหม่');
+        }
+      }
     }
   }
 }
@@ -2569,6 +2587,7 @@ function showProductsError(grid, icon, title, subtitle) {
       <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button>
     </div>`;
 }
+
 
 
 // Start application — โหลดสินค้าและ LIFF พร้อมกัน ไม่รอกัน
