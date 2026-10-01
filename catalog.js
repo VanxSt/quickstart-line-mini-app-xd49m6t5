@@ -1354,7 +1354,7 @@ async function fetchMemberInfo(userId) {
   }
 }
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0) {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0, paymentMethod = '') {
   const calcSubtotal = subtotal || cartItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   const calcShippingFee = shippingOption === 'รับหน้าร้าน' ? 0 : (shippingFee || Math.max(0, totalPrice - calcSubtotal));
 
@@ -1497,6 +1497,14 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
                 contents: [
                   { type: "text", text: "🕒 เวลาจัดส่ง/รับ", size: "xs", color: "#64748b", flex: 2 },
                   { type: "text", text: deliveryType === 'ล่วงหน้า' ? `🕒 สั่งล่วงหน้า (${preorderTime} น.)` : "🚀 ส่งทันที (ด่วนที่สุด)", size: "xs", color: "#dc2626", weight: "bold", flex: 4, wrap: true }
+                ]
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "💳 ชำระเงิน", size: "xs", color: "#64748b", flex: 2 },
+                  { type: "text", text: paymentMethod || "-", size: "xs", color: "#0f172a", weight: "bold", flex: 4, wrap: true }
                 ]
               }
             ]
@@ -2285,7 +2293,7 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, phone, totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee);
+        await sendOrderFlexMessage(orderId, name, phone, totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee, paymentMethod);
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที

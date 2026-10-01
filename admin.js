@@ -316,7 +316,7 @@ function renderOrders() {
     const tr = document.createElement('tr');
     const meta = getStatusMeta(order.status);
 
-    const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+    const isTransfer = (order.paymentMethod && (order.paymentMethod.includes('โอน') || order.paymentMethod.includes('บัญชีธนาคาร') || order.paymentMethod.includes('ผสม')));
     const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
 
     let dateStr = order.timestamp || '-';
@@ -456,6 +456,9 @@ function viewOrder(orderId) {
   document.getElementById('modalOrderId').textContent = order.orderId;
   document.getElementById('modalCustomerName').textContent = order.customerName;
   document.getElementById('modalPhone').textContent = order.phone.replace(/'/g, ""); // Remove quote if present
+  if (document.getElementById('modalPayment')) {
+    document.getElementById('modalPayment').textContent = order.paymentMethod || '-';
+  }
 
   // Hide edit note box by default
   const noteBox = document.getElementById('editNoteContainer');
@@ -517,7 +520,7 @@ function renderModalActions(order) {
       buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขออเดอร์</button>`;
     }
 
-    const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
+    const isTransfer = (order.paymentMethod && (order.paymentMethod.includes('โอน') || order.paymentMethod.includes('บัญชีธนาคาร') || order.paymentMethod.includes('ผสม')));
     const isCod = !isTransfer;
     const currentMeta = getStatusMeta(order.status);
     const normStatus = currentMeta.name;

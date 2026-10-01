@@ -179,6 +179,7 @@
     var deliveryType = "ทันที";
     var preorderTime = "";
     var shippingOption = "จัดส่ง";
+    var paymentMethod = "-";
 
     for (var i = 1; i < values.length; i++) {
       if (values[i][1] && values[i][1].toString() === orderId) {
@@ -189,6 +190,7 @@
         deliveryType = values[i][13] || "ทันที";
         preorderTime = values[i][14] || "";
         shippingOption = values[i][15] || "จัดส่ง";
+        paymentMethod = values[i][10] || "-";
         break;
       }
     }
@@ -231,7 +233,8 @@
           deliveryType, 
           preorderTime, 
           JSON.stringify(newItems), 
-          newTotalPrice
+          newTotalPrice,
+          paymentMethod
         );
         
         var messagePayload = [
@@ -988,12 +991,20 @@
         try {
           var messages = [];
           
-          if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod === "โอนจ่าย" || paymentMethod === "โอนเงินผ่านบัญชีธนาคาร" || paymentMethod === "โอนเงินผสมเงินสด")) {
-            messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
+          if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod.indexOf("โอน") > -1 || paymentMethod.indexOf("บัญชีธนาคาร") > -1 || paymentMethod.indexOf("ผสม") > -1)) {
+            messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
             
-            // สร้าง QR Code PromptPay แบบ Dynamic ตามยอดเงินจริง
-            // รูปแบบ URL: https://promptpay.io/{เบอร์หรือเลขบัตร}/{จำนวนเงิน}.png
+            // สร้าง QR Code PromptPay แบบ Dynamic ตามยอดเงินที่ต้องโอนจริง
             var qrAmount = Number(totalPrice || 0);
+            
+            // ตรวจสอบหากเป็น "โอนเงินผสมเงินสด" เพื่อดึงเฉพาะยอดโอนมาสร้าง QR Code
+            if (paymentMethod && paymentMethod.indexOf("โอนเงินผสมเงินสด") > -1) {
+              var match = paymentMethod.match(/- โอน (\d+(?:\.\d+)?) บาท/);
+              if (match && match[1]) {
+                qrAmount = Number(match[1]);
+              }
+            }
+            
             var dynamicQrUrl = "https://promptpay.io/" + SHOP_PROMPTPAY_ID + "/" + qrAmount + ".png";
             messages.push({
               "type": "image",
@@ -1002,16 +1013,16 @@
             });
           }
           else if (newStatus === "กำลังจัดเตรียมสินค้า" || newStatus === "เตรียมออเดอร์" || newStatus === "จัดเตรียมสินค้าพร้อมส่ง") {
-            messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨", "#f59e0b", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
+            messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨", "#f59e0b", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
           }
           else if (newStatus === "กำลังจัดส่ง") {
-            messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
+            messages.push(buildStatusFlexMessage("🚚 สินค้าอยู่ระหว่างจัดส่ง", orderId, "พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵", "#8b5cf6", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
           }
           else if (newStatus === "จัดส่งสำเร็จ" || newStatus === "ยืนยันแล้ว") {
-            messages.push(buildStatusFlexMessage("🎉 จัดส่งสินค้าสำเร็จเรียบร้อย", orderId, "สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️", "#16a34a", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
+            messages.push(buildStatusFlexMessage("🎉 จัดส่งสินค้าสำเร็จเรียบร้อย", orderId, "สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️", "#16a34a", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
           }
           else if (newStatus === "ยกเลิก") {
-            messages.push(buildStatusFlexMessage("🥺 แจ้งยกเลิกออเดอร์", orderId, "ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨", "#dc2626", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice));
+            messages.push(buildStatusFlexMessage("🥺 แจ้งยกเลิกออเดอร์", orderId, "ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨", "#dc2626", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
           }
           
           if (messages.length > 0) {
@@ -1121,7 +1132,7 @@
   }
 
   // สร้าง Flex Message สำหรับการแจ้งเตือนเปลี่ยนสถานะออเดอร์ (เต็มรูปแบบ)
-  function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor, name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice) {
+  function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor, name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod = "-") {
     var cartItems = [];
     try {
       cartItems = JSON.parse(itemsJson);
@@ -1268,6 +1279,14 @@
                   "contents": [
                     { "type": "text", "text": "🕒 เวลาจัดส่ง/รับ", "size": "xs", "color": "#64748b", "flex": 2 },
                     { "type": "text", "text": timeText, "size": "xs", "color": "#dc2626", "weight": "bold", "flex": 4, "wrap": true }
+                  ]
+                },
+                {
+                  "type": "box",
+                  "layout": "horizontal",
+                  "contents": [
+                    { "type": "text", "text": "💳 ชำระเงิน", "size": "xs", "color": "#64748b", "flex": 2 },
+                    { "type": "text", "text": paymentMethod || "-", "size": "xs", "color": "#0f172a", "weight": "bold", "flex": 4, "wrap": true }
                   ]
                 }
               ]
