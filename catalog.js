@@ -1652,7 +1652,7 @@ async function loadMyOrders() {
     // กรองข้อมูลตามแท็บปัจจุบัน
     let displayOrders = orders;
     if (currentOrderTab === 'fav') {
-      displayOrders = orders.filter(o => favoriteOrderIds.includes(o.orderId));
+      displayOrders = orders.filter(o => favoriteOrderIds.some(fav => String(fav) === String(o.orderId)));
     }
 
     if (displayOrders && displayOrders.length > 0) {
@@ -1666,7 +1666,7 @@ async function loadMyOrders() {
 
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
-        const isFav = favoriteOrderIds.includes(order.orderId);
+        const isFav = favoriteOrderIds.some(fav => String(fav) === String(order.orderId));
         
         let itemsHtml = '';
         if (order.items && order.items.length > 0) {
@@ -1781,10 +1781,11 @@ async function loadMyOrders() {
 // REORDER & FAVORITES LOGIC
 // ========================
 window.toggleFavoriteOrder = function(orderId) {
-  if (favoriteOrderIds.includes(orderId)) {
-    favoriteOrderIds = favoriteOrderIds.filter(id => id !== orderId);
+  const strOrderId = String(orderId);
+  if (favoriteOrderIds.some(fav => String(fav) === strOrderId)) {
+    favoriteOrderIds = favoriteOrderIds.filter(id => String(id) !== strOrderId);
   } else {
-    favoriteOrderIds.push(orderId);
+    favoriteOrderIds.push(strOrderId);
   }
   localStorage.setItem('favoriteOrderIds', JSON.stringify(favoriteOrderIds));
   // Re-render UI
