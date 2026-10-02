@@ -2332,6 +2332,15 @@ if (btnSubmitOrder) {
 }
 
 // Event Listeners
+const btnSearchNav = document.getElementById('btnSearchNav');
+if (btnSearchNav) {
+  btnSearchNav.addEventListener('click', () => {
+    if (typeof searchInput !== 'undefined' && searchInput) {
+      searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { searchInput.focus(); }, 300);
+    }
+  });
+}
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
   visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อค้นหาใหม่

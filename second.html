@@ -6,7 +6,7 @@
   <meta name="viewport"
     content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
   <title>เมนูพรีเมียม - ร้านเกื้อกูลกัน</title>
-  <link rel="stylesheet" href="catalog.css?v=4" />
+  <link rel="stylesheet" href="catalog.css?v=5" />
   <!-- Leaflet.js Map Library (ฟรี ไม่ต้องใช้ API Key) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -30,6 +30,15 @@
       <span class="navbar-title">เกื้อกูลกัน</span>
     </div>
     <div class="navbar-actions" style="display: flex; gap: 10px; align-items: center;">
+      <button class="btn-search-nav" id="btnSearchNav" aria-label="ค้นหาสินค้า"
+        style="background: none; border: none; cursor: pointer; color: var(--text-main); position: relative; padding: 8px;"
+        title="ค้นหาสินค้า">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
       <button class="btn-orders" id="btnOrders" aria-label="ประวัติการสั่งซื้อ"
         style="background: none; border: none; cursor: pointer; color: var(--text-main); position: relative; padding: 8px;"
         title="ประวัติการสั่งซื้อ">
@@ -455,7 +464,7 @@
     </svg>
   </button>
 
-  <script src="catalog.js?v=10"></script>
+  <script src="catalog.js?v=11"></script>
 </body>
 
 </html>
