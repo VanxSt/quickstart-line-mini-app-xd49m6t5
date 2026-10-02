@@ -361,11 +361,13 @@ function openProductDetail(productOrId) {
   }
 
   modal.classList.add('show');
+  document.body.classList.add('no-scroll');
 }
 
 // Close Modal
 function closeModal() {
   modal.classList.remove('show');
+  document.body.classList.remove('no-scroll');
   activeProduct = null;
 }
 
@@ -375,6 +377,7 @@ function openLightbox(imgSrc, name) {
     lightboxImg.src = imgSrc;
     lightboxCaption.textContent = name;
     lightbox.classList.add('show');
+    document.body.classList.add('no-scroll');
   }
 }
 
@@ -382,6 +385,7 @@ function openLightbox(imgSrc, name) {
 function closeLightbox() {
   if (lightbox) {
     lightbox.classList.remove('show');
+    document.body.classList.remove('no-scroll');
   }
 }
 
@@ -677,10 +681,12 @@ window.removeCartItem = function (id) {
 function openCartModal() {
   renderCartItems();
   cartModal.classList.add('show');
+  document.body.classList.add('no-scroll');
 }
 
 function closeCartModal() {
   cartModal.classList.remove('show');
+  document.body.classList.remove('no-scroll');
 }
 
 // === SAVED ADDRESSES SYSTEM ===
@@ -1218,6 +1224,7 @@ function openCheckoutModal() {
 
   toggleShippingFields();
   checkoutModal.classList.add('show');
+  document.body.classList.add('no-scroll');
 
   // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ
   setTimeout(() => {
@@ -1228,6 +1235,7 @@ function openCheckoutModal() {
 function closeCheckoutModal() {
   const checkoutModal = document.getElementById('checkoutModal');
   checkoutModal.classList.remove('show');
+  document.body.classList.remove('no-scroll');
 }
 
 function validateCheckoutForm() {
@@ -1624,6 +1632,7 @@ const btnCloseOrdersModal = document.getElementById('btnCloseOrdersModal');
 function openOrdersModal() {
   if (ordersModal) {
     ordersModal.classList.add('show');
+    document.body.classList.add('no-scroll');
     loadMyOrders();
   }
 }
@@ -1631,6 +1640,7 @@ function openOrdersModal() {
 function closeOrdersModal() {
   if (ordersModal) {
     ordersModal.classList.remove('show');
+    document.body.classList.remove('no-scroll');
   }
 }
 

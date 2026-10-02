@@ -38,6 +38,11 @@ body {
   overflow-x: hidden;
 }
 
+body.no-scroll {
+  overflow: hidden;
+  height: 100vh;
+}
+
 /* Glassmorphic Navbar */
 .navbar {
   position: sticky;
