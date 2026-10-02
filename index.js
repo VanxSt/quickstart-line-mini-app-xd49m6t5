@@ -83,7 +83,8 @@ async function getUserProfile() {
     pictureUrl.src = profile.pictureUrl
       ? profile.pictureUrl
       : 'https://vos.line-scdn.net/imgs/apis/ic_mini.png';
-    userId.textContent = profile.userId;
+    const mId = profile.userId || '';
+    userId.textContent = mId ? mId.substring(0, 5) + '*****' + mId.substring(mId.length - 4) : '';
     statusMessage.textContent = profile.statusMessage || 'ยินดีต้อนรับสมาชิกใหม่';
     displayName.textContent = profile.displayName;
 
