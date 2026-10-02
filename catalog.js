@@ -2647,3 +2647,21 @@ async function start() {
 
 start();
 
+// Scroll to top functionality
+const btnScrollToTop = document.getElementById('btnScrollToTop');
+if (btnScrollToTop) {
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+      btnScrollToTop.classList.add('show');
+    } else {
+      btnScrollToTop.classList.remove('show');
+    }
+  });
+
+  btnScrollToTop.addEventListener('click', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  });
+}

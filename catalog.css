@@ -1355,4 +1355,40 @@ body {
 
 #scroll-sentinel {
   grid-column: 1 / -1;
+}
+
+/* === Scroll to Top Button === */
+.btn-scroll-top {
+  position: fixed;
+  bottom: 90px; /* Above the cart button */
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--primary-color, #388BC2);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px) scale(0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+}
+
+.btn-scroll-top.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.btn-scroll-top:active {
+  transform: scale(0.9);
+  background-color: var(--primary-color, #388BC2);
+  color: white;
 }
