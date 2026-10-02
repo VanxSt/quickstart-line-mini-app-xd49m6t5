@@ -2332,17 +2332,46 @@ if (btnSubmitOrder) {
 }
 
 // Event Listeners
-const btnSearchNav = document.getElementById('btnSearchNav');
-if (btnSearchNav) {
-  btnSearchNav.addEventListener('click', () => {
-    if (typeof searchInput !== 'undefined' && searchInput) {
-      searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => { searchInput.focus(); }, 300);
-    }
+const navSearchContainer = document.getElementById('navSearchContainer');
+const navSearchInput = document.getElementById('navSearchInput');
+const btnCloseNavSearch = document.getElementById('btnCloseNavSearch');
+
+if (document.getElementById('btnSearchNav') && navSearchContainer && navSearchInput) {
+  document.getElementById('btnSearchNav').addEventListener('click', () => {
+    navSearchContainer.style.display = 'block';
+    navSearchInput.focus();
+  });
+  
+  if (btnCloseNavSearch) {
+    btnCloseNavSearch.addEventListener('click', () => {
+      navSearchContainer.style.display = 'none';
+      navSearchInput.value = '';
+      if (searchInput) searchInput.value = '';
+      searchQuery = '';
+      visibleLimit = 20;
+      renderProducts();
+    });
+  }
+
+  navSearchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    if (searchInput) searchInput.value = e.target.value;
+    visibleLimit = 20;
+    renderProducts();
   });
 }
+// const btnSearchNav = document.getElementById('btnSearchNav');
+// if (btnSearchNav) {
+//   btnSearchNav.addEventListener('click', () => {
+//     if (typeof searchInput !== 'undefined' && searchInput) {
+//       searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+//       setTimeout(() => { searchInput.focus(); }, 300);
+//     }
+//   });
+// }
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
+  if (typeof navSearchInput !== 'undefined' && navSearchInput) navSearchInput.value = e.target.value;
   visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อค้นหาใหม่
   renderProducts();
 });
