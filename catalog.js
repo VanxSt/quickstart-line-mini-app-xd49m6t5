@@ -2464,7 +2464,7 @@ document.getElementById('btnCloseModal').addEventListener('click', closeModal);
 if (lightbox) {
   lightbox.addEventListener('click', (e) => {
     // Close if clicking outside the image (i.e. background)
-    if (e.target === lightbox || e.target.classList.contains('lightbox-content')) {
+    if (e.target === lightbox || e.target.classList.contains('lightbox-content') || e.target.tagName === 'IMG') {
       closeLightbox();
     }
   });
@@ -2651,7 +2651,8 @@ start();
 const btnScrollToTop = document.getElementById('btnScrollToTop');
 if (btnScrollToTop) {
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 300) {
+    const scrollPos = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    if (scrollPos > 300) {
       btnScrollToTop.classList.add('show');
     } else {
       btnScrollToTop.classList.remove('show');
