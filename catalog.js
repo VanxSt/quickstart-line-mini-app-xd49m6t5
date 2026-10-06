@@ -2481,7 +2481,7 @@ function renderSubCategoriesUI(categoryTree) {
     return;
   }
 
-  subNav.style.display = 'flex';
+  subNav.style.display = 'none'; // disabled subcategories
   subNav.innerHTML = '';
 
   // Add "ทั้งหมด" for subcategory
