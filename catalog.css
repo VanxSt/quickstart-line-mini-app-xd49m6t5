@@ -1281,6 +1281,64 @@ body.no-scroll {
 }
 
 /* === Multi-level Categories CSS === */
+.category-icon-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 8px 4px 16px 4px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.category-icon-grid::-webkit-scrollbar {
+  display: none;
+}
+.category-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 72px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: transform 0.2s ease;
+}
+.category-icon-item:active {
+  transform: scale(0.95);
+}
+.icon-container {
+  width: 56px;
+  height: 56px;
+  background: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), inset 0 -3px 6px rgba(0, 0, 0, 0.05);
+  font-size: 28px;
+  transition: all 0.2s ease;
+  border: 1.5px solid transparent;
+}
+.category-icon-item.active .icon-container {
+  border-color: var(--primary-color);
+  background: rgba(56, 139, 194, 0.1);
+  box-shadow: 0 6px 14px rgba(56, 139, 194, 0.2), inset 0 -3px 6px rgba(56, 139, 194, 0.1);
+  transform: translateY(-4px);
+}
+.icon-emoji {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+.icon-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-light);
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.category-icon-item.active .icon-label {
+  color: var(--primary-color);
+  font-weight: 700;
+}
 .category-system-container {
   display: flex;
   flex-direction: column;

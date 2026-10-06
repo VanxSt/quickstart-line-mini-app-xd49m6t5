@@ -2413,30 +2413,60 @@ function initCategoryFilters() {
   if (!parentNav) return;
 
   // Clear and Render Parent Tabs
+  // Clear and Render Parent Tabs
   parentNav.innerHTML = '';
 
-  const parentSelect = document.createElement('select');
-  parentSelect.className = 'category-dropdown';
-  parentSelect.addEventListener('change', (e) => {
-    selectParentCategory(e.target.value);
+  const iconGrid = document.createElement('div');
+  iconGrid.className = 'category-icon-grid';
+
+  const renderIconItem = (val, text) => {
+    const item = document.createElement('div');
+    item.className = `category-icon-item ${currentParentCategory === val ? 'active' : ''}`;
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'icon-container';
+    let iconEmoji = '✨';
+    if (val === 'all') iconEmoji = '🛍️';
+    else if (val.includes('เครื่องดื่ม')) iconEmoji = '🧋';
+    else if (val.includes('อาหาร') || val.includes('ปรุง')) iconEmoji = '🥘';
+    else if (val.includes('ธัญพืช')) iconEmoji = '🌾';
+    else if (val.includes('เบเกอรี่') || val.includes('ขนม')) iconEmoji = '🥐';
+    else if (val.includes('บรรจุภัณฑ์')) iconEmoji = '📦';
+    iconContainer.innerHTML = `<span class="icon-emoji">${iconEmoji}</span>`;
+    const label = document.createElement('span');
+    label.className = 'icon-label';
+    label.textContent = text;
+    item.appendChild(iconContainer);
+    item.appendChild(label);
+    item.addEventListener('click', () => { selectParentCategory(val); });
+    iconGrid.appendChild(item);
+  };
+  renderIconItem('all', 'ทั้งหมด');
+
+  // Removed parentSelect logic
+  //
+  //
+  //
   });
 
-  const allOption = document.createElement('option');
-  allOption.value = 'all';
-  allOption.textContent = 'หมวดหมู่ทั้งหมด';
-  allOption.selected = currentParentCategory === 'all';
-  parentSelect.appendChild(allOption);
+  //
+  //
+  //
+  //
+  //
 
   Object.keys(categoryTree).forEach(parent => {
     if (parent === 'all') return;
+    renderIconItem(parent, parent);
+  });
+    if (parent === 'all') return;
     const option = document.createElement('option');
-    option.value = parent;
-    option.textContent = parent;
-    option.selected = currentParentCategory === parent;
-    parentSelect.appendChild(option);
+  //
+  //
+  //
+  //
   });
 
-  parentNav.appendChild(parentSelect);
+  parentNav.appendChild(iconGrid);
 
   // Render Subcategory Tabs
   renderSubCategoriesUI(categoryTree);
