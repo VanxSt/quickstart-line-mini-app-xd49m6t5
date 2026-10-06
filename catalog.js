@@ -2446,7 +2446,7 @@ function initCategoryFilters() {
   //
   //
   //
-  });
+  //
 
   //
   //
@@ -2458,13 +2458,13 @@ function initCategoryFilters() {
     if (parent === 'all') return;
     renderIconItem(parent, parent);
   });
-    if (parent === 'all') return;
-    const option = document.createElement('option');
   //
   //
   //
   //
-  });
+  //
+  //
+  //
 
   parentNav.appendChild(iconGrid);
 
