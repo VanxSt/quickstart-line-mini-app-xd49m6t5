@@ -615,7 +615,7 @@ function updateCartBadge() {
   if (floatingCartContainer && floatCartQty && floatCartPrice) {
     floatCartQty.textContent = totalQty;
     floatCartPrice.textContent = totalPrice.toLocaleString();
-    floatingCartContainer.style.display = totalQty > 0 ? 'block' : 'none';
+    floatingCartContainer.style.display = 'block';
   }
   if (cartBadge) {
     cartBadge.textContent = totalQty;
@@ -1145,6 +1145,27 @@ function calculateCheckoutTotal() {
 
   const discountEl = document.getElementById('checkoutDiscountNote');
   if (discountEl) discountEl.textContent = discountNote;
+
+  const checkoutItemsList = document.getElementById('checkoutItemsList');
+  if (checkoutItemsList) {
+    if (cart.length === 0) {
+      checkoutItemsList.innerHTML = '<div style="font-size: 14px; color: #94a3b8; text-align: center;">ไม่มีสินค้าในตะกร้า</div>';
+    } else {
+      checkoutItemsList.innerHTML = '';
+      cart.forEach(item => {
+        const itemTotal = item.price * item.qty;
+        checkoutItemsList.innerHTML += `
+          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px;">
+            <div style="color: #e2e8f0; flex: 1;">
+              <span style="font-weight: 500;">${item.name}</span>
+              <span style="color: #94a3b8; font-size: 13px; margin-left: 6px;">x${item.qty}</span>
+            </div>
+            <div style="color: #ffffff; font-weight: 500;">฿${itemTotal.toLocaleString()}</div>
+          </div>
+        `;
+      });
+    }
+  }
 
   const btnSubmitPrice = document.getElementById('btnSubmitPrice');
   if (btnSubmitPrice) btnSubmitPrice.textContent = `฿${grandTotal.toLocaleString()}`;
