@@ -484,14 +484,14 @@
   </button>
 
   <!-- Floating Cart Button -->
-  <div id="floatingCartContainer" style="display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 1050;" onclick="openCartModal()">
+  <div id="floatingCartContainer" style="display: block !important; position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); left: 20px; right: 20px; z-index: 9999;" onclick="openCartModal()">
     <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
       <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span id="floatCartQty">0</span> รายการ</span>
       <span style="font-weight: bold; font-size: 16px;">฿<span id="floatCartPrice">0</span></span>
     </div>
   </div>
 
-  <script src="catalog.js?v=12"></script>
+  <script src="catalog.js?v=14"></script>
 </body>
 
 </html>
