@@ -2398,6 +2398,7 @@ if (document.getElementById('btnSearchNav') && navSearchContainer && navSearchIn
 
   navSearchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value;
+    resetCategoryForSearch();
     if (searchInput) searchInput.value = e.target.value;
     visibleLimit = 20;
     renderProducts();
@@ -2414,10 +2415,20 @@ if (document.getElementById('btnSearchNav') && navSearchContainer && navSearchIn
 // }
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
+  resetCategoryForSearch();
   if (typeof navSearchInput !== 'undefined' && navSearchInput) navSearchInput.value = e.target.value;
   visibleLimit = 20; // รีเซ็ตหน้าแรกเมื่อค้นหาใหม่
   renderProducts();
 });
+
+// เมื่อมีการค้นหาด้วยชื่อสินค้า ให้บังคับหมวดหมู่กลับไปที่ "ทั้งหมด" เพื่อค้นหาจากสินค้าทุกหมวด
+function resetCategoryForSearch() {
+  if (searchQuery.trim() === '') return;
+  if (currentParentCategory === 'all' && currentSubCategory === 'all') return;
+  currentParentCategory = 'all';
+  currentSubCategory = 'all';
+  initCategoryFilters(); // อัปเดตไอคอนหมวดหมู่ให้ไฮไลต์ที่ "ทั้งหมด"
+}
 
 // === MULTI-LEVEL DYNAMIC CATEGORIES SYSTEM ===
 
