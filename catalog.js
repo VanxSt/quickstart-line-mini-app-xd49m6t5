@@ -621,6 +621,11 @@ function updateCartBadge() {
     cartBadge.textContent = totalQty;
     cartBadge.style.display = totalQty > 0 ? 'flex' : 'none';
   }
+  const headerCartPrice = document.getElementById('headerCartPrice');
+  if (headerCartPrice) {
+    headerCartPrice.textContent = `฿${totalPrice.toLocaleString()}`;
+    headerCartPrice.style.display = totalQty > 0 ? 'inline-block' : 'none';
+  }
 }
 
 function renderCartItems() {

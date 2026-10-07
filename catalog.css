@@ -1456,4 +1456,9 @@ body.no-scroll {
   transform: scale(0.9);
   background-color: var(--primary-color, #388BC2);
   color: white;
+}
+
+/* Hide floating cart when modal is open */
+body.no-scroll #floatingCartContainer {
+  display: none !important;
 }
