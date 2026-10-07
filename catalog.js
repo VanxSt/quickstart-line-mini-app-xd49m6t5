@@ -1071,9 +1071,9 @@ function toggleShippingFields() {
           <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
         </div>
         <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
-          <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 50 บาท)</li>
-          <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
-          <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 50 บาท)</li>
+          <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
+          <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
+          <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
           <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
         </ul>
       `;
@@ -1117,8 +1117,8 @@ function calculateCheckoutTotal() {
         discountNote = '🎉 ยอดซื้อครบ ฿1,000 ฟรีค่าจัดส่ง 10 กิโลเมตรแรก!';
       } else {
         const extraKm = distKm - 10;
-        shippingFee = Math.ceil(extraKm * 50);
-        discountNote = `🎉 ยอดเกิน ฿1,000 ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+        shippingFee = Math.ceil(extraKm * 10);
+        discountNote = `🎉 ยอดเกิน ฿1,000 ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
       }
     } else if (subtotal >= 500) {
       if (distKm <= 5) {
@@ -1126,12 +1126,12 @@ function calculateCheckoutTotal() {
         discountNote = '🎉 ยอดซื้อครบ ฿500 ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
       } else {
         const extraKm = distKm - 5;
-        shippingFee = Math.ceil(extraKm * 50);
-        discountNote = `🎉 ยอดเกิน ฿500 ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+        shippingFee = Math.ceil(extraKm * 10);
+        discountNote = `🎉 ยอดเกิน ฿500 ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
       }
     } else {
-      shippingFee = Math.ceil(distKm * 50);
-      discountNote = `💡 ยอดไม่ถึง ฿500 คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 50 บาท = ฿${shippingFee})`;
+      shippingFee = Math.ceil(distKm * 10);
+      discountNote = `💡 ยอดไม่ถึง ฿500 คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
     }
   }
 
