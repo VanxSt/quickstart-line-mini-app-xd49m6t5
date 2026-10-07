@@ -452,7 +452,10 @@
 
       <div class="checkout-modal-footer">
         <button class="btn-primary btn-block btn-gray-disabled"
-          id="btnSubmitOrder">ยืนยันการสั่งซื้อและส่งข้อมูล</button>
+          id="btnSubmitOrder" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px;">
+          <span id="btnSubmitText">ยืนยันการสั่งซื้อ</span>
+          <span id="btnSubmitPrice">฿0</span>
+        </button>
       </div>
     </div>
   </div>
@@ -478,6 +481,14 @@
       <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
   </button>
+
+  <!-- Floating Cart Button -->
+  <div id="floatingCartContainer" style="display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 997;" onclick="openCartModal()">
+    <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+      <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span id="floatCartQty">0</span> รายการ</span>
+      <span style="font-weight: bold; font-size: 16px;">฿<span id="floatCartPrice">0</span></span>
+    </div>
+  </div>
 
   <script src="catalog.js?v=12"></script>
 </body>

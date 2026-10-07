@@ -608,6 +608,15 @@ function clearCart() {
 
 function updateCartBadge() {
   const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const floatingCartContainer = document.getElementById('floatingCartContainer');
+  const floatCartQty = document.getElementById('floatCartQty');
+  const floatCartPrice = document.getElementById('floatCartPrice');
+  if (floatingCartContainer && floatCartQty && floatCartPrice) {
+    floatCartQty.textContent = totalQty;
+    floatCartPrice.textContent = totalPrice.toLocaleString();
+    floatingCartContainer.style.display = totalQty > 0 ? 'block' : 'none';
+  }
   if (cartBadge) {
     cartBadge.textContent = totalQty;
     cartBadge.style.display = totalQty > 0 ? 'flex' : 'none';
@@ -1132,6 +1141,8 @@ function calculateCheckoutTotal() {
   const discountEl = document.getElementById('checkoutDiscountNote');
   if (discountEl) discountEl.textContent = discountNote;
 
+  const btnSubmitPrice = document.getElementById('btnSubmitPrice');
+  if (btnSubmitPrice) btnSubmitPrice.textContent = `฿${grandTotal.toLocaleString()}`;
   const totalEl = document.getElementById('checkoutTotalText');
   if (totalEl) totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
 
@@ -2214,7 +2225,7 @@ if (btnSubmitOrder) {
     const totalAmount = totals.grandTotal;
 
     btnSubmitOrder.disabled = true;
-    btnSubmitOrder.textContent = '⏳ กำลังบันทึกคำสั่งซื้อ...';
+    const btnSubmitText = document.getElementById('btnSubmitText'); if (btnSubmitText) btnSubmitText.textContent = '⏳ กำลังบันทึกคำสั่งซื้อ...'; else btnSubmitOrder.textContent = '⏳ กำลังบันทึกคำสั่งซื้อ...';
 
     let userId = 'web-test-user';
     let displayName = name;
@@ -2315,7 +2326,7 @@ if (btnSubmitOrder) {
       closeCartModal();
 
       btnSubmitOrder.disabled = false;
-      btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+      const btnSubmitText = document.getElementById('btnSubmitText'); if (btnSubmitText) btnSubmitText.textContent = 'ยืนยันการสั่งซื้อ'; else btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
 
       // เปิดหน้าต่างประวัติคำสั่งซื้ออัตโนมัติ (หน่วงเวลาเล็กน้อยเพื่อให้ระบบส่งข้อมูลเสร็จก่อน)
       setTimeout(() => {
@@ -2326,7 +2337,7 @@ if (btnSubmitOrder) {
       console.error('Checkout error:', error);
       alert('❌ เกิดข้อผิดพลาดในระบบแอปพลิเคชัน กรุณาลองใหม่อีกครั้ง');
       btnSubmitOrder.disabled = false;
-      btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+      const btnSubmitText = document.getElementById('btnSubmitText'); if (btnSubmitText) btnSubmitText.textContent = 'ยืนยันการสั่งซื้อ'; else btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
     }
   });
 }
