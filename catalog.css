@@ -1458,7 +1458,8 @@ body.no-scroll {
   color: white;
 }
 
-/* Hide floating cart when modal is open */
-body.no-scroll #floatingCartContainer {
-  display: none !important;
+/* Ensure floating cart doesn't overlap modal footers */
+.cart-modal-footer,
+.checkout-modal-footer {
+  padding-bottom: 90px !important;
 }

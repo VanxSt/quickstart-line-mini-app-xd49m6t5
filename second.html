@@ -51,7 +51,7 @@
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       </button>
-      <button class="btn-cart" id="btnCart" aria-label="ตะกร้าสินค้า" style="width: auto; padding: 4px 12px; gap: 6px; border-radius: 20px;">
+      <button class="btn-cart" id="btnCart" aria-label="ตะกร้าสินค้า">
         <div class="cart-icon-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -61,7 +61,6 @@
           </svg>
           <span class="cart-badge" id="cartBadge">0</span>
         </div>
-        <span id="headerCartPrice" style="font-weight: bold; font-size: 14px; color: var(--primary-color, #10b981); display: none;">฿0</span>
       </button>
     </div>
   </header>
@@ -484,7 +483,7 @@
   </button>
 
   <!-- Floating Cart Button -->
-  <div id="floatingCartContainer" style="display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 997;" onclick="openCartModal()">
+  <div id="floatingCartContainer" style="display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 1050;" onclick="openCartModal()">
     <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
       <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span id="floatCartQty">0</span> รายการ</span>
       <span style="font-weight: bold; font-size: 16px;">฿<span id="floatCartPrice">0</span></span>
