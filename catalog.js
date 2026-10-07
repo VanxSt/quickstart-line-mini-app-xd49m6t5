@@ -2768,7 +2768,18 @@ async function start() {
 
 start();
 
-// Scroll to top functionality
+// Scroll to top: กดที่โลโก้/ชื่อร้าน "เกื้อกูลกัน" บน navbar แล้วเลื่อนขึ้นบนสุด
+const navbarBrand = document.querySelector('.navbar-brand');
+if (navbarBrand) {
+  navbarBrand.style.cursor = 'pointer';
+  navbarBrand.setAttribute('role', 'button');
+  navbarBrand.setAttribute('title', 'เลื่อนขึ้นบนสุด');
+  navbarBrand.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+// Scroll to top functionality (ปุ่มลอยเดิม - ถูกลบออกจาก HTML แล้ว)
 const btnScrollToTop = document.getElementById('btnScrollToTop');
 if (btnScrollToTop) {
   window.addEventListener('scroll', () => {
