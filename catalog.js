@@ -609,14 +609,20 @@ function clearCart() {
 function updateCartBadge() {
   const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const floatingCartContainer = document.getElementById('floatingCartContainer');
-  const floatCartQty = document.getElementById('floatCartQty');
-  const floatCartPrice = document.getElementById('floatCartPrice');
-  if (floatingCartContainer && floatCartQty && floatCartPrice) {
-    floatCartQty.textContent = totalQty;
-    floatCartPrice.textContent = totalPrice.toLocaleString();
-    floatingCartContainer.style.display = 'block';
+  let floatingCartContainer = document.getElementById('floatingCartContainer');
+  if (!floatingCartContainer) {
+    floatingCartContainer = document.createElement('div');
+    floatingCartContainer.id = 'floatingCartContainer';
+    floatingCartContainer.onclick = openCartModal;
+    document.body.appendChild(floatingCartContainer);
   }
+  floatingCartContainer.style.cssText = 'display: block !important; position: fixed !important; bottom: max(30px, env(safe-area-inset-bottom)) !important; left: 20px !important; right: 20px !important; z-index: 9999 !important; padding-bottom: env(safe-area-inset-bottom);';
+  floatingCartContainer.innerHTML = `
+    <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer;">
+      <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span>${totalQty}</span> รายการ</span>
+      <span style="font-weight: bold; font-size: 16px;">฿<span>${totalPrice.toLocaleString()}</span></span>
+    </div>
+  `;
   if (cartBadge) {
     cartBadge.textContent = totalQty;
     cartBadge.style.display = totalQty > 0 ? 'flex' : 'none';
