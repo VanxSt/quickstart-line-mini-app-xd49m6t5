@@ -616,7 +616,7 @@ function updateCartBadge() {
     floatingCartContainer.onclick = openCartModal;
     document.body.appendChild(floatingCartContainer);
   }
-  floatingCartContainer.style.cssText = 'display: block !important; position: fixed !important; bottom: max(30px, env(safe-area-inset-bottom)) !important; left: 20px !important; right: 20px !important; z-index: 9999 !important; padding-bottom: env(safe-area-inset-bottom);';
+  floatingCartContainer.style.cssText = 'display: block; position: fixed !important; bottom: max(30px, env(safe-area-inset-bottom)) !important; left: 20px !important; right: 20px !important; z-index: 9999 !important; padding-bottom: env(safe-area-inset-bottom);';
   floatingCartContainer.innerHTML = `
     <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer;">
       <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span>${totalQty}</span> รายการ</span>
