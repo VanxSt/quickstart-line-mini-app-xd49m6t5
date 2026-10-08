@@ -616,13 +616,30 @@ function updateCartBadge() {
     floatingCartContainer.onclick = openCartModal;
     document.body.appendChild(floatingCartContainer);
   }
-  floatingCartContainer.style.cssText = 'display: block; position: fixed !important; bottom: max(30px, env(safe-area-inset-bottom)) !important; left: 20px !important; right: 20px !important; z-index: 9999 !important; padding-bottom: env(safe-area-inset-bottom);';
-  floatingCartContainer.innerHTML = `
-    <div style="background-color: var(--primary-color, #10b981); color: white; border-radius: 30px; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer;">
-      <span style="font-weight: bold; font-size: 16px;">ตะกร้า • <span>${totalQty}</span> รายการ</span>
-      <span style="font-weight: bold; font-size: 16px;">฿<span>${totalPrice.toLocaleString()}</span></span>
-    </div>
-  `;
+  const qtySpan = floatingCartContainer.querySelector('#floatCartQty');
+  const priceSpan = floatingCartContainer.querySelector('#floatCartPrice');
+  
+  if (qtySpan && priceSpan) {
+    qtySpan.textContent = totalQty;
+    priceSpan.textContent = totalPrice.toLocaleString();
+  } else {
+    floatingCartContainer.style.cssText = 'display: block; position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.06);';
+    floatingCartContainer.innerHTML = `
+      <div style="background-color: var(--primary-color); color: white; border-radius: 16px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(56, 139, 194, 0.3); cursor: pointer; transition: transform 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="position: relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span style="position: absolute; top: -6px; right: -8px; background: #ff3b30; color: white; font-size: 11px; font-weight: bold; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid var(--primary-color);" id="floatCartQty">${totalQty}</span>
+          </div>
+          <span style="font-weight: 600; font-size: 15px;">ตะกร้าสินค้า</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; font-size: 16px;">฿<span id="floatCartPrice">${totalPrice.toLocaleString()}</span></span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+      </div>
+    `;
+  }
   if (cartBadge) {
     cartBadge.textContent = totalQty;
     cartBadge.style.display = totalQty > 0 ? 'flex' : 'none';
