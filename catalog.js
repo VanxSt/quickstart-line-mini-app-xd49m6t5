@@ -184,7 +184,8 @@ function renderProducts() {
 
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.desc.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const hasValidPrice = Number(product.price) > 0;
+    return matchesCategory && matchesSearch && hasValidPrice;
   });
 
   // เรียงลำดับสินค้าจากราคาถูกไปหาแพง
