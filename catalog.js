@@ -106,6 +106,7 @@ const SHOP_PROMPTPAY_ID = '0957579454';
 let currentParentCategory = 'all';
 let currentSubCategory = 'all';
 let searchQuery = '';
+let currentSort = 'price_asc';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
 let cart = [];
@@ -128,6 +129,13 @@ try {
 // Elements
 const productsGrid = document.getElementById('productsGrid');
 const searchInput = document.getElementById('searchInput');
+const sortSelect = document.getElementById('sortSelect');
+if (sortSelect) {
+  sortSelect.addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    renderProducts();
+  });
+}
 const modal = document.getElementById('productModal');
 const modalContent = document.getElementById('modalContentBody');
 const btnBack = document.getElementById('btnBack');
@@ -189,7 +197,16 @@ function renderProducts() {
   });
 
   // เรียงลำดับสินค้าจากราคาถูกไปหาแพง
-  filtered.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+  filtered.sort((a, b) => {
+    if (currentSort === 'price_asc') {
+      return (Number(a.price) || 0) - (Number(b.price) || 0);
+    } else if (currentSort === 'price_desc') {
+      return (Number(b.price) || 0) - (Number(a.price) || 0);
+    } else if (currentSort === 'name_asc') {
+      return a.name.localeCompare(b.name, 'th');
+    }
+    return 0;
+  });
 
   if (filtered.length === 0) {
     productsGrid.innerHTML = `

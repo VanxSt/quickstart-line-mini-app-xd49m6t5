@@ -101,15 +101,22 @@
     <p>คัดสรรวัตถุดิบชั้นเลิศ รังสรรค์ความอร่อยในทุกเมนู</p>
   </section>
 
-  <!-- Search Section -->
+  <!-- Search and Filter Section -->
   <section class="search-container">
-    <div class="search-box">
-      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input type="text" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." />
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div class="search-box" style="flex: 1;">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." />
+      </div>
+      <select id="sortSelect" style="padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 25px; background-color: var(--card-bg); color: var(--text-dark); font-size: 0.85rem; font-weight: 500; outline: none; box-shadow: var(--shadow-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234a5568%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 32px; flex-shrink: 0;">
+        <option value="price_asc">ราคา: ถูก-แพง</option>
+        <option value="price_desc">ราคา: แพง-ถูก</option>
+        <option value="name_asc">ชื่อ: ก-ฮ (A-Z)</option>
+      </select>
     </div>
   </section>
 
