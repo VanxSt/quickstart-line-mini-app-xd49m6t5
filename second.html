@@ -104,14 +104,15 @@
   <!-- Search and Filter Section -->
   <section class="search-container">
     <div style="display: flex; flex-direction: column; gap: 12px;">
-      <div class="search-box">
+      <form class="search-box" style="margin: 0;" onsubmit="event.preventDefault(); document.getElementById('searchInput').blur();">
         <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." />
-      </div>
+        <input type="search" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." style="padding-right: 86px;" />
+        <button type="submit" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--primary-color); color: white; border: none; border-radius: 20px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(56, 139, 194, 0.25); transition: background-color 0.2s;">ค้นหา</button>
+      </form>
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
         <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">เรียงลำดับ:</span>
         <select id="sortSelect" style="padding: 8px 14px; border: 1px solid var(--border-color); border-radius: 20px; background-color: var(--card-bg); color: var(--text-dark); font-size: 0.8rem; font-weight: 500; outline: none; box-shadow: var(--shadow-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234a5568%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 28px;">
