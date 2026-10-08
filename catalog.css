@@ -223,12 +223,6 @@ body.no-scroll {
   padding: 0 20px;
 }
 
-@media (max-width: 360px) {
-  .products-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Product Card */
 .product-card {
   background-color: var(--card-bg);
