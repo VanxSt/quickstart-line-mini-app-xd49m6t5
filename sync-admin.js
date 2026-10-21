@@ -1,3 +1,2 @@
-const fs = require('fs');
-fs.copyFileSync('admin-gas.html', 'admin.html');
-console.log('✅ Synchronized admin-gas.html to admin.html');
+// Deprecated: No longer needed because admin-gas.html has been retired.
+// Use admin.html directly as the single source of truth for the Admin Dashboard.

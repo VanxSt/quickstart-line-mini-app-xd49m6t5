@@ -528,10 +528,9 @@
       var action = (e && e.parameter) ? e.parameter.action : null;
       
       // Action 0: แสดงหน้าเว็บ Admin Dashboard (รองรับทั้งเปิดลิงก์ตรงๆ และ ?action=admin)
-      // ตรวจสอบชื่อไฟล์ HTML อัตโนมัติ (รองรับทั้ง index, admin, admin-gas)
       if (action === 'admin' || !action) {
         var htmlOutput = null;
-        var filenames = ['index', 'admin', 'admin-gas'];
+        var filenames = ['admin', 'index'];
         for (var i = 0; i < filenames.length; i++) {
           try {
             htmlOutput = HtmlService.createHtmlOutputFromFile(filenames[i]);

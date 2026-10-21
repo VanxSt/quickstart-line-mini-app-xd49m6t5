@@ -68,7 +68,7 @@ https://kuekoonkan-api.<ชื่อของคุณ>.workers.dev
 const GOOGLE_SCRIPT_URL = 'https://kuekoonkan-api.<ชื่อของคุณ>.workers.dev';
 ```
 
-2. ใส่ในไฟล์ `admin-gas.html` บรรทัดที่ 1693:
+2. ใส่ในไฟล์ `admin.html`:
 ```javascript
 const GOOGLE_SCRIPT_URL = 'https://kuekoonkan-api.<ชื่อของคุณ>.workers.dev';
 ```

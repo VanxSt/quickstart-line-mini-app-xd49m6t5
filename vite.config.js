@@ -9,7 +9,6 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         second: resolve(__dirname, 'second.html'),
         admin: resolve(__dirname, 'admin.html'),
-        adminGas: resolve(__dirname, 'admin-gas.html'),
       },
     },
   },
