@@ -1128,7 +1128,7 @@
         <header class="header">
           <div>
             <h1>จัดการคำสั่งซื้อ</h1>
-            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน</p>
+            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน <span style="font-size:11px;color:#10b981;font-weight:700;">• v3</span></p>
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button id="soundToggleBtn" class="btn-sound-toggle active" onclick="toggleSound()">
@@ -1543,7 +1543,7 @@
   </div>
 
   <script>
-    // แสดง Error บนหน้าจอทันที (ช่วยวิเคราะห์ปัญหาโหลดค้าง)
+    // [v3] แยกสคริปต์ดัก Error ไว้ก่อน เพื่อให้จับ Syntax Error ของสคริปต์หลักได้ด้วย
     window.onerror = function (msg, src, line, col) {
       var box = document.getElementById('loadingIndicator');
       if (box) {
@@ -1555,6 +1555,24 @@
       window.onerror(String(e.reason && e.reason.message || e.reason), '', 0, 0);
     });
 
+    // Storage สำรอง: เบราว์เซอร์บางตัวบล็อก localStorage ใน iframe ของ Apps Script (ทำให้สคริปต์พังทั้งหน้า)
+    window.LS = (function () {
+      try {
+        window.localStorage.setItem('__t', '1');
+        window.localStorage.removeItem('__t');
+        return window.localStorage;
+      } catch (e) {
+        var mem = {};
+        return {
+          getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+          setItem: function (k, v) { mem[k] = String(v); },
+          removeItem: function (k) { delete mem[k]; }
+        };
+      }
+    })();
+  </script>
+
+  <script>
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec';
 
     let allOrders = [];
@@ -1581,8 +1599,9 @@
     let isAdminProductsLoaded = false;
 
     // Unread Red Dot & Audio Notification State
-    let soundEnabled = localStorage.getItem('admin_sound_enabled') !== 'false';
-    let readOrderIds = JSON.parse(localStorage.getItem('admin_read_orders') || '[]');
+    let soundEnabled = LS.getItem('admin_sound_enabled') !== 'false';
+    let readOrderIds = [];
+    try { readOrderIds = JSON.parse(LS.getItem('admin_read_orders') || '[]') || []; } catch (e) { readOrderIds = []; }
     let knownOrderIds = new Set();
     let isInitialOrdersLoad = true;
     let audioCtx = null;
@@ -1635,14 +1654,14 @@
 
       const toast = document.createElement('div');
       toast.className = 'toast-notification';
-      toast.innerHTML = `<span class="toast-icon">🛒</span> มีออเดอร์ใหม่เข้ามา ${count} รายการ!`;
+      toast.innerHTML = '<span class="toast-icon">🛒</span> มีออเดอร์ใหม่เข้ามา ' + count + ' รายการ!';
       document.body.appendChild(toast);
       setTimeout(() => { if (toast.parentNode) toast.remove(); }, 4200);
     }
 
     function toggleSound() {
       soundEnabled = !soundEnabled;
-      localStorage.setItem('admin_sound_enabled', soundEnabled);
+      LS.setItem('admin_sound_enabled', soundEnabled);
       updateSoundButtonUI();
       if (soundEnabled) {
         playNotificationChime(true);
@@ -1736,7 +1755,7 @@
       allOrders = orders || [];
 
       try {
-        localStorage.setItem('cached_admin_orders', JSON.stringify(allOrders));
+        LS.setItem('cached_admin_orders', JSON.stringify(allOrders));
       } catch (e) { }
 
       let newCount = 0;
@@ -1764,7 +1783,7 @@
 
       // 1. ตรวจสอบข้อมูลจาก Cache ก่อน เพื่อแสดงผลทันทีแบบ 0ms
       try {
-        const cached = localStorage.getItem('cached_admin_orders');
+        const cached = LS.getItem('cached_admin_orders');
         if (cached && allOrders.length === 0) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1832,7 +1851,7 @@
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 9000);
-        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders&_t=${Date.now()}`, {
+        const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getAllOrders&_t=' + Date.now(), {
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -1853,16 +1872,12 @@
       if (allOrders.length === 0) {
         const tbody = document.getElementById('ordersBody');
         if (tbody) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
-                <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ยังไม่พบข้อมูลคำสั่งซื้อ หรือยังไม่ได้อัปเดต google.gs</p>
-                <p style="font-size: 13px; margin-bottom: 16px; color: #94a3b8;">กรุณาคัดลอกไฟล์ <code>google.gs</code> ไปวางทับใน Apps Script แล้วกด Deploy เวอร์ชันใหม่ (New Version)</p>
-                <button onclick="fetchOrders(true)" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">🔄 ลองใหม่อีกครั้ง</button>
-              </td>
-            </tr>
-          `;
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">' +
+            '<div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>' +
+            '<p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ยังไม่พบข้อมูลคำสั่งซื้อ หรือยังไม่ได้อัปเดต google.gs</p>' +
+            '<p style="font-size: 13px; margin-bottom: 16px; color: #94a3b8;">กรุณาคัดลอกไฟล์ <code>google.gs</code> ไปวางทับใน Apps Script แล้วกด Deploy เวอร์ชันใหม่ (New Version)</p>' +
+            '<button onclick="fetchOrders(true)" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">🔄 ลองใหม่อีกครั้ง</button>' +
+            '</td></tr>';
         }
       }
     }
@@ -1920,14 +1935,12 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
-              <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-              <p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>
-            </td>
-          </tr>
-        `;
+        tbody.innerHTML = '<tr>' +
+          '<td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<div style="font-size: 32px; margin-bottom: 8px;">🔍</div>' +
+          '<p style="font-weight: 500;">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</p>' +
+          '</td>' +
+          '</tr>';
         return;
       }
 
@@ -1938,39 +1951,27 @@
         const dateStr = order.timestamp ? new Date(order.timestamp).toLocaleString('th-TH') : '-';
         const cleanPhone = (order.phone || '').replace(/'/g, "");
         const isUnread = !readOrderIds.includes(order.orderId);
-        const unreadDot = isUnread ? `<span class="unread-badge" title="ยังไม่ได้เปิดดู"></span>` : '';
+        const unreadDot = isUnread ? '<span class="unread-badge" title="ยังไม่ได้เปิดดู"></span>' : '';
 
         const isTransfer = (order.paymentMethod && (order.paymentMethod.includes('โอน') || order.paymentMethod.includes('บัญชีธนาคาร') || order.paymentMethod.includes('ผสม')));
         const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+        const shipBadge = (order.shippingOption === 'รับหน้าร้าน')
+          ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>'
+          : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>';
 
-        tr.innerHTML = `
-          <td>
-            <div style="display: flex; align-items: center;">
-              ${unreadDot}
-              <div>
-                <strong style="color: var(--primary); font-size: 14px;">${order.orderId || '-'}</strong>
-                <div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap;">
-                  <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
-                  ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
-                </div>
-              </div>
-            </div>
-          </td>
-          <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
-          <td>
-            <div style="font-weight: 500;">${order.customerName || 'ไม่ระบุชื่อ'}</div>
-            <div style="font-size: 12px; color: var(--text-muted);">${cleanPhone}</div>
-          </td>
-          <td style="font-weight: 600; color: var(--text-main);">฿${Number(order.totalPrice || 0).toLocaleString()}</td>
-          <td>
-            <span class="status-badge ${meta.class}">
-              ${meta.icon} ${meta.name}
-            </span>
-          </td>
-          <td>
-            <button class="btn-action" onclick="viewOrder('${order.orderId}')">👁️ ดูรายละเอียด</button>
-          </td>
-        `;
+        tr.innerHTML = '<td><div style="display: flex; align-items: center;">' +
+          unreadDot +
+          '<div><strong style="color: var(--primary); font-size: 14px;">' + (order.orderId || '-') + '</strong>' +
+          '<div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap;">' +
+          '<span class="' + payBadgeClass + '">' + (order.paymentMethod || 'โอนจ่าย') + '</span>' +
+          shipBadge +
+          '</div></div></div></td>' +
+          '<td style="font-size: 13px; color: var(--text-muted);">' + dateStr + '</td>' +
+          '<td><div style="font-weight: 500;">' + (order.customerName || 'ไม่ระบุชื่อ') + '</div>' +
+          '<div style="font-size: 12px; color: var(--text-muted);">' + cleanPhone + '</div></td>' +
+          '<td style="font-weight: 600; color: var(--text-main);">฿' + Number(order.totalPrice || 0).toLocaleString() + '</td>' +
+          '<td><span class="status-badge ' + meta.class + '">' + meta.icon + ' ' + meta.name + '</span></td>' +
+          '<td><button class="btn-action" onclick="viewOrder(\'' + (order.orderId || '') + '\')">👁️ ดูรายละเอียด</button></td>';
         tbody.appendChild(tr);
       });
     }
@@ -2007,7 +2008,7 @@
       if (document.getElementById('stat-pending')) document.getElementById('stat-pending').textContent = checkingCount;
       if (document.getElementById('stat-payment')) document.getElementById('stat-payment').textContent = paymentCount;
       if (document.getElementById('stat-confirmed')) document.getElementById('stat-confirmed').textContent = shippingCount + completedCount;
-      if (document.getElementById('stat-sales')) document.getElementById('stat-sales').textContent = `฿${totalSales.toLocaleString()}`;
+      if (document.getElementById('stat-sales')) document.getElementById('stat-sales').textContent = '฿' + totalSales.toLocaleString();
 
       if (document.getElementById('count-all')) document.getElementById('count-all').textContent = allOrders.length;
       if (document.getElementById('count-pending')) document.getElementById('count-pending').textContent = checkingCount;
@@ -2036,20 +2037,47 @@
       actionsDiv.innerHTML = '';
 
       if (isModalEditMode) {
-        actionsDiv.innerHTML = `
-          <button id="btnSaveEditOrder" class="btn-success" onclick="saveOrderChanges()">💾 บันทึกการแก้ไข & แจ้งลูกค้า</button>
-          <button id="btnCancelEditOrder" class="btn-secondary" onclick="toggleModalEditMode()">↩️ ยกเลิกการแก้ไข</button>
-        `;
+        actionsDiv.innerHTML = '<button id="btnSaveEditOrder" class="btn-success" onclick="saveOrderChanges()">💾 บันทึกการแก้ไข & แจ้งลูกค้า</button>' +
+          '<button id="btnCancelEditOrder" class="btn-secondary" onclick="toggleModalEditMode()">↩️ ยกเลิกการแก้ไข</button>';
         actionsDiv.style.display = 'flex';
       } else {
         let buttonsHtml = '';
         const isEditable = order.status !== 'จัดส่งสำเร็จ' && order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
         if (isEditable) {
-          buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>`;
+          buttonsHtml += '<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขข้อมูลออเดอร์</button>';
         }
 
         const isTransfer = (order.paymentMethod && (order.paymentMethod.includes('โอน') || order.paymentMethod.includes('บัญชีธนาคาร') || order.paymentMethod.includes('ผสม')));
         const isCod = !isTransfer;
+        const currentMeta = getStatusMeta(order.status);
+        const normStatus = currentMeta.name;
+
+        // Quick Next Step Button
+        let nextStepBtn = '';
+        if (isCod) {
+          if (normStatus === 'กำลังตรวจสอบออเดอร์') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'กำลังจัดเตรียมสินค้า\')">📦 ยืนยันออเดอร์ -> กำลังจัดเตรียมสินค้า</button>';
+          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'กำลังจัดส่ง\')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>';
+          } else if (normStatus === 'กำลังจัดส่ง') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'จัดส่งสำเร็จ\')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>';
+          }
+        } else {
+          if (normStatus === 'กำลังตรวจสอบออเดอร์') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'ชำระเงิน\')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>';
+          } else if (normStatus === 'ชำระเงิน') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'กำลังจัดเตรียมสินค้า\')">📦 ตรวจสอบยอดแล้ว -> กำลังจัดเตรียมสินค้า</button>';
+          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'กำลังจัดส่ง\')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>';
+          } else if (normStatus === 'กำลังจัดส่ง') {
+            nextStepBtn = '<button class="btn-success" onclick="updateStatus(\'จัดส่งสำเร็จ\')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>';
+          }
+        }
+
+        if (nextStepBtn) {
+          buttonsHtml += nextStepBtn;
+        }
+
         const statuses = isCod ? [
           { val: 'กำลังตรวจสอบออเดอร์', label: '⏳ 1. กำลังตรวจสอบออเดอร์' },
           { val: 'กำลังจัดเตรียมสินค้า', label: '📦 2. กำลังจัดเตรียมสินค้า' },
@@ -2065,19 +2093,21 @@
           { val: 'ยกเลิก', label: '❌ ยกเลิกออเดอร์' }
         ];
 
-        const currentMeta = getStatusMeta(order.status);
-        let optionsHtml = statuses.map(s => `
-          <option value="${s.val}" ${currentMeta.name === s.val ? 'selected' : ''}>${s.label}</option>
-        `).join('');
+        let optionsHtml = '';
+        statuses.forEach(function (s) {
+          optionsHtml += '<option value="' + s.val + '" ' + (currentMeta.name === s.val ? 'selected' : '') + '>' + s.label + '</option>';
+        });
 
-        buttonsHtml += `
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <label style="font-weight: 600; font-size: 13px;">เปลี่ยนสถานะ (${isCod ? 'ปลายทาง' : 'โอนจ่าย'}):</label>
-            <select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">
-              ${optionsHtml}
-            </select>
-          </div>
-        `;
+        buttonsHtml += '<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">' +
+          '<label style="font-weight: 600; font-size: 13px;">เปลี่ยนสถานะ (' + (isCod ? 'ปลายทาง' : 'โอนจ่าย') + '):</label>' +
+          '<select id="modalStatusSelect" onchange="updateStatus(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-weight: 600; background: white; cursor: pointer;">' +
+          optionsHtml +
+          '</select>' +
+          '</div>';
+
+        if (isEditable) {
+          buttonsHtml += '<button class="btn-danger" onclick="updateStatus(\'ยกเลิก\')">❌ ยกเลิกออเดอร์</button>';
+        }
 
         actionsDiv.innerHTML = buttonsHtml;
         actionsDiv.style.display = 'flex';
@@ -2134,7 +2164,7 @@
     async function fetchMembersViaFetch(showLoading) {
       const loading = document.getElementById('membersLoadingIndicator');
       try {
-        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllMembers&_t=${Date.now()}`);
+        const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getAllMembers&_t=' + Date.now());
         if (res.ok) {
           const data = await res.json();
           if (data && (data.status === 'success' || Array.isArray(data.members))) {
@@ -2173,7 +2203,7 @@
             URL.revokeObjectURL(url);
 
             if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
-            alert(`✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (${data.total} สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!`);
+            alert('✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (' + data.total + ' สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!');
           } catch(e) {
             alert('❌ Error parsing JSON: ' + e.message);
             if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
@@ -2200,14 +2230,12 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
-              <div style="font-size: 32px; margin-bottom: 8px;">👥</div>
-              <p style="font-weight: 500;">ยังไม่มีสมาชิกในระบบหรือหาไม่พบ</p>
-            </td>
-          </tr>
-        `;
+        tbody.innerHTML = '<tr>' +
+          '<td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<div style="font-size: 32px; margin-bottom: 8px;">👥</div>' +
+          '<p style="font-weight: 500;">ยังไม่มีสมาชิกในระบบหรือหาไม่พบ</p>' +
+          '</td>' +
+          '</tr>';
         return;
       }
 
@@ -2224,25 +2252,23 @@
         } catch (e) { }
 
         const avatarHtml = m.pictureUrl
-          ? `<img src="${m.pictureUrl}" alt="${m.displayName}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />`
-          : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">${(m.displayName || 'U').charAt(0)}</div>`;
+          ? '<img src="' + m.pictureUrl + '" alt="' + (m.displayName || '') + '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />'
+          : '<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">' + ((m.displayName || 'U').charAt(0)) + '</div>';
 
         const cleanPhone = m.phone ? m.phone.replace(/'/g, "") : '-';
 
-        tr.innerHTML = `
-          <td>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              ${avatarHtml}
-              <div>
-                <strong style="font-size: 14px; color: var(--text-main);">${m.displayName || 'ไม่ระบุชื่อ'}</strong>
-                <div style="font-size: 12px; color: var(--text-muted);">${m.email || 'ไม่มีอีเมล'}</div>
-              </div>
-            </div>
-          </td>
-          <td><span style="font-weight: 600; color: #1e293b;">${cleanPhone}</span></td>
-          <td><code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">${m.userId || '-'}</code></td>
-          <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
-        `;
+        tr.innerHTML = '<td>' +
+          '<div style="display: flex; align-items: center; gap: 12px;">' +
+          avatarHtml +
+          '<div>' +
+          '<strong style="font-size: 14px; color: var(--text-main);">' + (m.displayName || 'ไม่ระบุชื่อ') + '</strong>' +
+          '<div style="font-size: 12px; color: var(--text-muted);">' + (m.email || 'ไม่มีอีเมล') + '</div>' +
+          '</div>' +
+          '</div>' +
+          '</td>' +
+          '<td><span style="font-weight: 600; color: #1e293b;">' + cleanPhone + '</span></td>' +
+          '<td><code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">' + (m.userId || '-') + '</code></td>' +
+          '<td style="font-size: 13px; color: var(--text-muted);">' + dateStr + '</td>';
         tbody.appendChild(tr);
       });
     }
@@ -2267,7 +2293,7 @@
       // Mark order as read (remove red dot) - lightweight, no full re-render
       if (!readOrderIds.includes(orderId)) {
         readOrderIds.push(orderId);
-        localStorage.setItem('admin_read_orders', JSON.stringify(readOrderIds));
+        try { LS.setItem('admin_read_orders', JSON.stringify(readOrderIds)); } catch (e) { }
         // Remove just the dot from the row instead of re-rendering entire table
         const dots = document.querySelectorAll('.unread-badge');
         dots.forEach(dot => {
@@ -2300,10 +2326,8 @@
 
       if (gpsUrl) {
         if (mapContainer) mapContainer.dataset.gpsUrl = gpsUrl;
-        gpsEl.innerHTML = `
-          <a href="${gpsUrl}" target="_blank" rel="noopener noreferrer" class="gps-link">📌 เปิดแผนที่ Google Maps</a>
-          <button class="btn-open-map" onclick="toggleMapEmbed(true)">🗺️ ดูแผนที่ในหน้านี้</button>
-        `;
+        gpsEl.innerHTML = '<a href="' + gpsUrl + '" target="_blank" rel="noopener noreferrer" class="gps-link">📌 เปิดแผนที่ Google Maps</a> ' +
+          '<button class="btn-open-map" onclick="toggleMapEmbed(true)">🗺️ ดูแผนที่ในหน้านี้</button>';
       } else {
         gpsEl.textContent = order.gpsLocation || '-';
       }
@@ -2317,66 +2341,6 @@
       renderModalActions(order);
 
       document.getElementById('orderModal').classList.add('active');
-    }
-
-    function renderModalActions(order) {
-      const actionsDiv = document.getElementById('modalActions');
-      if (!actionsDiv) return;
-      actionsDiv.innerHTML = '';
-
-      const isEditable = order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
-
-      if (isModalEditMode) {
-        actionsDiv.innerHTML = `
-          <button id="btnSaveEditOrder" class="btn-success" onclick="saveOrderChanges()">💾 บันทึกการแก้ไข & แจ้งลูกค้า</button>
-          <button id="btnCancelEditOrder" class="btn-secondary" onclick="toggleModalEditMode()">↩️ ยกเลิกการแก้ไข</button>
-        `;
-        actionsDiv.style.display = 'flex';
-      } else {
-        let buttonsHtml = '';
-        const isEditable = order.status !== 'จัดส่งสำเร็จ' && order.status !== 'ยืนยันแล้ว' && order.status !== 'ยกเลิก';
-        if (isEditable) {
-          buttonsHtml += `<button id="btnEditOrder" class="btn-warning" onclick="toggleModalEditMode()">✏️ แก้ไขออเดอร์</button>`;
-        }
-
-        const isTransfer = order.paymentMethod === 'โอนจ่าย' || order.paymentMethod === 'โอนเงินผ่านบัญชีธนาคาร' || order.paymentMethod === 'โอนเงินผสมเงินสด';
-        const isCod = !isTransfer;
-        const currentMeta = getStatusMeta(order.status);
-        const normStatus = currentMeta.name;
-
-        // ปุ่มลัดไปขั้นตอนถัดไป (Quick Action Button)
-        let nextStepBtn = '';
-        if (isCod) {
-          if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดเตรียมสินค้า')">📦 ยืนยันออเดอร์ -> กำลังจัดเตรียมสินค้า</button>`;
-          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>`;
-          } else if (normStatus === 'กำลังจัดส่ง') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
-          }
-        } else {
-          if (normStatus === 'กำลังตรวจสอบออเดอร์') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('ชำระเงิน')">💳 ยืนยันออเดอร์ & ส่ง QR ชำระเงิน</button>`;
-          } else if (normStatus === 'ชำระเงิน') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดเตรียมสินค้า')">📦 ตรวจสอบยอดแล้ว -> กำลังจัดเตรียมสินค้า</button>`;
-          } else if (normStatus === 'กำลังจัดเตรียมสินค้า') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('กำลังจัดส่ง')">🚚 เตรียมเสร็จแล้ว -> กำลังจัดส่ง</button>`;
-          } else if (normStatus === 'กำลังจัดส่ง') {
-            nextStepBtn = `<button class="btn-success" onclick="updateStatus('จัดส่งสำเร็จ')">✅ สินค้าถึงลูกค้าแล้ว -> จัดส่งสำเร็จ</button>`;
-          }
-        }
-
-        if (nextStepBtn) {
-          buttonsHtml += nextStepBtn;
-        }
-
-        if (isEditable) {
-          buttonsHtml += `<button class="btn-danger" onclick="updateStatus('ยกเลิก')">❌ ยกเลิกออเดอร์</button>`;
-        }
-
-        actionsDiv.innerHTML = buttonsHtml;
-        actionsDiv.style.display = 'flex';
-      }
     }
 
     let currentEditingOrder = null;
@@ -2476,37 +2440,31 @@
           tr.dataset.index = index;
 
           if (isEditMode) {
-            tr.innerHTML = `
-              <td>${item.id || '-'}</td>
-              <td><strong>${item.name || '-'}</strong></td>
-              <td>
-                <input type="number" class="input-edit-qty" data-index="${index}" value="${itemQty}" min="1" oninput="onRowEditChange(${index})">
-              </td>
-              <td>
-                <input type="number" class="input-edit-price" data-index="${index}" value="${itemPrice}" min="0" step="1" oninput="onRowEditChange(${index})">
-              </td>
-              <td><span class="row-subtotal-text" id="rowSubtotal_${index}">฿${itemSubtotal.toLocaleString()}</span></td>
-              <td style="text-align:center;">
-                ${order.items.length > 1
-                  ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
-                  : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
-                }
-              </td>
-            `;
+            tr.innerHTML = '<td>' + (item.id || '-') + '</td>' +
+              '<td><strong>' + (item.name || '-') + '</strong></td>' +
+              '<td>' +
+              '<input type="number" class="input-edit-qty" data-index="' + index + '" value="' + itemQty + '" min="1" oninput="onRowEditChange(' + index + ')">' +
+              '</td>' +
+              '<td>' +
+              '<input type="number" class="input-edit-price" data-index="' + index + '" value="' + itemPrice + '" min="0" step="1" oninput="onRowEditChange(' + index + ')">' +
+              '</td>' +
+              '<td><span class="row-subtotal-text" id="rowSubtotal_' + index + '">฿' + itemSubtotal.toLocaleString() + '</span></td>' +
+              '<td style="text-align:center;">' +
+              (order.items.length > 1
+                ? '<button class="btn-delete-item" onclick="deleteOrderItem(\'' + order.orderId + '\', ' + index + ')" title="ลบรายการนี้">🗑️</button>'
+                : '<span style="color:#cbd5e1; font-size:14px;">—</span>') +
+              '</td>';
           } else {
-            tr.innerHTML = `
-              <td>${item.id || '-'}</td>
-              <td><strong>${item.name || '-'}</strong></td>
-              <td>x${itemQty}</td>
-              <td>฿${itemPrice.toLocaleString()}</td>
-              <td>฿${itemSubtotal.toLocaleString()}</td>
-              <td style="text-align:center;">
-                ${isEditable && order.items.length > 1
-                  ? `<button class="btn-delete-item" onclick="deleteOrderItem('${order.orderId}', ${index})" title="ลบรายการนี้">🗑️</button>`
-                  : `<span style="color:#cbd5e1; font-size:14px;">—</span>`
-                }
-              </td>
-            `;
+            tr.innerHTML = '<td>' + (item.id || '-') + '</td>' +
+              '<td><strong>' + (item.name || '-') + '</strong></td>' +
+              '<td>x' + itemQty + '</td>' +
+              '<td>฿' + itemPrice.toLocaleString() + '</td>' +
+              '<td>฿' + itemSubtotal.toLocaleString() + '</td>' +
+              '<td style="text-align:center;">' +
+              (isEditable && order.items.length > 1
+                ? '<button class="btn-delete-item" onclick="deleteOrderItem(\'' + order.orderId + '\', ' + index + ')" title="ลบรายการนี้">🗑️</button>'
+                : '<span style="color:#cbd5e1; font-size:14px;">—</span>') +
+              '</td>';
           }
           itemsBody.appendChild(tr);
         });
@@ -2524,16 +2482,16 @@
       const shippingFee = isPickup ? 0 : Math.max(0, grandTotal - itemsSubtotal);
 
       const subtotalEl = document.getElementById('modalSubtotalPrice');
-      if (subtotalEl) subtotalEl.textContent = `฿${itemsSubtotal.toLocaleString()}`;
+      if (subtotalEl) subtotalEl.textContent = '฿' + itemsSubtotal.toLocaleString();
 
       const feeEl = document.getElementById('modalShippingFee');
       if (feeEl) {
         if (isPickup) {
-          feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>`;
+          feeEl.innerHTML = '<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>';
         } else if (shippingFee === 0) {
-          feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0</span>`;
+          feeEl.innerHTML = '<span style="color: #16a34a;">ฟรี ฿0</span>';
         } else {
-          feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+          feeEl.textContent = '฿' + shippingFee.toLocaleString();
         }
       }
 
@@ -2541,13 +2499,13 @@
       if (optionLabelEl) optionLabelEl.textContent = isPickup ? 'รับหน้าร้าน' : 'จัดส่ง';
 
       const totalEl = document.getElementById('modalTotalPrice');
-      if (totalEl) totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
+      if (totalEl) totalEl.textContent = '฿' + grandTotal.toLocaleString();
     }
 
     function onRowEditChange(index) {
-      const qtyInput = document.querySelector(`.input-edit-qty[data-index="${index}"]`);
-      const priceInput = document.querySelector(`.input-edit-price[data-index="${index}"]`);
-      const subtotalEl = document.getElementById(`rowSubtotal_${index}`);
+      const qtyInput = document.querySelector('.input-edit-qty[data-index="' + index + '"]');
+      const priceInput = document.querySelector('.input-edit-price[data-index="' + index + '"]');
+      const subtotalEl = document.getElementById('rowSubtotal_' + index);
 
       if (!qtyInput || !priceInput) return;
 
@@ -2556,7 +2514,7 @@
       const subtotal = qty * price;
 
       if (subtotalEl) {
-        subtotalEl.textContent = `฿${subtotal.toLocaleString()}`;
+        subtotalEl.textContent = '฿' + subtotal.toLocaleString();
       }
 
       recalculateModalTotalFromInputs();
@@ -2584,21 +2542,21 @@
       const newGrandTotal = itemsSubtotal + shippingFee;
 
       const subtotalEl = document.getElementById('modalSubtotalPrice');
-      if (subtotalEl) subtotalEl.textContent = `฿${itemsSubtotal.toLocaleString()}`;
+      if (subtotalEl) subtotalEl.textContent = '฿' + itemsSubtotal.toLocaleString();
 
       const feeEl = document.getElementById('modalShippingFee');
       if (feeEl) {
         if (isPickup) {
-          feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>`;
+          feeEl.innerHTML = '<span style="color: #16a34a;">ฟรี ฿0 (รับหน้าร้าน)</span>';
         } else if (shippingFee === 0) {
-          feeEl.innerHTML = `<span style="color: #16a34a;">ฟรี ฿0</span>`;
+          feeEl.innerHTML = '<span style="color: #16a34a;">ฟรี ฿0</span>';
         } else {
-          feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+          feeEl.textContent = '฿' + shippingFee.toLocaleString();
         }
       }
 
       const totalEl = document.getElementById('modalTotalPrice');
-      if (totalEl) totalEl.textContent = `฿${newGrandTotal.toLocaleString()}`;
+      if (totalEl) totalEl.textContent = '฿' + newGrandTotal.toLocaleString();
     }
 
     function saveOrderChanges() {
@@ -2637,7 +2595,7 @@
       const changeNoteInput = document.getElementById('editChangeNote');
       const changeNote = changeNoteInput ? changeNoteInput.value.trim() : '';
 
-      if (!confirm(`ยืนยันการปรับเปลี่ยนข้อมูลออเดอร์ ${currentViewingOrderId} และส่งข้อความแจ้งเตือนหาลูกค้าผ่าน LINE หรือไม่?`)) {
+      if (!confirm('ยืนยันการปรับเปลี่ยนข้อมูลออเดอร์ ' + currentViewingOrderId + ' และส่งข้อความแจ้งเตือนหาลูกค้าผ่าน LINE หรือไม่?')) {
         return;
       }
 
@@ -2686,9 +2644,9 @@
       if (!itemToDelete) return;
 
       const itemName = itemToDelete.name || 'รายการนี้';
-      if (!confirm(`ต้องการลบ "${itemName}" ออกจากออเดอร์นี้หรือไม่?\n\n⚠️ ยอดรวมจะถูกคำนวณใหม่อัตโนมัติ`)) return;
+      if (!confirm('ต้องการลบ "' + itemName + '" ออกจากออเดอร์นี้หรือไม่?\n\n⚠️ ยอดรวมจะถูกคำนวณใหม่อัตโนมัติ')) return;
 
-      const row = document.querySelector(`#modalItemsBody tr[data-index="${itemIndex}"]`);
+      const row = document.querySelector('#modalItemsBody tr[data-index="' + itemIndex + '"]');
       if (row) row.classList.add('item-row-deleting');
 
       setTimeout(() => {
@@ -2714,7 +2672,7 @@
             console.error('Delete item error:', err);
             alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
           })
-          .updateOrderItemsNative(orderId, newItems, newTotal, true, `ลบรายการสินค้า "${itemName}" ออกจากออเดอร์`);
+          .updateOrderItemsNative(orderId, newItems, newTotal, true, 'ลบรายการสินค้า "' + itemName + '" ออกจากออเดอร์');
       }, 350);
     }
 
@@ -2732,9 +2690,9 @@
         else if (qMatch) { lat = qMatch[1]; lng = qMatch[2]; }
 
         if (lat && lng) {
-          mapFrame.innerHTML = `<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" allowfullscreen loading="lazy"></iframe>`;
+          mapFrame.innerHTML = '<iframe src="https://maps.google.com/maps?q=' + lat + ',' + lng + '&z=16&output=embed" allowfullscreen loading="lazy"></iframe>';
         } else {
-          mapFrame.innerHTML = `<iframe src="https://maps.google.com/maps?q=${encodeURIComponent(gpsUrl)}&z=15&output=embed" allowfullscreen loading="lazy"></iframe>`;
+          mapFrame.innerHTML = '<iframe src="https://maps.google.com/maps?q=' + encodeURIComponent(gpsUrl) + '&z=15&output=embed" allowfullscreen loading="lazy"></iframe>';
         }
         mapContainer.style.display = 'block';
       } else {
@@ -2792,7 +2750,7 @@
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(30px) scale(0.9)';
 
-      toast.innerHTML = `<span style="font-size: 40px; display: inline-flex; align-items: center;">${icon}</span> <span>${message}</span>`;
+      toast.innerHTML = '<span style="font-size: 40px; display: inline-flex; align-items: center;">' + icon + '</span> <span>' + message + '</span>';
       document.body.appendChild(toast);
 
       setTimeout(() => {
@@ -2814,7 +2772,7 @@
 
     function updateStatus(newStatus) {
       if (!currentViewingOrderId) return;
-      if (!confirm(`ยืนยันการเปลี่ยนสถานะออเดอร์เป็น "${newStatus}" หรือไม่?`)) return;
+      if (!confirm('ยืนยันการเปลี่ยนสถานะออเดอร์เป็น "' + newStatus + '" หรือไม่?')) return;
 
       const orderId = currentViewingOrderId;
       const orderIndex = allOrders.findIndex(o => o.orderId === orderId);
@@ -2829,7 +2787,7 @@
       closeModal();
 
       // Show temporary loading toast
-      const loadingToast = showToast(`กำลังอัปเดตสถานะออเดอร์เป็น "${newStatus}"...`, 'loading');
+      const loadingToast = showToast('กำลังอัปเดตสถานะออเดอร์เป็น "' + newStatus + '"...', 'loading');
 
       // 2. Perform network request in background
       google.script.run
@@ -2907,7 +2865,7 @@
         if (match1) driveId = match1[1];
         else if (match2) driveId = match2[1];
         if (driveId) {
-          optimizedUrl = `https://lh3.googleusercontent.com/d/${driveId}`;
+          optimizedUrl = 'https://lh3.googleusercontent.com/d/' + driveId;
         }
       }
       return optimizedUrl;
@@ -2923,7 +2881,7 @@
 
       // 1. Check local storage cache
       try {
-        const cached = localStorage.getItem('cached_admin_products');
+        const cached = LS.getItem('cached_admin_products');
         if (cached && allProducts.length === 0) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -2963,7 +2921,7 @@
       // 3. Fallback: URL fetch
       if (!fetchedData || fetchedData.length === 0) {
         try {
-          const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+          const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getProducts&_t=' + Date.now());
           if (res.ok) {
             const data = await res.json();
             if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
@@ -2980,16 +2938,14 @@
       } else if (allProducts.length === 0) {
         const tbody = document.getElementById('productsBody');
         if (tbody) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="7" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
-                <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถดึงข้อมูลสินค้าได้</p>
-                <p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือกดปุ่มรีเฟรชอีกครั้ง</p>
-                <button onclick="fetchProducts(true)" class="btn-primary">🔄 ลองใหม่อีกครั้ง</button>
-              </td>
-            </tr>
-          `;
+          tbody.innerHTML = '<tr>' +
+            '<td colspan="7" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">' +
+            '<div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>' +
+            '<p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถดึงข้อมูลสินค้าได้</p>' +
+            '<p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือกดปุ่มรีเฟรชอีกครั้ง</p>' +
+            '<button onclick="fetchProducts(true)" class="btn-primary">🔄 ลองใหม่อีกครั้ง</button>' +
+            '</td>' +
+            '</tr>';
         }
       }
 
@@ -3003,7 +2959,7 @@
       isAdminProductsLoaded = true;
 
       try {
-        localStorage.setItem('cached_admin_products', JSON.stringify(allProducts));
+        LS.setItem('cached_admin_products', JSON.stringify(allProducts));
       } catch (e) { }
 
       populateCategoryAndTagFilters();
@@ -3037,7 +2993,7 @@
       let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
       sortedCats.forEach(c => {
         const count = allProducts.filter(p => p.category === c).length;
-        catHtml += `<option value="${c}">${c} (${count.toLocaleString()})</option>`;
+        catHtml += '<option value="' + c + '">' + c + ' (' + count.toLocaleString() + ')</option>';
       });
       catSelect.innerHTML = catHtml;
       if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
@@ -3045,7 +3001,7 @@
       let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
       sortedTags.forEach(t => {
         const count = allProducts.filter(p => p.tag === t).length;
-        tagHtml += `<option value="${t}">${t} (${count.toLocaleString()})</option>`;
+        tagHtml += '<option value="' + t + '">' + t + ' (' + count.toLocaleString() + ')</option>';
       });
       tagSelect.innerHTML = tagHtml;
       if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
@@ -3091,7 +3047,7 @@
       const showingText = document.getElementById('productShowingCountText');
       const countToDisplay = Math.min(productVisibleLimit, filteredProducts.length);
       if (showingText) {
-        showingText.textContent = `แสดง ${countToDisplay.toLocaleString()} จากที่ค้นพบ ${filteredProducts.length.toLocaleString()} รายการ (สินค้าทั้งหมดในระบบ ${allProducts.length.toLocaleString()} รายการ)`;
+        showingText.textContent = 'แสดง ' + countToDisplay.toLocaleString() + ' จากที่ค้นพบ ' + filteredProducts.length.toLocaleString() + ' รายการ (สินค้าทั้งหมดในระบบ ' + allProducts.length.toLocaleString() + ' รายการ)';
       }
 
       const loadMoreBtnContainer = document.getElementById('productLoadMoreContainer');
@@ -3114,47 +3070,43 @@
       const slice = filteredProducts.slice(0, productVisibleLimit);
 
       if (slice.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
-              <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-              <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
-            </td>
-          </tr>
-        `;
+        tbody.innerHTML = '<tr>' +
+          '<td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<div style="font-size: 32px; margin-bottom: 8px;">🔍</div>' +
+          '<p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '</td>' +
+          '</tr>';
         return;
       }
 
       slice.forEach(p => {
         const tr = document.createElement('tr');
         const imgUrl = getOptimizedImageUrl(p.img);
-        const tagHtml = p.tag ? `<span class="tag-badge">${p.tag}</span>` : `<span style="color:#cbd5e1;">-</span>`;
-        const catHtml = p.category ? `<span class="category-badge">${p.category}</span>` : `<span style="color:#cbd5e1;">-</span>`;
+        const tagHtml = p.tag ? '<span class="tag-badge">' + p.tag + '</span>' : '<span style="color:#cbd5e1;">-</span>';
+        const catHtml = p.category ? '<span class="category-badge">' + p.category + '</span>' : '<span style="color:#cbd5e1;">-</span>';
 
-        tr.innerHTML = `
-          <td>
-            <img src="${imgUrl}" alt="${p.name}" class="product-table-thumb" onclick="openProductDetailModal('${p.id}')" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
-          </td>
-          <td>
-            <div class="sku-cell-wrapper">
-              <code class="sku-code">${p.id}</code>
-              <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)" title="คัดลอกรหัสสินค้า">📋</button>
-            </div>
-          </td>
-          <td>
-            <div style="cursor: pointer;" onclick="openProductDetailModal('${p.id}')">
-              <strong style="font-size: 13.5px; color: var(--text-main); display: block; line-height: 1.35;">${p.name}</strong>
-            </div>
-          </td>
-          <td>${catHtml}</td>
-          <td>
-            <strong style="color: #1e293b; font-size: 14px;">฿${(Number(p.price) || 0).toLocaleString()}</strong>
-          </td>
-          <td>${tagHtml}</td>
-          <td style="text-align: right;">
-            <button class="btn-view" onclick="openProductDetailModal('${p.id}')">🔍 ดูข้อมูล</button>
-          </td>
-        `;
+        tr.innerHTML = '<td>' +
+          '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="product-table-thumb" onclick="openProductDetailModal(\'' + p.id + '\')" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
+          '</td>' +
+          '<td>' +
+          '<div class="sku-cell-wrapper">' +
+          '<code class="sku-code">' + (p.id || '') + '</code>' +
+          '<button class="btn-copy-sku" onclick="copyProductSku(\'' + p.id + '\', event)" title="คัดลอกรหัสสินค้า">📋</button>' +
+          '</div>' +
+          '</td>' +
+          '<td>' +
+          '<div style="cursor: pointer;" onclick="openProductDetailModal(\'' + p.id + '\')">' +
+          '<strong style="font-size: 13.5px; color: var(--text-main); display: block; line-height: 1.35;">' + (p.name || '') + '</strong>' +
+          '</div>' +
+          '</td>' +
+          '<td>' + catHtml + '</td>' +
+          '<td>' +
+          '<strong style="color: #1e293b; font-size: 14px;">฿' + (Number(p.price) || 0).toLocaleString() + '</strong>' +
+          '</td>' +
+          '<td>' + tagHtml + '</td>' +
+          '<td style="text-align: right;">' +
+          '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')">🔍 ดูข้อมูล</button>' +
+          '</td>';
         tbody.appendChild(tr);
       });
     }
@@ -3167,12 +3119,10 @@
       const slice = filteredProducts.slice(0, productVisibleLimit);
 
       if (slice.length === 0) {
-        container.innerHTML = `
-          <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
-            <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-            <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
-          </div>
-        `;
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<div style="font-size: 32px; margin-bottom: 8px;">🔍</div>' +
+          '<p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '</div>';
         return;
       }
 
@@ -3180,26 +3130,24 @@
         const card = document.createElement('div');
         card.className = 'admin-product-card';
         const imgUrl = getOptimizedImageUrl(p.img);
-        const tagHtml = p.tag ? `<div class="admin-product-card-tag">${p.tag}</div>` : '';
+        const tagHtml = p.tag ? '<div class="admin-product-card-tag">' + p.tag + '</div>' : '';
 
-        card.innerHTML = `
-          <div class="admin-product-card-img-wrap" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">
-            <img src="${imgUrl}" alt="${p.name}" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
-            ${tagHtml}
-          </div>
-          <div class="admin-product-card-body">
-            <div class="admin-product-card-category">${p.category || 'ทั่วไป'}</div>
-            <div class="admin-product-card-title" title="${p.name}" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">${p.name}</div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <code class="sku-code">${p.id}</code>
-              <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)">📋 คัดลอก</button>
-            </div>
-            <div class="admin-product-card-footer">
-              <div class="admin-product-card-price">฿${(Number(p.price) || 0).toLocaleString()}</div>
-              <button class="btn-view" onclick="openProductDetailModal('${p.id}')">ดูข้อมูล</button>
-            </div>
-          </div>
-        `;
+        card.innerHTML = '<div class="admin-product-card-img-wrap" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' +
+          '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
+          tagHtml +
+          '</div>' +
+          '<div class="admin-product-card-body">' +
+          '<div class="admin-product-card-category">' + (p.category || 'ทั่วไป') + '</div>' +
+          '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || '') + '</div>' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">' +
+          '<code class="sku-code">' + (p.id || '') + '</code>' +
+          '<button class="btn-copy-sku" onclick="copyProductSku(\'' + p.id + '\', event)">📋 คัดลอก</button>' +
+          '</div>' +
+          '<div class="admin-product-card-footer">' +
+          '<div class="admin-product-card-price">฿' + (Number(p.price) || 0).toLocaleString() + '</div>' +
+          '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')">ดูข้อมูล</button>' +
+          '</div>' +
+          '</div>';
         container.appendChild(card);
       });
     }
@@ -3247,7 +3195,7 @@
       if (event) event.stopPropagation();
       if (!sku) return;
       navigator.clipboard.writeText(String(sku)).then(() => {
-        showToast(`คัดลอกรหัสสินค้า ${sku} แล้ว!`, 'success');
+        showToast('คัดลอกรหัสสินค้า ' + sku + ' แล้ว!', 'success');
       }).catch(() => {
         const temp = document.createElement('input');
         temp.value = sku;
@@ -3255,7 +3203,7 @@
         temp.select();
         document.execCommand('copy');
         temp.remove();
-        showToast(`คัดลอกรหัสสินค้า ${sku} แล้ว!`, 'success');
+        showToast('คัดลอกรหัสสินค้า ' + sku + ' แล้ว!', 'success');
       });
     }
 
@@ -3330,7 +3278,7 @@
       if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
       const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
-      if (statAvg) statAvg.textContent = `฿${avg.toLocaleString()}`;
+      if (statAvg) statAvg.textContent = '฿' + avg.toLocaleString();
     }
 
   </script>
