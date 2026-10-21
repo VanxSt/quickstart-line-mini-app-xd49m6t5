@@ -1214,11 +1214,254 @@
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    /* ========================================== */
+    /* ADMIN LOGIN & AUTH STYLES */
+    /* ========================================== */
+    .admin-login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.98) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .admin-login-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: loginCardPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    @keyframes loginCardPop {
+      0% { opacity: 0; transform: scale(0.92) translateY(12px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .admin-login-card.shake {
+      animation: shake 0.4s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .login-icon-box {
+      width: 56px;
+      height: 56px;
+      background: var(--primary-light);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    }
+
+    .login-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .login-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .login-field {
+      margin-bottom: 18px;
+    }
+
+    .login-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .password-input-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-box input {
+      width: 100%;
+      padding: 12px 44px 12px 14px;
+      font-size: 14.5px;
+      font-family: inherit;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .password-input-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .btn-toggle-eye {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 6px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-error-alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .login-remember-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      font-size: 13px;
+    }
+
+    .remember-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #475569;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .btn-login-submit {
+      width: 100%;
+      padding: 13px 20px;
+      background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-login-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-login-submit:active {
+      transform: translateY(0);
+    }
+
+    .login-footer-info {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
   </style>
 </head>
 
 <body>
-  <div class="dashboard-container">
+  <!-- ========================================== -->
+  <!-- ADMIN LOGIN OVERLAY -->
+  <!-- ========================================== -->
+  <div id="adminLoginOverlay" class="admin-login-overlay" style="display: none;">
+    <div class="admin-login-card" id="adminLoginCard">
+      <div class="login-header">
+        <div class="login-icon-box">🔐</div>
+        <h2>เข้าสู่ระบบผู้ดูแล</h2>
+        <p>Admin Dashboard • ร้านเกื้อกูลกัน</p>
+      </div>
+
+      <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+        <div class="login-field">
+          <label for="adminPasswordInput">🔑 รหัสผ่านผู้ดูแลระบบ (Admin Password)</label>
+          <div class="password-input-box">
+            <input type="password" id="adminPasswordInput" placeholder="กรอกรหัสผ่านเพื่อเข้าใช้งาน" autocomplete="current-password" required />
+            <button type="button" class="btn-toggle-eye" onclick="toggleAdminPasswordEye()" title="ดูรหัสผ่าน">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <div id="loginErrorAlert" class="login-error-alert">
+          <span>⚠️</span> <span id="loginErrorText">รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง</span>
+        </div>
+
+        <div class="login-remember-row">
+          <label class="remember-label">
+            <input type="checkbox" id="rememberAdminLogin" checked />
+            <span>จดจำการเข้าสู่ระบบในเครื่องนี้</span>
+          </label>
+        </div>
+
+        <button type="submit" id="btnAdminSubmitLogin" class="btn-login-submit">
+          <span>เข้าสู่ระบบหลังบ้าน</span> <span>➔</span>
+        </button>
+      </form>
+
+      <div class="login-footer-info">
+        🛡️ ระบบความปลอดภัยมาตรฐาน • เชื่อมต่อ Cloudflare D1
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-container" id="dashboardContainer" style="display: none;">
     <aside class="sidebar">
       <div class="logo">
         <div class="logo-icon">📦</div>
@@ -1231,6 +1474,26 @@
         <a href="#" class="nav-item" id="navProducts" onclick="switchTab('products')">🏷️ รายการสินค้า (Products)</a>
         <a href="#" class="nav-item" id="navMembers" onclick="switchTab('members')">👥 สมาชิก (Members)</a>
       </nav>
+
+      <div class="sidebar-footer" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 4px;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
+            👤
+          </div>
+          <div style="flex: 1; overflow: hidden;">
+            <div style="font-weight: 600; font-size: 13.5px; color: var(--text-main);">ผู้ดูแลระบบ</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">ร้านเกื้อกูลกัน</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button onclick="openChangePasswordModal()" style="width: 100%; padding: 8px 12px; background: #f8fafc; color: #475569; border: 1px solid var(--border); border-radius: 8px; font-weight: 500; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+            🔑 เปลี่ยนรหัสผ่าน
+          </button>
+          <button onclick="adminLogout()" style="width: 100%; padding: 8px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+            🚪 ออกจากระบบ
+          </button>
+        </div>
+      </div>
     </aside>
 
     <main class="main-content">
@@ -1659,6 +1922,37 @@
     </div>
   </div>
 
+  <!-- Change Password Modal -->
+  <div id="changePasswordModal" class="modal-overlay">
+    <div class="modal" style="max-width: 420px;">
+      <header class="modal-header">
+        <h3 style="font-size: 17px; font-weight: 700;">🔑 เปลี่ยนรหัสผ่านผู้ดูแลระบบ</h3>
+        <button class="btn-close" onclick="closeChangePasswordModal()">✕</button>
+      </header>
+      <div class="modal-body" style="padding: 20px;">
+        <form id="changePasswordForm" onsubmit="handleSaveNewPassword(event)">
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">รหัสผ่านเดิม</label>
+            <input type="password" id="inputCurrentPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กรอกรหัสผ่านปัจจุบัน" required />
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">รหัสผ่านใหม่</label>
+            <input type="password" id="inputNewPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กำหนดรหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)" required minlength="4" />
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">ยืนยันรหัสผ่านใหม่</label>
+            <input type="password" id="inputConfirmPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="4" />
+          </div>
+          <div id="changePwdError" style="display: none; color: #dc2626; font-size: 12.5px; margin-bottom: 12px; font-weight: 500;"></div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
+            <button type="submit" class="btn-primary">💾 บันทึกรหัสผ่านใหม่</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     // [v3] แยกสคริปต์ดัก Error ไว้ก่อน เพื่อให้จับ Syntax Error ของสคริปต์หลักได้ด้วย
     window.onerror = function (msg, src, line, col) {
@@ -1803,6 +2097,184 @@
       }
     }
 
+    // ==========================================
+    // ADMIN AUTHENTICATION SYSTEM
+    // ==========================================
+    var DEFAULT_ADMIN_PASSWORD = 'admin1234';
+    var isInitialized = false;
+
+    function getAdminPassword() {
+      return LS.getItem('kuekoonkan_admin_pwd') || DEFAULT_ADMIN_PASSWORD;
+    }
+
+    function checkAdminAuth() {
+      var isSessionAuth = false;
+      try {
+        isSessionAuth = (window.sessionStorage && window.sessionStorage.getItem('admin_logged_in') === 'true');
+      } catch (e) { }
+
+      var isRemembered = (LS.getItem('admin_remember_token') === 'true');
+
+      if (isSessionAuth || isRemembered) {
+        showDashboard();
+      } else {
+        showLoginOverlay();
+      }
+    }
+
+    function showDashboard() {
+      var overlay = document.getElementById('adminLoginOverlay');
+      var container = document.getElementById('dashboardContainer');
+      if (overlay) overlay.style.display = 'none';
+      if (container) container.style.display = 'flex';
+
+      if (!isInitialized) {
+        isInitialized = true;
+        initAdmin();
+      }
+    }
+
+    function showLoginOverlay() {
+      var overlay = document.getElementById('adminLoginOverlay');
+      var container = document.getElementById('dashboardContainer');
+      if (container) container.style.display = 'none';
+      if (overlay) overlay.style.display = 'flex';
+
+      var pwdInput = document.getElementById('adminPasswordInput');
+      if (pwdInput) {
+        pwdInput.value = '';
+        setTimeout(function () { pwdInput.focus(); }, 150);
+      }
+      var errBox = document.getElementById('loginErrorAlert');
+      if (errBox) errBox.style.display = 'none';
+    }
+
+    function handleAdminLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var pwdInput = document.getElementById('adminPasswordInput');
+      var enteredPwd = pwdInput ? pwdInput.value : '';
+      var correctPwd = getAdminPassword();
+      var errAlert = document.getElementById('loginErrorAlert');
+      var loginCard = document.getElementById('adminLoginCard');
+      var rememberCheck = document.getElementById('rememberAdminLogin');
+
+      if (enteredPwd === correctPwd) {
+        if (errAlert) errAlert.style.display = 'none';
+        try {
+          if (window.sessionStorage) window.sessionStorage.setItem('admin_logged_in', 'true');
+        } catch (e) { }
+
+        if (rememberCheck && rememberCheck.checked) {
+          LS.setItem('admin_remember_token', 'true');
+        } else {
+          LS.removeItem('admin_remember_token');
+        }
+
+        showDashboard();
+      } else {
+        if (errAlert) {
+          errAlert.style.display = 'flex';
+          var errText = document.getElementById('loginErrorText');
+          if (errText) errText.textContent = 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+        }
+        if (loginCard) {
+          loginCard.classList.remove('shake');
+          void loginCard.offsetWidth;
+          loginCard.classList.add('shake');
+        }
+        if (pwdInput) {
+          pwdInput.focus();
+          pwdInput.select();
+        }
+      }
+    }
+
+    function toggleAdminPasswordEye() {
+      var pwdInput = document.getElementById('adminPasswordInput');
+      if (!pwdInput) return;
+      var btn = document.querySelector('.password-input-box .btn-toggle-eye');
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        if (btn) btn.textContent = '🙈';
+      } else {
+        pwdInput.type = 'password';
+        if (btn) btn.textContent = '👁️';
+      }
+    }
+
+    function adminLogout() {
+      if (confirm('คุณต้องการออกจากระบบผู้ดูแลระบบใช่หรือไม่?')) {
+        try {
+          if (window.sessionStorage) window.sessionStorage.removeItem('admin_logged_in');
+        } catch (e) { }
+        LS.removeItem('admin_remember_token');
+        showLoginOverlay();
+      }
+    }
+
+    function openChangePasswordModal() {
+      var modal = document.getElementById('changePasswordModal');
+      var curInput = document.getElementById('inputCurrentPassword');
+      var newInput = document.getElementById('inputNewPassword');
+      var confInput = document.getElementById('inputConfirmPassword');
+      var errDiv = document.getElementById('changePwdError');
+
+      if (curInput) curInput.value = '';
+      if (newInput) newInput.value = '';
+      if (confInput) confInput.value = '';
+      if (errDiv) { errDiv.style.display = 'none'; errDiv.textContent = ''; }
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeChangePasswordModal() {
+      var modal = document.getElementById('changePasswordModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function handleSaveNewPassword(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var curInput = document.getElementById('inputCurrentPassword');
+      var newInput = document.getElementById('inputNewPassword');
+      var confInput = document.getElementById('inputConfirmPassword');
+      var errDiv = document.getElementById('changePwdError');
+
+      var curPwd = curInput ? curInput.value : '';
+      var newPwd = newInput ? newInput.value : '';
+      var confPwd = confInput ? confInput.value : '';
+
+      var savedPwd = getAdminPassword();
+      if (curPwd !== savedPwd) {
+        if (errDiv) {
+          errDiv.textContent = 'รหัสผ่านเดิมไม่ถูกต้อง';
+          errDiv.style.display = 'block';
+        }
+        if (curInput) { curInput.focus(); curInput.select(); }
+        return;
+      }
+
+      if (!newPwd || newPwd.length < 4) {
+        if (errDiv) {
+          errDiv.textContent = 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร';
+          errDiv.style.display = 'block';
+        }
+        if (newInput) newInput.focus();
+        return;
+      }
+
+      if (newPwd !== confPwd) {
+        if (errDiv) {
+          errDiv.textContent = 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน';
+          errDiv.style.display = 'block';
+        }
+        if (confInput) { confInput.focus(); confInput.select(); }
+        return;
+      }
+
+      LS.setItem('kuekoonkan_admin_pwd', newPwd);
+      alert('✅ เปลี่ยนรหัสผ่านผู้ดูแลระบบสำเร็จเรียบร้อยแล้ว!');
+      closeChangePasswordModal();
+    }
+
     function initAdmin() {
       updateSoundButtonUI();
       fetchOrders(true);
@@ -1814,9 +2286,9 @@
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initAdmin);
+      document.addEventListener('DOMContentLoaded', checkAdminAuth);
     } else {
-      initAdmin();
+      checkAdminAuth();
     }
 
     function switchTab(tab) {
