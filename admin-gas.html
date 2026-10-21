@@ -952,67 +952,172 @@
       z-index: 10;
       position: relative;
     }
+    .category-pills-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 20px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: thin;
+      align-items: center;
+    }
+    .category-pills-bar::-webkit-scrollbar {
+      height: 4px;
+    }
+    .category-pills-bar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .cat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+    .cat-pill:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #eff6ff;
+      transform: translateY(-1px);
+    }
+    .cat-pill.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
+    }
+    .cat-pill .pill-count {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.06);
+      color: inherit;
+      font-weight: 700;
+    }
+    .cat-pill.active .pill-count {
+      background: rgba(255, 255, 255, 0.28);
+      color: #ffffff;
+    }
+
+    /* Product Table Main Cell (Image + Name + SKU + Tag) */
+    .product-cell-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 4px 0;
+    }
+    .product-thumb-large {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .product-thumb-large:hover {
+      transform: scale(1.12);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      border-color: var(--primary);
+    }
+    .product-info-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .product-title-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.35;
+      cursor: pointer;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .product-title-text:hover {
+      color: var(--primary);
+      text-decoration: underline;
+    }
+    .product-sub-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .sku-chip {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .sku-chip:hover {
+      background: #e2e8f0;
+      color: var(--primary);
+      border-color: #cbd5e1;
+    }
+    .sku-chip:active {
+      transform: scale(0.96);
+    }
+    .price-tag-big {
+      font-size: 16px;
+      font-weight: 700;
+      color: #059669;
+      white-space: nowrap;
+    }
+
     .category-badge {
       display: inline-block;
-      background: #e0f2fe;
-      color: #0369a1;
+      background: #eff6ff;
+      color: #1d4ed8;
       font-size: 12px;
       font-weight: 600;
       padding: 4px 10px;
       border-radius: 20px;
+      border: 1px solid #dbeafe;
       white-space: nowrap;
     }
     .tag-badge {
       display: inline-block;
       background: #fef3c7;
       color: #b45309;
-      font-size: 11.5px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 8px;
+      border: 1px solid #fde68a;
       white-space: nowrap;
     }
     .tag-badge.empty { display: none; }
-    .sku-cell-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .sku-code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: #f1f5f9;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 12.5px;
-      color: #334155;
-      font-weight: 600;
-      border: 1px solid #e2e8f0;
-    }
-    .btn-copy-sku {
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      color: #475569;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 11.5px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.15s ease;
-    }
-    .btn-copy-sku:hover {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-      transform: translateY(-1px);
-    }
-    .btn-copy-sku:active { transform: scale(0.94); }
+
     .admin-products-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
     }
     .admin-product-card {
       background: var(--card-bg);
@@ -1021,18 +1126,18 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: var(--shadow-sm);
       position: relative;
     }
     .admin-product-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
       border-color: #93c5fd;
     }
     .admin-product-card-img-wrap {
       width: 100%;
-      height: 170px;
+      height: 160px;
       background: #f8fafc;
       position: relative;
       overflow: hidden;
@@ -1041,62 +1146,68 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.35s ease;
+      transition: transform 0.3s ease;
     }
     .admin-product-card:hover .admin-product-card-img {
-      transform: scale(1.08);
+      transform: scale(1.06);
     }
     .admin-product-card-tag {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 8px;
+      left: 8px;
       background: rgba(245, 158, 11, 0.95);
       color: white;
-      padding: 3px 9px;
-      border-radius: 8px;
+      padding: 3px 8px;
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
       backdrop-filter: blur(4px);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      z-index: 2;
+    }
+    .admin-product-card-category-float {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #f8fafc;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+      z-index: 2;
     }
     .admin-product-card-body {
-      padding: 16px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
       flex: 1;
     }
-    .admin-product-card-category {
-      font-size: 11.5px;
-      color: var(--primary);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      margin-bottom: 6px;
-    }
     .admin-product-card-title {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 600;
       color: var(--text-main);
       line-height: 1.4;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      height: 40px;
+      height: 38px;
     }
     .admin-product-card-footer {
       margin-top: auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-top: 12px;
+      padding-top: 10px;
       border-top: 1px dashed var(--border);
     }
     .admin-product-card-price {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      color: #1e293b;
+      color: #059669;
     }
     #productDetailModal .modal-content {
       border-radius: 20px;
@@ -1293,40 +1404,49 @@
         </section>
 
         <!-- Products Toolbar & Filter -->
-        <section class="table-card">
-          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1;">
-              <!-- Category Filter Dropdown -->
-              <select id="productCategoryFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 240px;">
-                <option value="all">📂 หมวดหมู่ทั้งหมด</option>
-              </select>
+        <section class="table-card" style="overflow: hidden;">
+          <!-- Category Quick Tabs (Pill Buttons) -->
+          <div id="productCategoryPills" class="category-pills-bar">
+            <!-- Dynamically populated with pills: ทั้งหมด (count), หมวดต่างๆ (count) -->
+          </div>
 
-              <!-- Tag Filter Dropdown -->
-              <select id="productTagFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 170px;">
+          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px; padding: 14px 20px;">
+            <!-- Search input with Instant Clear Button -->
+            <div class="search-box" style="margin: 0; min-width: 280px; flex: 1; position: relative;">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="adminProductSearchInput" oninput="onProductSearch(this.value)" placeholder="ค้นหา ชื่อสินค้า, รหัส SKU, หมวดหมู่..." style="padding-right: 36px;" />
+              <button id="btnClearProductSearch" onclick="clearProductSearch()" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; align-items: center; justify-content: center; font-size: 11px; color: #64748b; transition: all 0.15s ease;" title="ล้างการค้นหา">✕</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <!-- Tag Filter -->
+              <select id="productTagFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="all">🏷️ แท็ก: ทั้งหมด</option>
               </select>
 
               <!-- Sort Order -->
-              <select id="productSortFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 180px;">
+              <select id="productSortFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="default">↕️ เรียงตาม: ค่าเริ่มต้น</option>
                 <option value="name_asc">🔤 ชื่อสินค้า (ก - ฮ)</option>
                 <option value="price_asc">💵 ราคา (น้อย → มาก)</option>
                 <option value="price_desc">💰 ราคา (มาก → น้อย)</option>
                 <option value="sku_asc">🔢 รหัสสินค้า (SKU)</option>
               </select>
-            </div>
 
-            <!-- Search input -->
-            <div class="search-box" style="margin: 0; min-width: 270px;">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="adminProductSearchInput" oninput="onProductSearch(this.value)" placeholder="ค้นหา รหัสสินค้า, ชื่อสินค้า, คำค้น..." />
+              <!-- Hidden/Synced Category Select for fallback -->
+              <select id="productCategoryFilter" onchange="onProductFilterChange()" style="display: none;">
+                <option value="all">all</option>
+              </select>
             </div>
           </div>
 
           <!-- Filter Info Bar -->
-          <div style="padding: 8px 24px; background: #f8fafc; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <span id="productShowingCountText">กำลังโหลดข้อมูล...</span>
-            <span style="font-size: 11.5px; color: #94a3b8;">*คลิกที่รหัสสินค้าเพื่อคัดลอก SKU หรือกดดูข้อมูลเพื่อดูรูปและรายละเอียดเต็ม</span>
+          <div style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="productShowingCountText" style="font-weight: 600; color: var(--text-main);">กำลังโหลดสินค้า...</span>
+              <button id="btnResetFilters" onclick="resetAllProductFilters()" style="display: none; background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline;">✕ ล้างตัวกรอง</button>
+            </div>
+            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่รหัสสินค้าเพื่อคัดลอก SKU | กด "ดูข้อมูล" เพื่อดูรูปใหญ่และรายละเอียด</span>
           </div>
 
           <!-- Table View Container -->
@@ -1334,13 +1454,10 @@
             <table id="productsTable">
               <thead>
                 <tr>
-                  <th style="width: 70px;">รูปภาพ</th>
-                  <th style="width: 160px;">รหัสสินค้า (SKU)</th>
-                  <th>ชื่อสินค้า</th>
-                  <th style="width: 180px;">หมวดหมู่</th>
-                  <th style="width: 100px;">ราคา</th>
-                  <th style="width: 120px;">แท็ก</th>
-                  <th style="text-align: right; width: 110px;">การจัดการ</th>
+                  <th>ข้อมูลสินค้า (รูปภาพ / ชื่อสินค้า / รหัส SKU / แท็ก)</th>
+                  <th style="width: 170px;">หมวดหมู่</th>
+                  <th style="width: 130px;">ราคาขาย</th>
+                  <th style="text-align: right; width: 120px;">การจัดการ</th>
                 </tr>
               </thead>
               <tbody id="productsBody">
@@ -2970,10 +3087,10 @@
     function populateCategoryAndTagFilters() {
       const catSelect = document.getElementById('productCategoryFilter');
       const tagSelect = document.getElementById('productTagFilter');
-      if (!catSelect || !tagSelect) return;
+      const pillsContainer = document.getElementById('productCategoryPills');
 
-      const currentCatVal = catSelect.value;
-      const currentTagVal = tagSelect.value;
+      const currentCatVal = catSelect ? catSelect.value : 'all';
+      const currentTagVal = tagSelect ? tagSelect.value : 'all';
 
       const categories = new Set();
       const tags = new Set();
@@ -2990,21 +3107,91 @@
       const sortedCats = Array.from(categories).sort((a, b) => a.localeCompare(b, 'th'));
       const sortedTags = Array.from(tags).sort((a, b) => a.localeCompare(b, 'th'));
 
-      let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
-      sortedCats.forEach(c => {
-        const count = allProducts.filter(p => p.category === c).length;
-        catHtml += '<option value="' + c + '">' + c + ' (' + count.toLocaleString() + ')</option>';
-      });
-      catSelect.innerHTML = catHtml;
-      if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
+      // 1. Populate Category Pills Bar (Horizontal Quick Tabs)
+      if (pillsContainer) {
+        let pillsHtml = '<button class="cat-pill ' + (productSelectedCategory === 'all' ? 'active' : '') + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
+          '📂 ทั้งหมด <span class="pill-count">' + allProducts.length.toLocaleString() + '</span>' +
+          '</button>';
+        sortedCats.forEach(c => {
+          const count = allProducts.filter(p => p.category === c).length;
+          const isActive = (productSelectedCategory === c) ? ' active' : '';
+          pillsHtml += '<button class="cat-pill' + isActive + '" data-category="' + c + '" onclick="selectCategoryPill(\'' + c.replace(/'/g, "\\'") + '\')">' +
+            c + ' <span class="pill-count">' + count.toLocaleString() + '</span>' +
+            '</button>';
+        });
+        pillsContainer.innerHTML = pillsHtml;
+      }
 
-      let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
-      sortedTags.forEach(t => {
-        const count = allProducts.filter(p => p.tag === t).length;
-        tagHtml += '<option value="' + t + '">' + t + ' (' + count.toLocaleString() + ')</option>';
+      // 2. Populate Dropdowns
+      if (catSelect) {
+        let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
+        sortedCats.forEach(c => {
+          const count = allProducts.filter(p => p.category === c).length;
+          catHtml += '<option value="' + c + '">' + c + ' (' + count.toLocaleString() + ')</option>';
+        });
+        catSelect.innerHTML = catHtml;
+        if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
+      }
+
+      if (tagSelect) {
+        let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
+        sortedTags.forEach(t => {
+          const count = allProducts.filter(p => p.tag === t).length;
+          tagHtml += '<option value="' + t + '">' + t + ' (' + count.toLocaleString() + ')</option>';
+        });
+        tagSelect.innerHTML = tagHtml;
+        if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
+      }
+    }
+
+    function selectCategoryPill(cat) {
+      productSelectedCategory = cat;
+      const catSelect = document.getElementById('productCategoryFilter');
+      if (catSelect) catSelect.value = cat;
+
+      document.querySelectorAll('.cat-pill').forEach(pill => {
+        if (pill.dataset.category === cat) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
       });
-      tagSelect.innerHTML = tagHtml;
-      if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
+
+      applyProductFilters();
+    }
+
+    function clearProductSearch() {
+      const input = document.getElementById('adminProductSearchInput');
+      if (input) input.value = '';
+      productSearchQuery = '';
+      const clearBtn = document.getElementById('btnClearProductSearch');
+      if (clearBtn) clearBtn.style.display = 'none';
+      applyProductFilters();
+    }
+
+    function resetAllProductFilters() {
+      productSelectedCategory = 'all';
+      productSelectedTag = 'all';
+      productSearchQuery = '';
+      productSortOrder = 'default';
+
+      const catSelect = document.getElementById('productCategoryFilter');
+      if (catSelect) catSelect.value = 'all';
+      const tagSelect = document.getElementById('productTagFilter');
+      if (tagSelect) tagSelect.value = 'all';
+      const sortSelect = document.getElementById('productSortFilter');
+      if (sortSelect) sortSelect.value = 'default';
+      const searchInput = document.getElementById('adminProductSearchInput');
+      if (searchInput) searchInput.value = '';
+      const clearBtn = document.getElementById('btnClearProductSearch');
+      if (clearBtn) clearBtn.style.display = 'none';
+
+      document.querySelectorAll('.cat-pill').forEach(pill => {
+        if (pill.dataset.category === 'all') pill.classList.add('active');
+        else pill.classList.remove('active');
+      });
+
+      applyProductFilters();
     }
 
     function applyProductFilters() {
@@ -3047,7 +3234,18 @@
       const showingText = document.getElementById('productShowingCountText');
       const countToDisplay = Math.min(productVisibleLimit, filteredProducts.length);
       if (showingText) {
-        showingText.textContent = 'แสดง ' + countToDisplay.toLocaleString() + ' จากที่ค้นพบ ' + filteredProducts.length.toLocaleString() + ' รายการ (สินค้าทั้งหมดในระบบ ' + allProducts.length.toLocaleString() + ' รายการ)';
+        let filterDesc = '';
+        if (productSelectedCategory !== 'all') filterDesc += ' (หมวด: ' + productSelectedCategory + ')';
+        if (productSelectedTag !== 'all') filterDesc += ' (แท็ก: ' + productSelectedTag + ')';
+        if (productSearchQuery) filterDesc += ' (ค้นหา: "' + productSearchQuery + '")';
+
+        showingText.textContent = 'แสดง ' + countToDisplay.toLocaleString() + ' จากที่ค้นพบ ' + filteredProducts.length.toLocaleString() + ' รายการ' + filterDesc;
+      }
+
+      const btnReset = document.getElementById('btnResetFilters');
+      if (btnReset) {
+        const isFiltered = (productSelectedCategory !== 'all' || productSelectedTag !== 'all' || productSearchQuery !== '');
+        btnReset.style.display = isFiltered ? 'inline-block' : 'none';
       }
 
       const loadMoreBtnContainer = document.getElementById('productLoadMoreContainer');
@@ -3071,9 +3269,11 @@
 
       if (slice.length === 0) {
         tbody.innerHTML = '<tr>' +
-          '<td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
-          '<div style="font-size: 32px; margin-bottom: 8px;">🔍</div>' +
-          '<p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '<td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<div style="font-size: 36px; margin-bottom: 8px;">🔍</div>' +
+          '<p style="font-weight: 600; font-size: 15px; color: var(--text-main);">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '<p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">ลองเปลี่ยนคำค้นหา หรือกดเลือกหมวดหมู่ "ทั้งหมด"</p>' +
+          '<button onclick="resetAllProductFilters()" class="btn-sound-toggle" style="margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;">🔄 ล้างตัวกรองทั้งหมด</button>' +
           '</td>' +
           '</tr>';
         return;
@@ -3082,30 +3282,25 @@
       slice.forEach(p => {
         const tr = document.createElement('tr');
         const imgUrl = getOptimizedImageUrl(p.img);
-        const tagHtml = p.tag ? '<span class="tag-badge">' + p.tag + '</span>' : '<span style="color:#cbd5e1;">-</span>';
-        const catHtml = p.category ? '<span class="category-badge">' + p.category + '</span>' : '<span style="color:#cbd5e1;">-</span>';
+        const tagHtml = p.tag ? '<span class="tag-badge">⭐ ' + p.tag + '</span>' : '';
+        const catName = p.category || 'ทั่วไป';
 
         tr.innerHTML = '<td>' +
-          '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="product-table-thumb" onclick="openProductDetailModal(\'' + p.id + '\')" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
-          '</td>' +
-          '<td>' +
-          '<div class="sku-cell-wrapper">' +
-          '<code class="sku-code">' + (p.id || '') + '</code>' +
-          '<button class="btn-copy-sku" onclick="copyProductSku(\'' + p.id + '\', event)" title="คัดลอกรหัสสินค้า">📋</button>' +
+          '<div class="product-cell-main">' +
+          '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="product-thumb-large" onclick="openProductDetailModal(\'' + p.id + '\')" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
+          '<div class="product-info-text">' +
+          '<span class="product-title-text" onclick="openProductDetailModal(\'' + p.id + '\')">' + (p.name || 'ไม่มีชื่อสินค้า') + '</span>' +
+          '<div class="product-sub-badges">' +
+          '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกเพื่อคัดลอกรหัสสินค้า">📋 ' + (p.id || '-') + '</span>' +
+          tagHtml +
+          '</div>' +
+          '</div>' +
           '</div>' +
           '</td>' +
-          '<td>' +
-          '<div style="cursor: pointer;" onclick="openProductDetailModal(\'' + p.id + '\')">' +
-          '<strong style="font-size: 13.5px; color: var(--text-main); display: block; line-height: 1.35;">' + (p.name || '') + '</strong>' +
-          '</div>' +
-          '</td>' +
-          '<td>' + catHtml + '</td>' +
-          '<td>' +
-          '<strong style="color: #1e293b; font-size: 14px;">฿' + (Number(p.price) || 0).toLocaleString() + '</strong>' +
-          '</td>' +
-          '<td>' + tagHtml + '</td>' +
+          '<td><span class="category-badge">📂 ' + catName + '</span></td>' +
+          '<td><span class="price-tag-big">฿' + (Number(p.price) || 0).toLocaleString() + '</span></td>' +
           '<td style="text-align: right;">' +
-          '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')">🔍 ดูข้อมูล</button>' +
+          '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')" style="white-space: nowrap;">🔍 ดูข้อมูล</button>' +
           '</td>';
         tbody.appendChild(tr);
       });
@@ -3120,8 +3315,10 @@
 
       if (slice.length === 0) {
         container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
-          '<div style="font-size: 32px; margin-bottom: 8px;">🔍</div>' +
-          '<p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '<div style="font-size: 36px; margin-bottom: 8px;">🔍</div>' +
+          '<p style="font-weight: 600; font-size: 15px; color: var(--text-main);">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
+          '<p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">ลองเปลี่ยนคำค้นหา หรือกดเลือกหมวดหมู่ "ทั้งหมด"</p>' +
+          '<button onclick="resetAllProductFilters()" class="btn-sound-toggle" style="margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;">🔄 ล้างตัวกรองทั้งหมด</button>' +
           '</div>';
         return;
       }
@@ -3130,18 +3327,17 @@
         const card = document.createElement('div');
         card.className = 'admin-product-card';
         const imgUrl = getOptimizedImageUrl(p.img);
-        const tagHtml = p.tag ? '<div class="admin-product-card-tag">' + p.tag + '</div>' : '';
+        const tagHtml = p.tag ? '<div class="admin-product-card-tag">⭐ ' + p.tag + '</div>' : '';
 
         card.innerHTML = '<div class="admin-product-card-img-wrap" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' +
           '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
           tagHtml +
+          '<div class="admin-product-card-category-float">' + (p.category || 'ทั่วไป') + '</div>' +
           '</div>' +
           '<div class="admin-product-card-body">' +
-          '<div class="admin-product-card-category">' + (p.category || 'ทั่วไป') + '</div>' +
-          '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || '') + '</div>' +
-          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">' +
-          '<code class="sku-code">' + (p.id || '') + '</code>' +
-          '<button class="btn-copy-sku" onclick="copyProductSku(\'' + p.id + '\', event)">📋 คัดลอก</button>' +
+          '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || 'ไม่มีชื่อสินค้า') + '</div>' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">' +
+          '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกคัดลอก SKU">📋 ' + (p.id || '-') + '</span>' +
           '</div>' +
           '<div class="admin-product-card-footer">' +
           '<div class="admin-product-card-price">฿' + (Number(p.price) || 0).toLocaleString() + '</div>' +
