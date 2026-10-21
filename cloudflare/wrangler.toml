@@ -1,0 +1,14 @@
+name = "kuekoonkan-api"
+main = "src/index.js"
+compatibility_date = "2024-10-01"
+
+# ฐานข้อมูล Cloudflare D1
+[[d1_databases]]
+binding = "DB"
+database_name = "kuekoonkan-db"
+database_id = "e17622ea-63e4-4e33-944e-b12661f50d2d"
+
+# ตัวแปรระบบ (LINE OA Token, เบอร์พร้อมเพย์ร้าน)
+[vars]
+LINE_ACCESS_TOKEN = "UTqQBlXZsz1FHhyz3elJBbwW/Sy3ex26+xhkqy6OpjuUL6Y3gB1QYI3+CCwARapxDVxivd5Iw6TYL64IO0Kz0ykDLJ8qDJrSrDnQdrugEu14xp4MU7mClHJG03GszZzgnS9DHafrq38iKUNHtCyokQdB04t89/1O/w1cDnyilFU="
+SHOP_PROMPTPAY_ID = "0957579454"
