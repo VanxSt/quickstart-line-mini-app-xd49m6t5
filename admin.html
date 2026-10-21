@@ -24,6 +24,7 @@
         <a href="#" class="nav-item active" id="navOrders">
           📦 คำสั่งซื้อ <span id="navUnreadBadge" class="unread-count-tag" style="display:none;">0</span>
         </a>
+        <a href="#" class="nav-item" id="navProducts">🏷️ รายการสินค้า (Products)</a>
         <a href="#" class="nav-item" id="navMembers">👥 สมาชิก (Members)</a>
       </nav>
     </aside>
@@ -134,6 +135,139 @@
           <div id="loadingIndicator" class="loading-state">
             <div class="spinner"></div>
             <p>กำลังดึงข้อมูลออเดอร์ล่าสุด...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Products View -->
+      <div id="viewProducts" style="display: none;">
+        <header class="header">
+          <div>
+            <h1>รายการสินค้า</h1>
+            <p class="subtitle">ระบบบริหารจัดการและตรวจสอบแคตตาล็อกสินค้า ร้านเกื้อกูลกัน</p>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div class="view-toggle-group">
+              <button id="btnViewTable" class="btn-sound-toggle active" title="มุมมองตาราง" onclick="setProductViewMode('table')">
+                📋 ตาราง
+              </button>
+              <button id="btnViewGrid" class="btn-sound-toggle" title="มุมมองการ์ด" onclick="setProductViewMode('grid')">
+                🔲 การ์ด
+              </button>
+            </div>
+            <button id="refreshProductsBtn" class="btn-primary">
+              <span class="icon">🔄</span> รีเฟรชสินค้า
+            </button>
+          </div>
+        </header>
+
+        <!-- Product Stats Summary -->
+        <section class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="stat-card pending">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+              <h3>สินค้าทั้งหมด</h3>
+              <p id="stat-total-products">0</p>
+            </div>
+          </div>
+          <div class="stat-card payment">
+            <div class="stat-icon">📂</div>
+            <div class="stat-info">
+              <h3>หมวดหมู่</h3>
+              <p id="stat-total-categories">0</p>
+            </div>
+          </div>
+          <div class="stat-card shipping">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-info">
+              <h3>สินค้าแนะนำ / มีแท็ก</h3>
+              <p id="stat-tagged-products">0</p>
+            </div>
+          </div>
+          <div class="stat-card sales">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <h3>ราคาเฉลี่ย</h3>
+              <p id="stat-avg-price">฿0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Products Toolbar & Filter -->
+        <section class="table-card">
+          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1;">
+              <!-- Category Filter Dropdown -->
+              <select id="productCategoryFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 240px;">
+                <option value="all">📂 หมวดหมู่ทั้งหมด</option>
+              </select>
+
+              <!-- Tag Filter Dropdown -->
+              <select id="productTagFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 170px;">
+                <option value="all">🏷️ แท็ก: ทั้งหมด</option>
+              </select>
+
+              <!-- Sort Order -->
+              <select id="productSortFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit; max-width: 180px;">
+                <option value="default">↕️ เรียงตาม: ค่าเริ่มต้น</option>
+                <option value="name_asc">🔤 ชื่อสินค้า (ก - ฮ)</option>
+                <option value="price_asc">💵 ราคา (น้อย → มาก)</option>
+                <option value="price_desc">💰 ราคา (มาก → น้อย)</option>
+                <option value="sku_asc">🔢 รหัสสินค้า (SKU)</option>
+              </select>
+            </div>
+
+            <!-- Search input -->
+            <div class="search-box" style="margin: 0; min-width: 270px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="adminProductSearchInput" placeholder="ค้นหา รหัสสินค้า, ชื่อสินค้า, คำค้น..." />
+            </div>
+          </div>
+
+          <!-- Filter Info Bar -->
+          <div style="padding: 8px 24px; background: #f8fafc; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span id="productShowingCountText">กำลังโหลดข้อมูล...</span>
+            <span style="font-size: 11.5px; color: #94a3b8;">*คลิกที่รหัสสินค้าเพื่อคัดลอก SKU หรือกดดูข้อมูลเพื่อดูรูปและรายละเอียดเต็ม</span>
+          </div>
+
+          <!-- Table View Container -->
+          <div id="productTableViewContainer" class="table-responsive">
+            <table id="productsTable">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">รูปภาพ</th>
+                  <th style="width: 160px;">รหัสสินค้า (SKU)</th>
+                  <th>ชื่อสินค้า</th>
+                  <th style="width: 180px;">หมวดหมู่</th>
+                  <th style="width: 100px;">ราคา</th>
+                  <th style="width: 120px;">แท็ก</th>
+                  <th style="text-align: right; width: 110px;">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="productsBody">
+                <!-- Products populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Grid View Container -->
+          <div id="productGridViewContainer" style="display: none; padding: 20px;">
+            <div id="productCardsGrid" class="admin-products-grid">
+              <!-- Product cards populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Loading Indicator for Products -->
+          <div id="productsLoadingIndicator" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลสินค้าทั้งหมด...</p>
+          </div>
+
+          <!-- Load More Bar / Sentinel -->
+          <div id="productLoadMoreContainer" style="padding: 16px 24px; text-align: center; border-top: 1px solid var(--border); display: none;">
+            <button id="btnLoadMoreProducts" class="btn-sound-toggle" onclick="loadMoreProducts()" style="padding: 8px 24px; font-size: 13px;">
+              ⬇️ แสดงสินค้าเพิ่มเติม (โหลดอีก 50 รายการ)
+            </button>
           </div>
         </section>
       </div>
@@ -266,6 +400,45 @@
         <div id="modalActions" style="display: flex; gap: 10px; flex-wrap: wrap;">
           <!-- ปุ่มจะถูกสร้างอัตโนมัติโดย renderModalActions() -->
         </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Product Detail Modal -->
+  <div id="productDetailModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 620px;">
+      <header class="modal-header">
+        <h2>รายละเอียดสินค้า</h2>
+        <button class="close-btn" onclick="closeProductModal()">&times;</button>
+      </header>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap;">
+          <img id="detailProductImg" src="" alt="Product Image" style="width: 140px; height: 140px; object-fit: cover; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0;" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+          <div style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+              <span id="detailProductCategory" class="category-badge"></span>
+              <span id="detailProductTag" class="tag-badge"></span>
+            </div>
+            <h3 id="detailProductName" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; line-height: 1.4;"></h3>
+            <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 12px;">
+              ฿<span id="detailProductPrice">0</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: 13px; color: var(--text-muted);">รหัสสินค้า (SKU):</span>
+              <code id="detailProductSku" style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1e293b; border: 1px solid #e2e8f0;"></code>
+              <button class="btn-copy-sku" onclick="copySkuFromModal()" title="คัดลอก SKU">📋 คัดลอก</button>
+            </div>
+          </div>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+          <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">📌 รายละเอียด / คำอธิบายสินค้า</h4>
+          <div id="detailProductDesc" style="font-size: 13px; color: #475569; line-height: 1.6; white-space: pre-line; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid var(--border); max-height: 240px; overflow-y: auto;">
+          </div>
+        </div>
+      </div>
+      <footer class="modal-footer" style="justify-content: space-between;">
+        <button class="btn-sound-toggle" onclick="copySkuFromModal()">📋 คัดลอกรหัสสินค้านี้</button>
+        <button class="btn-primary" onclick="closeProductModal()">ปิดหน้าต่าง</button>
       </footer>
     </div>
   </div>

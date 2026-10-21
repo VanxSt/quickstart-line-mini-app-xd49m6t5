@@ -45,6 +45,32 @@
     return JSON.stringify({ status: 'success', products: products, total: products.length, exportedAt: new Date().getTime() });
   }
 
+  // ดึงข้อมูลสินค้าแบบ Native Object สำหรับเรียกผ่าน google.script.run จากหน้า Admin
+  function getProductsNative() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var catalogSheet = ss.getSheetByName("Catalog");
+    if (!catalogSheet) return [];
+    var values = catalogSheet.getDataRange().getValues();
+    var products = [];
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      if (!row[0] && row[0] !== 0) continue;
+      if (String(row[0]).trim() === '') continue;
+      var status = String(row[7] || 'active').toLowerCase();
+      if (status === 'inactive') continue;
+      products.push({
+        id: String(row[0] || '').trim(),
+        name: String(row[1] || ''),
+        category: String(row[2] || ''),
+        price: Number(row[3] || 0),
+        desc: String(row[4] || ''),
+        img: String(row[5] || ''),
+        tag: String(row[6] || '')
+      });
+    }
+    return products;
+  }
+
   function doPost(e) {
     try {
       var data = JSON.parse(e.postData.contents);

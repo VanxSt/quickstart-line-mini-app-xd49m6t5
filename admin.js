@@ -7,7 +7,21 @@ let activePaymentFilter = 'all';
 let searchQuery = '';
 let memberSearchQuery = '';
 let currentViewingOrderId = null;
-let currentTab = 'orders'; // 'orders' | 'members'
+let currentTab = 'orders'; // 'orders' | 'products' | 'members'
+
+// Product Catalog State
+let allProducts = [];
+let filteredProducts = [];
+let productSearchQuery = '';
+let productSelectedCategory = 'all';
+let productSelectedTag = 'all';
+let productSortOrder = 'default';
+let productViewMode = 'table'; // 'table' | 'grid'
+let productVisibleLimit = 50;
+let isProductsLoading = false;
+let currentViewingProduct = null;
+let adminProducts = [];
+let isAdminProductsLoaded = false;
 
 let soundEnabled = localStorage.getItem('admin_sound_enabled') !== 'false';
 let readOrderIds = JSON.parse(localStorage.getItem('admin_read_orders') || '[]');
@@ -91,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) { }
 
   fetchOrders(true);
+  fetchProducts(false);
 
   // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 12 วินาที
   setInterval(() => {
@@ -108,33 +123,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 
-  // Navigation Switcher
+  // Navigation Switcher (Orders, Products, Members)
   const navOrders = document.getElementById('navOrders');
+  const navProducts = document.getElementById('navProducts');
   const navMembers = document.getElementById('navMembers');
   const viewOrders = document.getElementById('viewOrders');
+  const viewProducts = document.getElementById('viewProducts');
   const viewMembers = document.getElementById('viewMembers');
 
-  if (navOrders && navMembers) {
-    navOrders.addEventListener('click', (e) => {
-      e.preventDefault();
-      currentTab = 'orders';
-      navOrders.classList.add('active');
-      navMembers.classList.remove('active');
-      viewOrders.style.display = 'block';
-      viewMembers.style.display = 'none';
-      fetchOrders(false);
-    });
+  function switchDashboardTab(tab) {
+    currentTab = tab;
+    [navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
+    [viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
 
-    navMembers.addEventListener('click', (e) => {
-      e.preventDefault();
-      currentTab = 'members';
-      navMembers.classList.add('active');
-      navOrders.classList.remove('active');
-      viewMembers.style.display = 'block';
-      viewOrders.style.display = 'none';
+    if (tab === 'orders') {
+      if (navOrders) navOrders.classList.add('active');
+      if (viewOrders) viewOrders.style.display = 'block';
+      fetchOrders(false);
+    } else if (tab === 'products') {
+      if (navProducts) navProducts.classList.add('active');
+      if (viewProducts) viewProducts.style.display = 'block';
+      fetchProducts(allProducts.length === 0);
+    } else if (tab === 'members') {
+      if (navMembers) navMembers.classList.add('active');
+      if (viewMembers) viewMembers.style.display = 'block';
       fetchMembers(true);
-    });
+    }
   }
+  window.switchDashboardTab = switchDashboardTab;
+
+  const btnRefreshProducts = document.getElementById('refreshProductsBtn');
+  if (btnRefreshProducts) {
+    btnRefreshProducts.addEventListener('click', () => fetchProducts(true));
+  }
+
+  if (navOrders) navOrders.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('orders'); });
+  if (navProducts) navProducts.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('products'); });
+  if (navMembers) navMembers.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('members'); });
+
 
   // Tab Filtering for Orders
   const filterTabs = document.getElementById('filterTabs');
@@ -164,6 +190,15 @@ document.addEventListener('DOMContentLoaded', () => {
     memberSearchInput.addEventListener('input', (e) => {
       memberSearchQuery = e.target.value.toLowerCase().trim();
       renderMembers();
+    });
+  }
+
+  // Search Input for Products
+  const productSearchInput = document.getElementById('adminProductSearchInput');
+  if (productSearchInput) {
+    productSearchInput.addEventListener('input', (e) => {
+      productSearchQuery = e.target.value.trim();
+      applyProductFilters();
     });
   }
 });
@@ -587,38 +622,9 @@ function toggleModalEditMode() {
   renderModalActions(orderToRender);
 }
 
-let adminProducts = [];
-let isAdminProductsLoaded = false;
-
 async function fetchAdminProducts() {
-  if (isAdminProductsLoaded) return;
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    return new Promise((resolve) => {
-      google.script.run
-        .withSuccessHandler(function(products) {
-          adminProducts = products || [];
-          isAdminProductsLoaded = true;
-          resolve();
-        })
-        .withFailureHandler(function(err) {
-          console.error('Error fetching admin products via GAS:', err);
-          resolve(); // Resolve anyway to avoid blocking
-        })
-        .getProductsNative();
-    });
-  } else {
-    try {
-      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
-      const data = await res.json();
-      if (data.status === 'success' && data.products) {
-        adminProducts = data.products;
-        isAdminProductsLoaded = true;
-      }
-    } catch (err) {
-      console.error('Error fetching admin products:', err);
-    }
-  }
+  if (isAdminProductsLoaded && adminProducts.length > 0) return;
+  await fetchProducts(false);
 }
 
 async function addNewItemBySku() {
@@ -1278,3 +1284,451 @@ function extractGpsUrl(gpsRaw, addressDetails, customerName) {
 
   return '';
 }
+
+/* ==========================================================================
+   Product Catalog Logic & Handlers
+   ========================================================================== */
+
+function getOptimizedImageUrl(url) {
+  if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
+    return 'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';
+  }
+  let optimizedUrl = url.trim();
+  if (optimizedUrl.includes('drive.google.com') || optimizedUrl.includes('docs.google.com')) {
+    let driveId = '';
+    const match1 = optimizedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const match2 = optimizedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match1) driveId = match1[1];
+    else if (match2) driveId = match2[1];
+    if (driveId) {
+      optimizedUrl = `https://lh3.googleusercontent.com/d/${driveId}`;
+    }
+  }
+  return optimizedUrl;
+}
+
+async function fetchProducts(showLoading = true) {
+  const loading = document.getElementById('productsLoadingIndicator');
+  if (showLoading && allProducts.length === 0 && loading) {
+    loading.style.display = 'flex';
+  }
+
+  isProductsLoading = true;
+
+  // 1. โหลดข้อมูลจาก LocalStorage Cache ทันที (0ms) เพื่อให้ไม่ต้องรอ
+  try {
+    const cached = localStorage.getItem('cached_admin_products');
+    if (cached && allProducts.length === 0) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        processIncomingProducts(parsed);
+      }
+    }
+  } catch (e) { }
+
+  let fetchedData = null;
+
+  // 2. ดึงจาก static products.json (เร็วที่สุด ~50ms และมีสินค้าครบ)
+  try {
+    const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+        fetchedData = data.products;
+      }
+    }
+  } catch (err) { }
+
+  // 3. Fallback: ถ้าเปิดใน Google Apps Script หรือไม่มีไฟล์ static ให้ดึงผ่าน GAS
+  if (!fetchedData) {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      fetchedData = await new Promise((resolve) => {
+        google.script.run
+          .withSuccessHandler(function (products) {
+            resolve(products || []);
+          })
+          .withFailureHandler(function (err) {
+            console.error('Error fetching admin products via GAS:', err);
+            resolve(null);
+          })
+          .getProductsNative();
+      });
+    }
+
+    if (!fetchedData) {
+      try {
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+            fetchedData = data.products;
+          }
+        }
+      } catch (err) {
+        console.error('Fetch products error:', err);
+      }
+    }
+  }
+
+  if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
+    processIncomingProducts(fetchedData);
+  } else if (allProducts.length === 0) {
+    const tbody = document.getElementById('productsBody');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+            <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
+            <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถดึงข้อมูลสินค้าได้</p>
+            <p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือกดปุ่มรีเฟรชอีกครั้ง</p>
+            <button onclick="fetchProducts(true)" class="btn-primary">🔄 ลองใหม่อีกครั้ง</button>
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  isProductsLoading = false;
+  if (loading) loading.style.display = 'none';
+}
+
+function processIncomingProducts(products) {
+  allProducts = products || [];
+  adminProducts = allProducts;
+  isAdminProductsLoaded = true;
+
+  try {
+    localStorage.setItem('cached_admin_products', JSON.stringify(allProducts));
+  } catch (e) { }
+
+  populateCategoryAndTagFilters();
+  applyProductFilters();
+  updateProductStats();
+}
+
+function populateCategoryAndTagFilters() {
+  const catSelect = document.getElementById('productCategoryFilter');
+  const tagSelect = document.getElementById('productTagFilter');
+  if (!catSelect || !tagSelect) return;
+
+  const currentCatVal = catSelect.value;
+  const currentTagVal = tagSelect.value;
+
+  const categories = new Set();
+  const tags = new Set();
+
+  allProducts.forEach(p => {
+    if (p.category && String(p.category).trim() !== '') {
+      categories.add(String(p.category).trim());
+    }
+    if (p.tag && String(p.tag).trim() !== '') {
+      tags.add(String(p.tag).trim());
+    }
+  });
+
+  const sortedCats = Array.from(categories).sort((a, b) => a.localeCompare(b, 'th'));
+  const sortedTags = Array.from(tags).sort((a, b) => a.localeCompare(b, 'th'));
+
+  let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
+  sortedCats.forEach(c => {
+    const count = allProducts.filter(p => p.category === c).length;
+    catHtml += `<option value="${c}">${c} (${count.toLocaleString()})</option>`;
+  });
+  catSelect.innerHTML = catHtml;
+  if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
+
+  let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
+  sortedTags.forEach(t => {
+    const count = allProducts.filter(p => p.tag === t).length;
+    tagHtml += `<option value="${t}">${t} (${count.toLocaleString()})</option>`;
+  });
+  tagSelect.innerHTML = tagHtml;
+  if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
+}
+
+function applyProductFilters() {
+  const search = productSearchQuery.toLowerCase();
+
+  filteredProducts = allProducts.filter(p => {
+    if (productSelectedCategory !== 'all' && p.category !== productSelectedCategory) {
+      return false;
+    }
+    if (productSelectedTag !== 'all' && p.tag !== productSelectedTag) {
+      return false;
+    }
+    if (search) {
+      const matchId = p.id && String(p.id).toLowerCase().includes(search);
+      const matchName = p.name && p.name.toLowerCase().includes(search);
+      const matchCat = p.category && p.category.toLowerCase().includes(search);
+      const matchDesc = p.desc && p.desc.toLowerCase().includes(search);
+      if (!matchId && !matchName && !matchCat && !matchDesc) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  if (productSortOrder === 'name_asc') {
+    filteredProducts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th'));
+  } else if (productSortOrder === 'price_asc') {
+    filteredProducts.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+  } else if (productSortOrder === 'price_desc') {
+    filteredProducts.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+  } else if (productSortOrder === 'sku_asc') {
+    filteredProducts.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+  }
+
+  productVisibleLimit = 50;
+  renderProductsList();
+}
+
+function renderProductsList() {
+  const showingText = document.getElementById('productShowingCountText');
+  const countToDisplay = Math.min(productVisibleLimit, filteredProducts.length);
+  if (showingText) {
+    showingText.textContent = `แสดง ${countToDisplay.toLocaleString()} จากที่ค้นพบ ${filteredProducts.length.toLocaleString()} รายการ (สินค้าทั้งหมดในระบบ ${allProducts.length.toLocaleString()} รายการ)`;
+  }
+
+  const loadMoreBtnContainer = document.getElementById('productLoadMoreContainer');
+  if (loadMoreBtnContainer) {
+    loadMoreBtnContainer.style.display = (productVisibleLimit < filteredProducts.length) ? 'block' : 'none';
+  }
+
+  if (productViewMode === 'table') {
+    renderProductsTable();
+  } else {
+    renderProductsGrid();
+  }
+}
+
+function renderProductsTable() {
+  const tbody = document.getElementById('productsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const slice = filteredProducts.slice(0, productVisibleLimit);
+
+  if (slice.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+          <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  slice.forEach(p => {
+    const tr = document.createElement('tr');
+    const imgUrl = getOptimizedImageUrl(p.img);
+    const tagHtml = p.tag ? `<span class="tag-badge">${p.tag}</span>` : `<span style="color:#cbd5e1;">-</span>`;
+    const catHtml = p.category ? `<span class="category-badge">${p.category}</span>` : `<span style="color:#cbd5e1;">-</span>`;
+
+    tr.innerHTML = `
+      <td>
+        <img src="${imgUrl}" alt="${p.name}" class="product-table-thumb" onclick="openProductDetailModal('${p.id}')" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+      </td>
+      <td>
+        <div class="sku-cell-wrapper">
+          <code class="sku-code">${p.id}</code>
+          <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)" title="คัดลอกรหัสสินค้า">📋</button>
+        </div>
+      </td>
+      <td>
+        <div style="cursor: pointer;" onclick="openProductDetailModal('${p.id}')">
+          <strong style="font-size: 13.5px; color: var(--text-main); display: block; line-height: 1.35;">${p.name}</strong>
+        </div>
+      </td>
+      <td>${catHtml}</td>
+      <td>
+        <strong style="color: #1e293b; font-size: 14px;">฿${(Number(p.price) || 0).toLocaleString()}</strong>
+      </td>
+      <td>${tagHtml}</td>
+      <td style="text-align: right;">
+        <button class="btn-view" onclick="openProductDetailModal('${p.id}')">🔍 ดูข้อมูล</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderProductsGrid() {
+  const container = document.getElementById('productCardsGrid');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const slice = filteredProducts.slice(0, productVisibleLimit);
+
+  if (slice.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
+        <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+        <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
+      </div>
+    `;
+    return;
+  }
+
+  slice.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'admin-product-card';
+    const imgUrl = getOptimizedImageUrl(p.img);
+    const tagHtml = p.tag ? `<div class="admin-product-card-tag">${p.tag}</div>` : '';
+
+    card.innerHTML = `
+      <div class="admin-product-card-img-wrap" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">
+        <img src="${imgUrl}" alt="${p.name}" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+        ${tagHtml}
+      </div>
+      <div class="admin-product-card-body">
+        <div class="admin-product-card-category">${p.category || 'ทั่วไป'}</div>
+        <div class="admin-product-card-title" title="${p.name}" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">${p.name}</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <code class="sku-code">${p.id}</code>
+          <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)">📋 คัดลอก</button>
+        </div>
+        <div class="admin-product-card-footer">
+          <div class="admin-product-card-price">฿${(Number(p.price) || 0).toLocaleString()}</div>
+          <button class="btn-view" onclick="openProductDetailModal('${p.id}')">ดูข้อมูล</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function openProductDetailModal(productId) {
+  const product = allProducts.find(p => String(p.id) === String(productId));
+  if (!product) return;
+
+  currentViewingProduct = product;
+
+  const modal = document.getElementById('productDetailModal');
+  const imgEl = document.getElementById('detailProductImg');
+  const nameEl = document.getElementById('detailProductName');
+  const catEl = document.getElementById('detailProductCategory');
+  const tagEl = document.getElementById('detailProductTag');
+  const priceEl = document.getElementById('detailProductPrice');
+  const skuEl = document.getElementById('detailProductSku');
+  const descEl = document.getElementById('detailProductDesc');
+
+  if (imgEl) imgEl.src = getOptimizedImageUrl(product.img);
+  if (nameEl) nameEl.textContent = product.name || '-';
+  if (catEl) catEl.textContent = product.category || 'ทั่วไป';
+  if (tagEl) {
+    if (product.tag) {
+      tagEl.textContent = product.tag;
+      tagEl.style.display = 'inline-block';
+    } else {
+      tagEl.style.display = 'none';
+    }
+  }
+  if (priceEl) priceEl.textContent = (Number(product.price) || 0).toLocaleString();
+  if (skuEl) skuEl.textContent = product.id;
+  if (descEl) descEl.textContent = product.desc || 'ไม่มีคำอธิบายสินค้าเพิ่มเติม';
+
+  if (modal) modal.classList.add('active');
+}
+
+function closeProductModal() {
+  const modal = document.getElementById('productDetailModal');
+  if (modal) modal.classList.remove('active');
+  currentViewingProduct = null;
+}
+
+function copyProductSku(sku, event) {
+  if (event) event.stopPropagation();
+  if (!sku) return;
+  navigator.clipboard.writeText(String(sku)).then(() => {
+    showToast(`คัดลอกรหัสสินค้า ${sku} แล้ว!`, 'success');
+  }).catch(() => {
+    const temp = document.createElement('input');
+    temp.value = sku;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    temp.remove();
+    showToast(`คัดลอกรหัสสินค้า ${sku} แล้ว!`, 'success');
+  });
+}
+
+function copySkuFromModal() {
+  if (currentViewingProduct && currentViewingProduct.id) {
+    copyProductSku(currentViewingProduct.id);
+  }
+}
+
+function loadMoreProducts() {
+  productVisibleLimit += 50;
+  renderProductsList();
+}
+
+function setProductViewMode(mode) {
+  productViewMode = mode;
+  const btnTable = document.getElementById('btnViewTable');
+  const btnGrid = document.getElementById('btnViewGrid');
+  const tableContainer = document.getElementById('productTableViewContainer');
+  const gridContainer = document.getElementById('productGridViewContainer');
+
+  if (mode === 'table') {
+    if (btnTable) btnTable.classList.add('active');
+    if (btnGrid) btnGrid.classList.remove('active');
+    if (tableContainer) tableContainer.style.display = 'block';
+    if (gridContainer) gridContainer.style.display = 'none';
+  } else {
+    if (btnGrid) btnGrid.classList.add('active');
+    if (btnTable) btnTable.classList.remove('active');
+    if (tableContainer) tableContainer.style.display = 'none';
+    if (gridContainer) gridContainer.style.display = 'block';
+  }
+  renderProductsList();
+}
+
+function onProductFilterChange() {
+  const catSelect = document.getElementById('productCategoryFilter');
+  const tagSelect = document.getElementById('productTagFilter');
+  const sortSelect = document.getElementById('productSortFilter');
+
+  if (catSelect) productSelectedCategory = catSelect.value;
+  if (tagSelect) productSelectedTag = tagSelect.value;
+  if (sortSelect) productSortOrder = sortSelect.value;
+
+  applyProductFilters();
+}
+
+function updateProductStats() {
+  const statTotal = document.getElementById('stat-total-products');
+  const statCat = document.getElementById('stat-total-categories');
+  const statTagged = document.getElementById('stat-tagged-products');
+  const statAvg = document.getElementById('stat-avg-price');
+
+  if (statTotal) statTotal.textContent = allProducts.length.toLocaleString();
+
+  const categories = new Set();
+  let taggedCount = 0;
+  let totalPriceSum = 0;
+
+  allProducts.forEach(p => {
+    if (p.category) categories.add(p.category);
+    if (p.tag) taggedCount++;
+    totalPriceSum += Number(p.price) || 0;
+  });
+
+  if (statCat) statCat.textContent = categories.size.toLocaleString();
+  if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
+
+  const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
+  if (statAvg) statAvg.textContent = `฿${avg.toLocaleString()}`;
+}
+
+// Window exports
+window.fetchProducts = fetchProducts;
+window.setProductViewMode = setProductViewMode;
+window.onProductFilterChange = onProductFilterChange;
+window.loadMoreProducts = loadMoreProducts;
+window.openProductDetailModal = openProductDetailModal;
+window.closeProductModal = closeProductModal;
+window.copyProductSku = copyProductSku;
+window.copySkuFromModal = copySkuFromModal;
