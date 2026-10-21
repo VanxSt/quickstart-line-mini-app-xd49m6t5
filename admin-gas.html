@@ -1543,6 +1543,18 @@
   </div>
 
   <script>
+    // แสดง Error บนหน้าจอทันที (ช่วยวิเคราะห์ปัญหาโหลดค้าง)
+    window.onerror = function (msg, src, line, col) {
+      var box = document.getElementById('loadingIndicator');
+      if (box) {
+        box.style.display = 'flex';
+        box.innerHTML = '<p style="color:#ef4444;font-weight:700;">⚠️ JS Error: ' + msg + ' (บรรทัด ' + line + ')</p>';
+      }
+    };
+    window.addEventListener('unhandledrejection', function (e) {
+      window.onerror(String(e.reason && e.reason.message || e.reason), '', 0, 0);
+    });
+
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec';
 
     let allOrders = [];
@@ -1565,6 +1577,8 @@
     let productVisibleLimit = 50;
     let isProductsLoading = false;
     let currentViewingProduct = null;
+    let adminProducts = [];
+    let isAdminProductsLoaded = false;
 
     // Unread Red Dot & Audio Notification State
     let soundEnabled = localStorage.getItem('admin_sound_enabled') !== 'false';
@@ -1777,8 +1791,11 @@
             .withSuccessHandler(function (orders) {
               if (loaded) return;
               loaded = true;
-              processIncomingOrders(orders);
-              if (loading) loading.style.display = 'none';
+              try {
+                processIncomingOrders(orders);
+              } finally {
+                if (loading) loading.style.display = 'none';
+              }
             })
             .withFailureHandler(function (err) {
               console.error("google.script.run failed, falling back to URL fetch:", err);
