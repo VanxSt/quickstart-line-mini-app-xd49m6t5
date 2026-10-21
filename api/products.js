@@ -1,6 +1,6 @@
 // Vercel Serverless Function — Proxy ดึงสินค้าจาก GAS แทนมือถือ
 // มือถือ → Vercel CDN (เร็ว) → GAS (server-to-server เร็ว)
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec';
+const GAS_URL = 'https://kuekoonkan-api.noperfecf.workers.dev';
 
 export default async function handler(req, res) {
   // CORS headers

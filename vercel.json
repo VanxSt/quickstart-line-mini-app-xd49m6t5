@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/admin-gas.html"
     },
     {
       "source": "/second",

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const https = require('https');
 
-const url = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec?action=getProducts';
+const url = 'https://kuekoonkan-api.noperfecf.workers.dev/api/products';
 
 console.log('กำลังดึงข้อมูลสินค้าจาก Google Sheets...');
 
