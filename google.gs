@@ -525,13 +525,25 @@
   function doGet(e) {
     try {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var action = e.parameter.action;
+      var action = (e && e.parameter) ? e.parameter.action : null;
       
-      // Action 0: แสดงหน้าเว็บ Admin Dashboard
-      if (action === 'admin') {
-        return HtmlService.createHtmlOutputFromFile('admin')
-          .setTitle('Admin Dashboard - จัดการคำสั่งซื้อ')
-          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      // Action 0: แสดงหน้าเว็บ Admin Dashboard (รองรับทั้งเปิดลิงก์ตรงๆ และ ?action=admin)
+      // ตรวจสอบชื่อไฟล์ HTML อัตโนมัติ (รองรับทั้ง index, admin, admin-gas)
+      if (action === 'admin' || !action) {
+        var htmlOutput = null;
+        var filenames = ['index', 'admin', 'admin-gas'];
+        for (var i = 0; i < filenames.length; i++) {
+          try {
+            htmlOutput = HtmlService.createHtmlOutputFromFile(filenames[i]);
+            if (htmlOutput) break;
+          } catch (err) {}
+        }
+        if (htmlOutput) {
+          return htmlOutput
+            .setTitle('Admin Dashboard - จัดการคำสั่งซื้อและสินค้า')
+            .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        }
       }
 
       // Action: ลูกค้ายกเลิกออเดอร์ผ่านลิงก์ LINE
@@ -885,71 +897,55 @@
   // ฟังก์ชันสำหรับเรียกใช้ตรงจากหน้า admin.html (google.script.run)
   // ==========================================
   function getAllOrdersNative() {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var ordersSheet = ss.getSheetByName("Orders");
-    
-    if (!ordersSheet) return [];
-    
-    var orderValues = ordersSheet.getDataRange().getValues();
-    var orderFormulas = ordersSheet.getDataRange().getFormulas();
-    var orders = [];
-    
-    for (var k = orderValues.length - 1; k >= 1; k--) {
-      var oRow = orderValues[k];
-      var fRow = (orderFormulas && orderFormulas[k]) ? orderFormulas[k] : [];
-      if (!oRow[1]) continue;
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var ordersSheet = ss.getSheetByName("Orders");
       
-      var ts = safeString(oRow[0]);
-      var parsedItems = [];
-      try {
-        if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
-      } catch(e) {}
+      if (!ordersSheet) return [];
       
-      var gpsVal = safeString(oRow[5]);
-      var gpsForm = safeString(fRow[5]);
-      var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
+      var orderValues = ordersSheet.getDataRange().getValues();
+      var orderFormulas = ordersSheet.getDataRange().getFormulas();
+      var orders = [];
       
-      orders.push({
-        timestamp: ts,
-        orderId: safeString(oRow[1]),
-        userId: safeString(oRow[2]),
-        customerName: safeString(oRow[3]),
-        phone: safeString(oRow[4]).replace(/'/g, ""),
-        gpsLocation: finalGps,
-        addressDetails: safeString(oRow[6]),
-        totalPrice: Number(oRow[8] || 0),
-        status: safeString(oRow[9] || 'รอตรวจสอบ'),
-        paymentMethod: safeString(oRow[10] || 'ไม่ระบุ'),
-        items: parsedItems,
-        deliveryType: safeString(oRow[13] || 'ทันที'),
-        preorderTime: safeString(oRow[14]),
-        shippingOption: safeString(oRow[15] || 'จัดส่ง'),
-        note: safeString(oRow[16] || '')
-      });
+      for (var k = orderValues.length - 1; k >= 1; k--) {
+        var oRow = orderValues[k];
+        var fRow = (orderFormulas && orderFormulas[k]) ? orderFormulas[k] : [];
+        if (!oRow[1]) continue;
+        
+        var ts = safeString(oRow[0]);
+        var parsedItems = [];
+        try {
+          if (oRow[12]) parsedItems = JSON.parse(oRow[12]);
+        } catch(e) {}
+        
+        var gpsVal = safeString(oRow[5]);
+        var gpsForm = safeString(fRow[5]);
+        var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
+        
+        orders.push({
+          timestamp: ts,
+          orderId: safeString(oRow[1]),
+          userId: safeString(oRow[2]),
+          customerName: safeString(oRow[3]),
+          phone: safeString(oRow[4]).replace(/'/g, ""),
+          gpsLocation: finalGps,
+          addressDetails: safeString(oRow[6]),
+          totalPrice: Number(oRow[8] || 0),
+          status: safeString(oRow[9] || 'รอตรวจสอบ'),
+          paymentMethod: safeString(oRow[10] || 'ไม่ระบุ'),
+          items: parsedItems,
+          deliveryType: safeString(oRow[13] || 'ทันที'),
+          preorderTime: safeString(oRow[14]),
+          shippingOption: safeString(oRow[15] || 'จัดส่ง'),
+          note: safeString(oRow[16] || '')
+        });
+      }
+      
+      return orders;
+    } catch(err) {
+      Logger.log("getAllOrdersNative error: " + err.message);
+      return [];
     }
-    
-    return orders;
-  }
-
-  function getProductsNative() {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var catalogSheet = ss.getSheetByName("Catalog");
-    if (!catalogSheet) return [];
-    
-    var values = catalogSheet.getDataRange().getValues();
-    var products = [];
-    
-    for (var i = 1; i < values.length; i++) {
-      var row = values[i];
-      if (!row[0] && row[0] !== 0) continue;
-      
-      products.push({
-        id: String(row[0] || '').trim(),
-        name: String(row[1] || ''),
-        price: Number(row[3] || 0)
-      });
-    }
-    return products;
   }
   function updateOrderStatusNative(orderId, newStatus) {
     var lock = LockService.getScriptLock();

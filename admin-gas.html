@@ -1543,6 +1543,8 @@
   </div>
 
   <script>
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2Uyr4iy4R3UTtJAFHij1a_HLamAGrRUBKf-A7MU5JMS536GC-LOZkBqX2RSWw2pg1/exec';
+
     let allOrders = [];
     let allMembers = [];
     let activeFilter = 'กำลังตรวจสอบออเดอร์';
@@ -1651,7 +1653,7 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function initAdmin() {
       updateSoundButtonUI();
       fetchOrders(true);
       fetchProducts(false);
@@ -1659,7 +1661,13 @@
         if (currentTab === 'orders') fetchOrders(false);
         else if (currentTab === 'members') fetchMembers(false);
       }, 12000);
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAdmin);
+    } else {
+      initAdmin();
+    }
 
     function switchTab(tab) {
       currentTab = tab;
@@ -1713,6 +1721,10 @@
     function processIncomingOrders(orders) {
       allOrders = orders || [];
 
+      try {
+        localStorage.setItem('cached_admin_orders', JSON.stringify(allOrders));
+      } catch (e) { }
+
       let newCount = 0;
       allOrders.forEach(o => {
         if (o.orderId && !knownOrderIds.has(o.orderId)) {
@@ -1735,13 +1747,30 @@
 
     function fetchOrders(showLoading = true) {
       const loading = document.getElementById('loadingIndicator');
-      if (showLoading) {
-        loading.style.display = 'flex';
-        document.getElementById('ordersBody').innerHTML = '';
+
+      // 1. ตรวจสอบข้อมูลจาก Cache ก่อน เพื่อแสดงผลทันทีแบบ 0ms
+      try {
+        const cached = localStorage.getItem('cached_admin_orders');
+        if (cached && allOrders.length === 0) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            allOrders = parsed;
+            renderOrders();
+            updateStats();
+            if (loading) loading.style.display = 'none';
+          }
+        }
+      } catch (e) { }
+
+      if (showLoading && allOrders.length === 0) {
+        if (loading) loading.style.display = 'flex';
+        const tbody = document.getElementById('ordersBody');
+        if (tbody) tbody.innerHTML = '';
       }
 
       let loaded = false;
 
+      // 2. ถ้าอยู่ในสภาพแวดล้อม Google Apps Script ให้เรียกฟังก์ชันตรงผ่าน google.script.run
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         try {
           google.script.run
@@ -1749,46 +1778,76 @@
               if (loaded) return;
               loaded = true;
               processIncomingOrders(orders);
-              if (showLoading && loading) loading.style.display = 'none';
+              if (loading) loading.style.display = 'none';
             })
             .withFailureHandler(function (err) {
-              console.error("google.script.run failed, falling back:", err);
-              if (!loaded) fetchOrdersViaFetch(showLoading);
+              console.error("google.script.run failed, falling back to URL fetch:", err);
+              if (!loaded) {
+                loaded = true;
+                fetchOrdersViaFetch(showLoading);
+              }
             })
             .getAllOrdersNative();
         } catch (e) {
           console.error("google.script.run error:", e);
-          if (!loaded) fetchOrdersViaFetch(showLoading);
+          if (!loaded) {
+            loaded = true;
+            fetchOrdersViaFetch(showLoading);
+          }
         }
       } else {
+        loaded = true;
         fetchOrdersViaFetch(showLoading);
       }
 
-      // Auto fallback if native call hangs or takes >3.5s
+      // Auto fallback if native call hangs or takes > 3.5s
       setTimeout(() => {
         if (!loaded) {
           console.warn("Native load timeout, fallback to fetch API");
+          loaded = true;
           fetchOrdersViaFetch(showLoading);
         }
       }, 3500);
     }
 
-    function fetchOrdersViaFetch(showLoading) {
+    async function fetchOrdersViaFetch(showLoading) {
       const loading = document.getElementById('loadingIndicator');
-      fetch('?action=getAllOrders')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.status === 'success') {
-            processIncomingOrders(data.orders || []);
-          } else if (data && Array.isArray(data.orders)) {
-            processIncomingOrders(data.orders);
-          }
-          if (showLoading && loading) loading.style.display = 'none';
-        })
-        .catch(err => {
-          console.error("fetch API failed:", err);
-          if (showLoading && loading) loading.style.display = 'none';
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllOrders&_t=${Date.now()}`, {
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && (data.status === 'success' || Array.isArray(data.orders))) {
+            processIncomingOrders(data.orders || []);
+            if (loading) loading.style.display = 'none';
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("fetch API failed:", err);
+      }
+
+      if (loading) loading.style.display = 'none';
+
+      if (allOrders.length === 0) {
+        const tbody = document.getElementById('ordersBody');
+        if (tbody) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
+                <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ยังไม่พบข้อมูลคำสั่งซื้อ หรือยังไม่ได้อัปเดต google.gs</p>
+                <p style="font-size: 13px; margin-bottom: 16px; color: #94a3b8;">กรุณาคัดลอกไฟล์ <code>google.gs</code> ไปวางทับใน Apps Script แล้วกด Deploy เวอร์ชันใหม่ (New Version)</p>
+                <button onclick="fetchOrders(true)" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">🔄 ลองใหม่อีกครั้ง</button>
+              </td>
+            </tr>
+          `;
+        }
+      }
     }
 
     function getStatusMeta(status) {
@@ -2015,18 +2074,62 @@
         document.getElementById('membersBody').innerHTML = '';
       }
 
-      google.script.run
-        .withSuccessHandler(function (members) {
-          allMembers = members || [];
-          renderMembers();
-          updateMemberStats();
-          if (showLoading && loading) loading.style.display = 'none';
-        })
-        .withFailureHandler(function (err) {
-          console.error(err);
-          if (showLoading && loading) loading.style.display = 'none';
-        })
-        .getAllMembersNative();
+      let loaded = false;
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler(function (members) {
+              if (loaded) return;
+              loaded = true;
+              allMembers = members || [];
+              renderMembers();
+              updateMemberStats();
+              if (loading) loading.style.display = 'none';
+            })
+            .withFailureHandler(function (err) {
+              console.error(err);
+              if (!loaded) {
+                loaded = true;
+                fetchMembersViaFetch(showLoading);
+              }
+            })
+            .getAllMembersNative();
+        } catch (e) {
+          if (!loaded) {
+            loaded = true;
+            fetchMembersViaFetch(showLoading);
+          }
+        }
+      } else {
+        loaded = true;
+        fetchMembersViaFetch(showLoading);
+      }
+
+      setTimeout(() => {
+        if (!loaded) {
+          loaded = true;
+          fetchMembersViaFetch(showLoading);
+        }
+      }, 3500);
+    }
+
+    async function fetchMembersViaFetch(showLoading) {
+      const loading = document.getElementById('membersLoadingIndicator');
+      try {
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllMembers&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && (data.status === 'success' || Array.isArray(data.members))) {
+            allMembers = data.members || [];
+            renderMembers();
+            updateMemberStats();
+          }
+        }
+      } catch (err) {
+        console.error('fetchMembersViaFetch error:', err);
+      }
+      if (loading) loading.style.display = 'none';
     }
 
     // ===== Sync Catalog: Export สินค้าจาก GAS → products.json → ให้ Admin Download =====
@@ -2817,15 +2920,26 @@
       // 2. In Google Apps Script environment, call getProductsNative()
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         fetchedData = await new Promise((resolve) => {
-          google.script.run
-            .withSuccessHandler(function (products) {
-              resolve(products || []);
-            })
-            .withFailureHandler(function (err) {
-              console.error('Error fetching admin products via GAS:', err);
-              resolve(null);
-            })
-            .getProductsNative();
+          const timer = setTimeout(() => {
+            console.warn('getProductsNative timeout (4s), falling back to URL fetch');
+            resolve(null);
+          }, 4000);
+          try {
+            google.script.run
+              .withSuccessHandler(function (products) {
+                clearTimeout(timer);
+                resolve(products || []);
+              })
+              .withFailureHandler(function (err) {
+                clearTimeout(timer);
+                console.error('Error fetching admin products via GAS:', err);
+                resolve(null);
+              })
+              .getProductsNative();
+          } catch(e) {
+            clearTimeout(timer);
+            resolve(null);
+          }
         });
       }
 
