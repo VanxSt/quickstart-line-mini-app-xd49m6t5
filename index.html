@@ -7,6 +7,19 @@
     content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
   <title>ร้านเกื้อกูลกัน</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Pre-load Cached Profile in 0ms (ทันทีไม่ต้องรอ Network) -->
+  <script>
+    (function() {
+      try {
+        var raw = localStorage.getItem('kuekoonkan_member_profile') || localStorage.getItem('member_info_cache');
+        if (raw) {
+          window.__CACHED_MEMBER__ = JSON.parse(raw);
+        }
+      } catch(e){}
+    })();
+  </script>
+
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script type="module" src="index.js"></script>
 </head>
@@ -41,7 +54,7 @@
             alt="Profile Picture" />
         </div>
         <div class="profile-meta">
-          <div id="displayName" class="profile-name">กำลังโหลด...</div>
+          <div id="displayName" class="profile-name">สมาชิกเกื้อกูลกัน</div>
           <div id="statusMessage" class="profile-status">ยินดีต้อนรับสมาชิกใหม่</div>
         </div>
       </div>
@@ -55,7 +68,7 @@
             <polyline points="22,6 12,13 2,6"></polyline>
           </svg>
           <span class="detail-label">อีเมล:</span>
-          <span id="email" class="detail-val">กำลังโหลด...</span>
+          <span id="email" class="detail-val">เชื่อมต่อผ่าน LINE</span>
         </div>
 
         <!-- Phone Row -->
@@ -81,9 +94,33 @@
 
       <div class="card-footer">
         <span class="card-id-label">MEMBER ID</span>
-        <span id="userId" class="card-id-val">------------------------</span>
+        <span id="userId" class="card-id-val">MEMBER-LINE</span>
       </div>
     </div>
+
+    <!-- สคริปต์เรนเดอร์ข้อมูลสมาชิกทันทีใน 0ms ป้องกันหน้าจอค้างโหลด -->
+    <script>
+      (function() {
+        if (window.__CACHED_MEMBER__) {
+          var m = window.__CACHED_MEMBER__;
+          var dn = document.getElementById('displayName');
+          var sm = document.getElementById('statusMessage');
+          var em = document.getElementById('email');
+          var pic = document.getElementById('pictureUrl');
+          var uid = document.getElementById('userId');
+          var ph = document.getElementById('phone');
+
+          if (dn && m.displayName) dn.textContent = m.displayName;
+          if (sm && m.statusMessage) sm.textContent = m.statusMessage;
+          if (em && m.email) em.textContent = m.email;
+          if (pic && m.pictureUrl) pic.src = m.pictureUrl;
+          if (uid && m.userId) {
+            uid.textContent = m.userId.length > 8 ? m.userId.substring(0, 5) + '*****' + m.userId.substring(m.userId.length - 4) : m.userId;
+          }
+          if (ph && m.phone) ph.value = m.phone;
+        }
+      })();
+    </script>
 
     <!-- Buttons Section -->
     <div class="actions-section">
