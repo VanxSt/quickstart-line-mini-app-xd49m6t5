@@ -61,3 +61,13 @@ CREATE TABLE IF NOT EXISTS members (
 );
 
 CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
+
+-- 4. ตารางจัดเก็บรูปภาพสลิปโอนเงิน (Order Slips)
+CREATE TABLE IF NOT EXISTS order_slips (
+  order_id TEXT PRIMARY KEY,
+  mime_type TEXT DEFAULT 'image/jpeg',
+  image_base64 TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_slips_order_id ON order_slips(order_id);

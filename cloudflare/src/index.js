@@ -269,6 +269,27 @@ async function sendLinePush(env, userId, messages) {
   }
 }
 
+// ส่งข้อความตอบกลับ LINE Reply Message
+async function sendLineReply(env, replyToken, messages) {
+  if (!replyToken || !env.LINE_ACCESS_TOKEN) return { skipped: true };
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/reply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages,
+      }),
+    });
+    return { ok: res.ok, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 // Router หลักของ Cloudflare Worker
 export default {
   async fetch(request, env, ctx) {
@@ -306,6 +327,49 @@ export default {
             service: 'Kuekoonkan Cloudflare D1 Backend',
             timestamp: new Date().toISOString(),
           });
+        }
+
+        // Endpoint ดูรูปภาพสลิปโอนเงินตรงๆ: GET /api/orders/:orderId/slip หรือ ?action=getSlip&orderId=...
+        const slipMatch = url.pathname.match(/^\/api\/orders\/([^\/]+)\/slip$/);
+        const slipOrderId = slipMatch ? slipMatch[1] : (action === 'getSlip' ? url.searchParams.get('orderId') : null);
+
+        if (slipOrderId) {
+          try {
+            await db.prepare(`
+              CREATE TABLE IF NOT EXISTS order_slips (
+                order_id TEXT PRIMARY KEY,
+                mime_type TEXT DEFAULT 'image/jpeg',
+                image_base64 TEXT,
+                created_at TEXT
+              )
+            `).run();
+
+            const row = await db.prepare('SELECT image_base64, mime_type FROM order_slips WHERE order_id = ?').bind(slipOrderId).first();
+            if (!row || !row.image_base64) {
+              return new Response('ไม่พบรูปภาพสลิปสำหรับออเดอร์นี้', {
+                status: 404,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
+              });
+            }
+
+            const binaryString = atob(row.image_base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            return new Response(bytes.buffer, {
+              status: 200,
+              headers: {
+                'Content-Type': row.mime_type || 'image/jpeg',
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          } catch(err) {
+            return new Response('Error loading slip: ' + err.message, { status: 500 });
+          }
         }
 
         // Action: getProducts OR GET /api/products
@@ -402,6 +466,7 @@ export default {
               orderId: row.order_id,
               totalPrice: Number(row.total_price || 0),
               status: row.status || 'รอตรวจสอบ',
+              slipUrl: row.slip_url || '',
               items,
             };
           });
@@ -509,6 +574,159 @@ export default {
         if (url.pathname === '/webhook' || (postData.events && Array.isArray(postData.events))) {
           const events = postData.events || [];
           for (const ev of events) {
+            // A. ลูกค้าส่งสลิปโอนเงิน (Image Message)
+            if (ev.type === 'message' && ev.message && ev.message.type === 'image') {
+              const userId = ev.source ? ev.source.userId : '';
+              const messageId = ev.message.id;
+
+              if (userId && messageId) {
+                try {
+                  await db.prepare(`
+                    CREATE TABLE IF NOT EXISTS order_slips (
+                      order_id TEXT PRIMARY KEY,
+                      mime_type TEXT DEFAULT 'image/jpeg',
+                      image_base64 TEXT,
+                      created_at TEXT
+                    )
+                  `).run();
+
+                  // ค้นหาออเดอร์ของลูกค้ารายนี้ที่รอชำระเงินหรือรอตรวจสอบ
+                  let order = await db
+                    .prepare(`
+                      SELECT order_id, status, customer_name FROM orders 
+                      WHERE user_id = ? AND status IN ('ชำระเงิน', 'รอชำระเงิน', 'รอตรวจสอบ', 'กำลังตรวจสอบออเดอร์')
+                      ORDER BY timestamp DESC LIMIT 1
+                    `)
+                    .bind(userId)
+                    .first();
+
+                  if (!order) {
+                    order = await db
+                      .prepare(`
+                        SELECT order_id, status, customer_name FROM orders 
+                        WHERE user_id = ? AND status != 'ยกเลิก'
+                        ORDER BY timestamp DESC LIMIT 1
+                      `)
+                      .bind(userId)
+                      .first();
+                  }
+
+                  if (order && order.order_id) {
+                    // ดาวน์โหลดรูปภาพสลิปจาก LINE Content API
+                    const imgRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+                      headers: { Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}` },
+                    });
+
+                    if (imgRes.ok) {
+                      const arrayBuffer = await imgRes.arrayBuffer();
+                      const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+                      // แปลง Binary ArrayBuffer เป็น Base64
+                      let binary = '';
+                      const bytes = new Uint8Array(arrayBuffer);
+                      const chunkSize = 8192;
+                      for (let i = 0; i < bytes.length; i += chunkSize) {
+                        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+                      }
+                      const base64 = btoa(binary);
+
+                      // บันทึกลงตาราง order_slips ใน Cloudflare D1
+                      await db
+                        .prepare(`
+                          INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
+                          VALUES (?, ?, ?, ?)
+                          ON CONFLICT(order_id) DO UPDATE SET
+                            mime_type = excluded.mime_type,
+                            image_base64 = excluded.image_base64,
+                            created_at = excluded.created_at
+                        `)
+                        .bind(order.order_id, mimeType, base64, new Date().toISOString())
+                        .run();
+
+                      // URL รูปภาพสลิปของ Cloudflare Worker เอง
+                      const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
+
+                      // อัปเดตตาราง orders
+                      await db
+                        .prepare(`
+                          UPDATE orders SET slip_url = ?, status = 'ชำระเงิน' WHERE order_id = ?
+                        `)
+                        .bind(slipUrl, order.order_id)
+                        .run();
+
+                      // ส่ง Flex Message ยืนยันหาลูกค้าใน LINE
+                      if (ev.replyToken) {
+                        await sendLineReply(env, ev.replyToken, [
+                          {
+                            type: 'flex',
+                            altText: `🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (${order.order_id})`,
+                            contents: {
+                              type: 'bubble',
+                              header: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#16a34a',
+                                paddingAll: '16px',
+                                contents: [
+                                  {
+                                    type: 'text',
+                                    text: '🧾 ได้รับสลิปโอนเงินแล้ว',
+                                    color: '#ffffff',
+                                    weight: 'bold',
+                                    size: 'md',
+                                  },
+                                  {
+                                    type: 'text',
+                                    text: `เลขออเดอร์: ${order.order_id}`,
+                                    color: '#ffffff',
+                                    size: 'xs',
+                                    margin: 'xs',
+                                  },
+                                ],
+                              },
+                              body: {
+                                type: 'box',
+                                layout: 'vertical',
+                                spacing: 'sm',
+                                contents: [
+                                  {
+                                    type: 'text',
+                                    text: 'ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของท่านแล้ว ✨',
+                                    size: 'sm',
+                                    weight: 'bold',
+                                    color: '#0f172a',
+                                  },
+                                  {
+                                    type: 'text',
+                                    text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
+                                    size: 'xs',
+                                    wrap: true,
+                                    color: '#64748b',
+                                  },
+                                ],
+                              },
+                            },
+                          },
+                        ]);
+                      }
+                    }
+                  } else {
+                    if (ev.replyToken) {
+                      await sendLineReply(env, ev.replyToken, [
+                        {
+                          type: 'text',
+                          text: 'ได้รับรูปภาพสลิปเรียบร้อยแล้วครับ! หากต้องการระบุเลขออเดอร์ สามารถพิมพ์เลขออเดอร์ (เช่น ORD-...) ส่งมาในแชทนี้ได้เลยนะครับ แอดมินจะรีบตรวจสอบให้ครับ 🙏',
+                        },
+                      ]);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error handling line slip in cloudflare:', e);
+                }
+              }
+            }
+
+            // B. ลูกค้ากดปุ่มยืนยัน/ยกเลิกจาก Flex Message
             if (ev.type === 'postback' && ev.postback && ev.postback.data) {
               const params = new URLSearchParams(ev.postback.data);
               const pbAction = params.get('action');
@@ -521,6 +739,62 @@ export default {
             }
           }
           return jsonResponse({ status: 'ok' });
+        }
+
+        // 1.5 Action: uploadSlip OR POST /api/orders/upload-slip (สำหรับแอดมินหรือหน้าเว็บแนบสลิป)
+        if (postAction === 'uploadSlip' || url.pathname === '/api/orders/upload-slip') {
+          const orderId = postData.orderId;
+          const slipUrlInput = postData.slipUrl || '';
+          const base64Data = postData.base64 || '';
+
+          if (!orderId) {
+            return jsonResponse({ status: 'error', message: 'Missing orderId' }, 400);
+          }
+
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS order_slips (
+              order_id TEXT PRIMARY KEY,
+              mime_type TEXT DEFAULT 'image/jpeg',
+              image_base64 TEXT,
+              created_at TEXT
+            )
+          `).run();
+
+          let finalSlipUrl = slipUrlInput;
+
+          if (base64Data) {
+            const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+            const mimeMatch = base64Data.match(/^data:(image\/\w+);base64,/);
+            const mimeType = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : 'image/jpeg';
+
+            await db
+              .prepare(`
+                INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(order_id) DO UPDATE SET
+                  mime_type = excluded.mime_type,
+                  image_base64 = excluded.image_base64,
+                  created_at = excluded.created_at
+              `)
+              .bind(orderId, mimeType, cleanedBase64, new Date().toISOString())
+              .run();
+
+            finalSlipUrl = `${url.origin}/api/orders/${orderId}/slip`;
+          }
+
+          if (finalSlipUrl) {
+            await db
+              .prepare(`
+                UPDATE orders SET slip_url = ?, status = CASE WHEN status IN ('รอชำระเงิน', 'รอตรวจสอบ') THEN 'ชำระเงิน' ELSE status END 
+                WHERE order_id = ?
+              `)
+              .bind(finalSlipUrl, orderId)
+              .run();
+
+            return jsonResponse({ status: 'success', slipUrl: finalSlipUrl });
+          }
+
+          return jsonResponse({ status: 'error', message: 'No slip URL or file provided' }, 400);
         }
 
         // 2. Action: createOrder OR POST /api/orders
@@ -696,6 +970,30 @@ export default {
               originalContentUrl: dynamicQrUrl,
               previewImageUrl: dynamicQrUrl,
             });
+
+            // Quick Reply ให้ลูกค้ากดแนบสลิปจากอัลบั้มหรือกล้อง
+            messages.push({
+              type: 'text',
+              text: '💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇',
+              quickReply: {
+                items: [
+                  {
+                    type: 'action',
+                    action: {
+                      type: 'cameraRoll',
+                      label: '📸 แนบสลิปจากอัลบั้ม',
+                    },
+                  },
+                  {
+                    type: 'action',
+                    action: {
+                      type: 'camera',
+                      label: '📷 ถ่ายรูปสลิป',
+                    },
+                  },
+                ],
+              },
+            });
           } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
             messages.push(
               buildStatusFlexMessage(
@@ -860,6 +1158,7 @@ export default {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(order_id) DO UPDATE SET
               status = excluded.status,
+              slip_url = CASE WHEN excluded.slip_url != '' THEN excluded.slip_url ELSE orders.slip_url END,
               total_price = excluded.total_price,
               items_text = excluded.items_text,
               items_json = excluded.items_json

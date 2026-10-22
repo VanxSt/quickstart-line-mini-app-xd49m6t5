@@ -680,11 +680,17 @@ function renderRecentOrdersList() {
     const dateStr = o.timestamp ? new Date(o.timestamp).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
     const isTransfer = (o.paymentMethod && (o.paymentMethod.includes('โอน') || o.paymentMethod.includes('บัญชีธนาคาร') || o.paymentMethod.includes('ผสม')));
     const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+    const slipPill = o.slipUrl
+      ? `<button type="button" class="btn-slip-pill" style="font-size:10px; padding:2px 6px;" onclick="event.stopPropagation(); openSlipModal('${o.slipUrl}', '${o.orderId || ''}')">🧾 มีสลิป</button>`
+      : '';
 
     tr.innerHTML = `
       <td>
         <strong style="color:var(--primary); font-size:13px;">${o.orderId || '-'}</strong>
-        <div style="margin-top:2px;"><span class="${payBadgeClass}" style="font-size:10px; padding:2px 6px;">${o.paymentMethod || 'โอนจ่าย'}</span></div>
+        <div style="margin-top:2px; display:flex; gap:4px; align-items:center;">
+          <span class="${payBadgeClass}" style="font-size:10px; padding:2px 6px;">${o.paymentMethod || 'โอนจ่าย'}</span>
+          ${slipPill}
+        </div>
       </td>
       <td style="font-size:12px; color:var(--text-muted);">${dateStr}</td>
       <td>
@@ -1044,6 +1050,9 @@ function renderOrders() {
 
     const isTransfer = (order.paymentMethod && (order.paymentMethod.includes('โอน') || order.paymentMethod.includes('บัญชีธนาคาร') || order.paymentMethod.includes('ผสม')));
     const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+    const slipBadge = order.slipUrl
+      ? `<button type="button" class="btn-slip-pill" title="คลิกเพื่อดูสลิป" onclick="event.stopPropagation(); openSlipModal('${order.slipUrl}', '${order.orderId || ''}')">🧾 มีสลิป</button>`
+      : '';
 
     let dateStr = order.timestamp || '-';
     try {
@@ -1065,9 +1074,10 @@ function renderOrders() {
           ${unreadDot}
           <div>
             <strong style="color: var(--primary); font-size: 14px;">${order.orderId}</strong>
-            <div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
               <span class="${payBadgeClass}">${order.paymentMethod || 'โอนจ่าย'}</span>
               ${order.shippingOption === 'รับหน้าร้าน' ? '<span class="pay-badge" style="background-color: #f59e0b; color: white;">🏪 รับหน้าร้าน</span>' : '<span class="pay-badge" style="background-color: #3b82f6; color: white;">🚚 จัดส่ง</span>'}
+              ${slipBadge}
             </div>
           </div>
         </div>
@@ -1162,6 +1172,107 @@ function updateStats() {
 
 let isModalEditMode = false;
 
+function renderModalSlip(order) {
+  const slipContainer = document.getElementById('modalSlipContent');
+  const slipActions = document.getElementById('modalSlipActions');
+  if (!slipContainer) return;
+
+  const slipUrl = (order.slipUrl || '').trim();
+
+  if (slipUrl) {
+    if (slipActions) {
+      slipActions.innerHTML = `
+        <button type="button" class="btn-slip-action-sm" onclick="openSlipModal('${slipUrl}', '${order.orderId}')" title="ขยายรูปสลิป">🔍 ขยาย</button>
+        <a href="${slipUrl}" target="_blank" rel="noopener noreferrer" class="btn-slip-action-sm" title="เปิดรูปในแท็บใหม่">🔗 เปิดเต็ม</a>
+        <button type="button" class="btn-slip-action-sm" onclick="promptAdminAttachSlip('${order.orderId}')" title="เปลี่ยนรูปสลิป">✏️ เปลี่ยน</button>
+      `;
+    }
+    slipContainer.innerHTML = `
+      <div class="slip-card" onclick="openSlipModal('${slipUrl}', '${order.orderId}')">
+        <div class="slip-thumb-wrapper">
+          <img src="${slipUrl}" alt="สลิปโอนเงิน" class="slip-thumb-img" onerror="this.onerror=null; this.src='https://placehold.co/400x300/f8fafc/64748b?text=เปิดดูรูปสลิป';" />
+          <div class="slip-thumb-hover">
+            <span>🔍 คลิกเพื่อขยาย</span>
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <div class="slip-status-tag">✅ แนบสลิปโอนเงินแล้ว</div>
+          <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">คลิกที่รูปเพื่อเปิดดูสลิปขนาดใหญ่และตรวจสอบยอดเงิน</div>
+        </div>
+      </div>
+    `;
+  } else {
+    if (slipActions) slipActions.innerHTML = '';
+    slipContainer.innerHTML = `
+      <div class="slip-empty-box">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 15px;">🧾</span>
+          <span style="font-size: 12px; color: #64748b;">ยังไม่มีสลิปแนบมากับออเดอร์นี้</span>
+        </div>
+        <button type="button" class="btn-admin-attach-slip" onclick="promptAdminAttachSlip('${order.orderId}')">📎 แนบสลิป</button>
+      </div>
+    `;
+  }
+}
+
+function openSlipModal(slipUrl, orderId) {
+  if (!slipUrl) return;
+  const modal = document.getElementById('slipModal');
+  const img = document.getElementById('slipModalImage');
+  const orderIdEl = document.getElementById('slipModalOrderId');
+  const openLink = document.getElementById('slipModalOpenLink');
+  if (orderIdEl) orderIdEl.textContent = orderId ? `(${orderId})` : '';
+  if (openLink) openLink.href = slipUrl;
+  if (img) {
+    img.src = slipUrl;
+    img.onerror = function() {
+      this.src = 'https://placehold.co/600x800/0f172a/94a3b8?text=ไม่สามารถโหลดรูปภาพสลิปได้';
+    };
+  }
+  if (modal) modal.classList.add('active');
+}
+window.openSlipModal = openSlipModal;
+
+function closeSlipModal() {
+  const modal = document.getElementById('slipModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeSlipModal = closeSlipModal;
+
+async function promptAdminAttachSlip(orderId) {
+  const inputUrl = prompt('กรุณากรอก URL รูปภาพสลิป หรือวางลิงก์รูปภาพ (Google Drive / ลิงก์ตรง):');
+  if (!inputUrl || !inputUrl.trim()) return;
+
+  const cleanUrl = inputUrl.trim();
+  const order = allOrders.find(o => o.orderId === orderId);
+  if (order) order.slipUrl = cleanUrl;
+
+  // Update UI
+  if (currentViewingOrderId === orderId && order) {
+    renderModalSlip(order);
+  }
+  renderOrders();
+
+  // Send to server
+  try {
+    showToast('กำลังบันทึกสลิป...', 'info');
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'uploadSlip', orderId: orderId, slipUrl: cleanUrl })
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      showToast('บันทึกสลิปเรียบร้อยแล้ว', 'success');
+    } else {
+      showToast(result.message || 'บันทึกสลิปสำเร็จ (Local)', 'info');
+    }
+  } catch(e) {
+    showToast('บันทึกสลิปสำเร็จ (Local Update)', 'success');
+  }
+}
+window.promptAdminAttachSlip = promptAdminAttachSlip;
+
 function viewOrder(orderId) {
   currentViewingOrderId = orderId;
   isModalEditMode = false; // Reset edit mode on view
@@ -1214,6 +1325,9 @@ function viewOrder(orderId) {
   }
 
   document.getElementById('modalAddress').textContent = order.addressDetails || '-';
+
+  // === Slip Section ===
+  renderModalSlip(order);
 
   // === Render Items ===
   renderModalItems(order, false);

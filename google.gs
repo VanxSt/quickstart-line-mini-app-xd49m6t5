@@ -79,6 +79,12 @@
       // ตรวจสอบว่าเป็น Webhook จาก LINE หรือไม่ (มีการส่ง events มา)
       if (data.events && Array.isArray(data.events)) {
         data.events.forEach(function(event) {
+          // 1. ลูกค้าส่งรูปภาพสลิปโอนเงินเข้ามาใน LINE Chat
+          if (event.type === 'message' && event.message && event.message.type === 'image') {
+            handleLineSlipUpload(ss, event);
+          }
+
+          // 2. ลูกค้ากดปุ่มยืนยัน/ยกเลิกจาก Flex Message
           if (event.type === 'postback' && event.postback && event.postback.data) {
             var pbData = event.postback.data;
             // แปลง query string เป็น object (เช่น action=cancelOrder&orderId=ORD-123)
@@ -148,6 +154,8 @@
         return updateOrderStatusHandler(ss, data);
       } else if (action === 'updateOrderItems') {
         return updateOrderItemsHandler(ss, data);
+      } else if (action === 'uploadSlip') {
+        return uploadSlipHandler(ss, data);
       } else {
         // Default: register/update member profile
         return registerMemberHandler(ss, data);
@@ -186,6 +194,244 @@
       return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
     } catch (err) {
       return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // Handler สำหรับรับการแนบสลิปผ่าน Web API (เช่น แอดมินแนบ หรือลูกค้าแนบผ่านหน้าเว็บ)
+  function uploadSlipHandler(ss, data) {
+    try {
+      var orderId = data.orderId;
+      var slipUrl = data.slipUrl || '';
+      var base64Data = data.base64 || '';
+      
+      if (!orderId) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Missing orderId' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      if (base64Data) {
+        var folderName = "Order_Slips";
+        var folders = DriveApp.getFoldersByName(folderName);
+        var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+        folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+        var cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+        var decoded = Utilities.base64Decode(cleanedBase64);
+        var blob = Utilities.newBlob(decoded, 'image/jpeg', 'slip_' + orderId + '_' + Date.now() + '.jpg');
+        var file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        slipUrl = "https://lh3.googleusercontent.com/d/" + file.getId();
+      }
+
+      if (!slipUrl) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'No slip URL or file provided' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var ordersSheet = ss.getSheetByName("Orders");
+      if (!ordersSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Orders sheet not found' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var values = ordersSheet.getDataRange().getValues();
+      var found = false;
+      for (var i = 1; i < values.length; i++) {
+        if (values[i][1] && values[i][1].toString() === orderId) {
+          ordersSheet.getRange(i + 1, 8).setValue(slipUrl);
+          found = true;
+          break;
+        }
+      }
+
+      if (found) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', slipUrl: slipUrl }))
+          .setMimeType(ContentService.MimeType.JSON);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Order not found' }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // ฟังก์ชันดาวน์โหลดรูปภาพสลิปที่ลูกค้าส่งมาในแชท LINE บันทึกลง Google Drive และผูกกับออเดอร์
+  function handleLineSlipUpload(ss, event) {
+    try {
+      var userId = event.source ? event.source.userId : '';
+      if (!userId || userId === 'unknown') return;
+
+      var ordersSheet = ss.getSheetByName("Orders");
+      if (!ordersSheet) return;
+
+      var values = ordersSheet.getDataRange().getValues();
+      var targetRow = -1;
+      var targetOrderId = '';
+      var targetCustomerName = '';
+
+      // ค้นหาออเดอร์ของลูกค้ารายนี้ โดยเน้นออเดอร์ล่าสุดที่อยู่ในขั้นตอนชำระเงินหรือรอตรวจสอบ
+      for (var r = values.length - 1; r >= 1; r--) {
+        var rowUserId = values[r][2] ? values[r][2].toString().trim() : '';
+        if (rowUserId === userId.trim()) {
+          var st = values[r][9] ? values[r][9].toString().trim() : '';
+          if (st === "ชำระเงิน" || st === "รอชำระเงิน" || st === "รอตรวจสอบ" || st === "กำลังตรวจสอบออเดอร์") {
+            targetRow = r + 1; // 1-based row
+            targetOrderId = values[r][1] ? values[r][1].toString() : '';
+            targetCustomerName = values[r][3] ? values[r][3].toString() : '';
+            break;
+          }
+        }
+      }
+
+      // ถ้าไม่มีออเดอร์ที่ค้างชำระ ให้เลือกออเดอร์ล่าสุดของลูกค้า (ตราบใดที่ไม่ใช่ยกเลิก)
+      if (targetRow === -1) {
+        for (var r = values.length - 1; r >= 1; r--) {
+          var rowUserId = values[r][2] ? values[r][2].toString().trim() : '';
+          if (rowUserId === userId.trim()) {
+            var st = values[r][9] ? values[r][9].toString().trim() : '';
+            if (st !== "ยกเลิก") {
+              targetRow = r + 1;
+              targetOrderId = values[r][1] ? values[r][1].toString() : '';
+              targetCustomerName = values[r][3] ? values[r][3].toString() : '';
+              break;
+            }
+          }
+        }
+      }
+
+      // ดาวน์โหลดรูปภาพสลิปจาก LINE Message Content API
+      var messageId = event.message.id;
+      var contentUrl = "https://api-data.line.me/v2/bot/message/" + messageId + "/content";
+      var res = UrlFetchApp.fetch(contentUrl, {
+        headers: { "Authorization": "Bearer " + LINE_ACCESS_TOKEN },
+        muteHttpExceptions: true
+      });
+
+      if (res.getResponseCode() !== 200) {
+        Logger.log("Failed to download image from LINE: " + res.getResponseCode());
+        return;
+      }
+
+      var blob = res.getBlob();
+      var contentType = blob.getContentType() || 'image/jpeg';
+      var ext = (contentType.indexOf('png') !== -1) ? 'png' : 'jpg';
+
+      // บันทึกลงโฟลเดอร์ Google Drive "Order_Slips"
+      var folderName = "Order_Slips";
+      var folders = DriveApp.getFoldersByName(folderName);
+      var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      var fileName = "slip_" + (targetOrderId || userId) + "_" + (new Date().getTime()) + "." + ext;
+      blob.setName(fileName);
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      var fileId = file.getId();
+      var slipUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+
+      if (targetRow !== -1) {
+        // บันทึกลงคอลัมน์ H (คอลัมน์ที่ 8: Slip Image URL)
+        ordersSheet.getRange(targetRow, 8).setValue(slipUrl);
+
+        // อัปเดตสถานะเป็น "ชำระเงิน"
+        var currentSt = values[targetRow - 1][9] ? values[targetRow - 1][9].toString().trim() : '';
+        if (currentSt === "รอชำระเงิน" || currentSt === "รอตรวจสอบ" || currentSt === "กำลังตรวจสอบออเดอร์") {
+          ordersSheet.getRange(targetRow, 10).setValue("ชำระเงิน");
+        }
+
+        // ตอบกลับลูกค้าด้วย Flex Message แจ้งยืนยันการรับสลิป
+        if (event.replyToken) {
+          sendLineReplyMessage(event.replyToken, [
+            {
+              "type": "flex",
+              "altText": "🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (" + targetOrderId + ")",
+              "contents": {
+                "type": "bubble",
+                "header": {
+                  "type": "box",
+                  "layout": "vertical",
+                  "backgroundColor": "#16a34a",
+                  "paddingAll": "16px",
+                  "contents": [
+                    {
+                      "type": "text",
+                      "text": "🧾 ได้รับสลิปโอนเงินแล้ว",
+                      "color": "#ffffff",
+                      "weight": "bold",
+                      "size": "md"
+                    },
+                    {
+                      "type": "text",
+                      "text": "เลขออเดอร์: " + targetOrderId,
+                      "color": "#ffffff",
+                      "size": "xs",
+                      "margin": "xs"
+                    }
+                  ]
+                },
+                "body": {
+                  "type": "box",
+                  "layout": "vertical",
+                  "spacing": "sm",
+                  "contents": [
+                    {
+                      "type": "text",
+                      "text": "ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของท่านแล้ว ✨",
+                      "size": "sm",
+                      "weight": "bold",
+                      "color": "#0f172a"
+                    },
+                    {
+                      "type": "text",
+                      "text": "แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵",
+                      "size": "xs",
+                      "wrap": true,
+                      "color": "#64748b"
+                    }
+                  ]
+                }
+              }
+            }
+          ]);
+        }
+      } else {
+        if (event.replyToken) {
+          sendLineReplyMessage(event.replyToken, [
+            {
+              "type": "text",
+              "text": "ได้รับรูปภาพสลิปเรียบร้อยแล้วครับ! หากต้องการระบุเลขออเดอร์ สามารถพิมพ์เลขออเดอร์ (เช่น ORD-...) ส่งมาในแชทนี้ได้เลยนะครับ แอดมินจะตรวจสอบและบันทึกให้ครับ 🙏"
+            }
+          ]);
+        }
+      }
+    } catch(err) {
+      Logger.log("handleLineSlipUpload error: " + err.message);
+    }
+  }
+
+  // ส่งข้อความตอบกลับ LINE (Reply Message)
+  function sendLineReplyMessage(replyToken, messages) {
+    if (!replyToken || !LINE_ACCESS_TOKEN || LINE_ACCESS_TOKEN === 'YOUR_LINE_ACCESS_TOKEN_HERE') return;
+    var url = 'https://api.line.me/v2/bot/message/reply';
+    var payload = {
+      'replyToken': replyToken,
+      'messages': messages
+    };
+    var options = {
+      'method': 'post',
+      'headers': {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + LINE_ACCESS_TOKEN
+      },
+      'payload': JSON.stringify(payload),
+      'muteHttpExceptions': true
+    };
+    try {
+      return UrlFetchApp.fetch(url, options).getContentText();
+    } catch(e) {
+      Logger.log("sendLineReplyMessage error: " + e.message);
     }
   }
 
@@ -328,7 +574,7 @@
         gpsFormula = '=HYPERLINK("' + gpsLocation + '", "📌 เปิดแผนที่ Google Maps")';
       }
       
-      var slipFormula = "";
+      var slipFormula = data.slipUrl || "";
       
       var note = data.note ? data.note.toString().trim() : '';
       
@@ -702,6 +948,14 @@
           var gpsForm = fRow[5] ? fRow[5].toString() : '';
           var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
           
+          var slipVal = oRow[7] ? oRow[7].toString().trim() : '';
+          var slipForm = (fRow && fRow[7]) ? fRow[7].toString().trim() : '';
+          var finalSlip = slipVal;
+          if (slipForm && slipForm.indexOf('HYPERLINK') !== -1) {
+            var sMatch = slipForm.match(/HYPERLINK\(\s*"([^"]+)"/i);
+            if (sMatch && sMatch[1]) finalSlip = sMatch[1];
+          }
+          
           orders.push({
             timestamp: oRow[0],
             orderId: oRow[1],
@@ -710,6 +964,7 @@
             phone: oRow[4],
             gpsLocation: finalGps,
             addressDetails: oRow[6],
+            slipUrl: finalSlip,
             totalPrice: oRow[8],
             status: oRow[9] || 'รอตรวจสอบ',
             paymentMethod: oRow[10] || 'ปลายทาง',
@@ -921,6 +1176,14 @@
         var gpsForm = safeString(fRow[5]);
         var finalGps = (gpsForm && gpsForm.indexOf('HYPERLINK') !== -1) ? gpsForm : gpsVal;
         
+        var slipVal = safeString(oRow[7]);
+        var slipForm = safeString(fRow[7]);
+        var finalSlip = slipVal;
+        if (slipForm && slipForm.indexOf('HYPERLINK') !== -1) {
+          var sMatch = slipForm.match(/HYPERLINK\(\s*"([^"]+)"/i);
+          if (sMatch && sMatch[1]) finalSlip = sMatch[1];
+        }
+        
         orders.push({
           timestamp: ts,
           orderId: safeString(oRow[1]),
@@ -929,6 +1192,7 @@
           phone: safeString(oRow[4]).replace(/'/g, ""),
           gpsLocation: finalGps,
           addressDetails: safeString(oRow[6]),
+          slipUrl: finalSlip,
           totalPrice: Number(oRow[8] || 0),
           status: safeString(oRow[9] || 'รอตรวจสอบ'),
           paymentMethod: safeString(oRow[10] || 'ไม่ระบุ'),
@@ -1031,6 +1295,30 @@
               "type": "image",
               "originalContentUrl": dynamicQrUrl,
               "previewImageUrl": dynamicQrUrl
+            });
+
+            // ส่งปุ่ม Quick Reply ให้ลูกค้ากดแนบสลิปได้ทันทีจากอัลบั้มหรือกล้อง
+            messages.push({
+              "type": "text",
+              "text": "💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇",
+              "quickReply": {
+                "items": [
+                  {
+                    "type": "action",
+                    "action": {
+                      "type": "cameraRoll",
+                      "label": "📸 แนบสลิปจากอัลบั้ม"
+                    }
+                  },
+                  {
+                    "type": "action",
+                    "action": {
+                      "type": "camera",
+                      "label": "📷 ถ่ายรูปสลิป"
+                    }
+                  }
+                ]
+              }
             });
           }
           else if (newStatus === "กำลังจัดเตรียมสินค้า" || newStatus === "เตรียมออเดอร์" || newStatus === "จัดเตรียมสินค้าพร้อมส่ง") {
