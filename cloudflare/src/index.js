@@ -581,15 +581,6 @@ export default {
 
               if (userId && messageId) {
                 try {
-                  await db.prepare(`
-                    CREATE TABLE IF NOT EXISTS order_slips (
-                      order_id TEXT PRIMARY KEY,
-                      mime_type TEXT DEFAULT 'image/jpeg',
-                      image_base64 TEXT,
-                      created_at TEXT
-                    )
-                  `).run();
-
                   // ค้นหาออเดอร์ของลูกค้ารายนี้ที่รอชำระเงินหรือรอตรวจสอบ
                   let order = await db
                     .prepare(`
@@ -612,103 +603,116 @@ export default {
                   }
 
                   if (order && order.order_id) {
-                    // ดาวน์โหลดรูปภาพสลิปจาก LINE Content API
-                    const imgRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
-                      headers: { Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}` },
-                    });
-
-                    if (imgRes.ok) {
-                      const arrayBuffer = await imgRes.arrayBuffer();
-                      const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
-
-                      // แปลง Binary ArrayBuffer เป็น Base64
-                      let binary = '';
-                      const bytes = new Uint8Array(arrayBuffer);
-                      const chunkSize = 8192;
-                      for (let i = 0; i < bytes.length; i += chunkSize) {
-                        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-                      }
-                      const base64 = btoa(binary);
-
-                      // บันทึกลงตาราง order_slips ใน Cloudflare D1
-                      await db
-                        .prepare(`
-                          INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
-                          VALUES (?, ?, ?, ?)
-                          ON CONFLICT(order_id) DO UPDATE SET
-                            mime_type = excluded.mime_type,
-                            image_base64 = excluded.image_base64,
-                            created_at = excluded.created_at
-                        `)
-                        .bind(order.order_id, mimeType, base64, new Date().toISOString())
-                        .run();
-
-                      // URL รูปภาพสลิปของ Cloudflare Worker เอง
-                      const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
-
-                      // อัปเดตตาราง orders
-                      await db
-                        .prepare(`
-                          UPDATE orders SET slip_url = ?, status = 'ชำระเงิน' WHERE order_id = ?
-                        `)
-                        .bind(slipUrl, order.order_id)
-                        .run();
-
-                      // ส่ง Flex Message ยืนยันหาลูกค้าใน LINE
-                      if (ev.replyToken) {
-                        await sendLineReply(env, ev.replyToken, [
-                          {
-                            type: 'flex',
-                            altText: `🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (${order.order_id})`,
-                            contents: {
-                              type: 'bubble',
-                              header: {
-                                type: 'box',
-                                layout: 'vertical',
-                                backgroundColor: '#16a34a',
-                                paddingAll: '16px',
-                                contents: [
-                                  {
-                                    type: 'text',
-                                    text: '🧾 ได้รับสลิปโอนเงินแล้ว',
-                                    color: '#ffffff',
-                                    weight: 'bold',
-                                    size: 'md',
-                                  },
-                                  {
-                                    type: 'text',
-                                    text: `เลขออเดอร์: ${order.order_id}`,
-                                    color: '#ffffff',
-                                    size: 'xs',
-                                    margin: 'xs',
-                                  },
-                                ],
-                              },
-                              body: {
-                                type: 'box',
-                                layout: 'vertical',
-                                spacing: 'sm',
-                                contents: [
-                                  {
-                                    type: 'text',
-                                    text: 'ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของท่านแล้ว ✨',
-                                    size: 'sm',
-                                    weight: 'bold',
-                                    color: '#0f172a',
-                                  },
-                                  {
-                                    type: 'text',
-                                    text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
-                                    size: 'xs',
-                                    wrap: true,
-                                    color: '#64748b',
-                                  },
-                                ],
-                              },
+                    // ⚡ 1. ส่ง Flex Message ตอบกลับลูกค้ายืนยันทันที! (< 0.5 วินาที ลูกค้าจะเห็นข้อความทันที ไม่ต้องรอโหลดรูป)
+                    if (ev.replyToken) {
+                      await sendLineReply(env, ev.replyToken, [
+                        {
+                          type: 'flex',
+                          altText: `🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (${order.order_id})`,
+                          contents: {
+                            type: 'bubble',
+                            header: {
+                              type: 'box',
+                              layout: 'vertical',
+                              backgroundColor: '#16a34a',
+                              paddingAll: '16px',
+                              contents: [
+                                {
+                                  type: 'text',
+                                  text: '🧾 ได้รับสลิปโอนเงินแล้ว',
+                                  color: '#ffffff',
+                                  weight: 'bold',
+                                  size: 'md',
+                                },
+                                {
+                                  type: 'text',
+                                  text: `เลขออเดอร์: ${order.order_id}`,
+                                  color: '#ffffff',
+                                  size: 'xs',
+                                  margin: 'xs',
+                                },
+                              ],
+                            },
+                            body: {
+                              type: 'box',
+                              layout: 'vertical',
+                              spacing: 'sm',
+                              contents: [
+                                {
+                                  type: 'text',
+                                  text: `ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของ ${order.customer_name || 'คุณลูกค้า'} เรียบร้อยแล้ว ✨`,
+                                  size: 'sm',
+                                  weight: 'bold',
+                                  color: '#0f172a',
+                                },
+                                {
+                                  type: 'text',
+                                  text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
+                                  size: 'xs',
+                                  wrap: true,
+                                  color: '#64748b',
+                                },
+                              ],
                             },
                           },
-                        ]);
+                        },
+                      ]);
+                    }
+
+                    // ⚡ 2. ทำงานดาวน์โหลดรูปจาก LINE + บันทึกลง D1 ใน Background ผ่าน ctx.waitUntil ไม่บล็อกการตอบกลับ
+                    const saveSlipTask = async () => {
+                      try {
+                        const imgRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+                          headers: { Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}` },
+                        });
+
+                        if (imgRes.ok) {
+                          const arrayBuffer = await imgRes.arrayBuffer();
+                          const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+                          // แปลง Binary ArrayBuffer เป็น Base64 อย่างรวดเร็ว
+                          let binary = '';
+                          const bytes = new Uint8Array(arrayBuffer);
+                          const len = bytes.byteLength;
+                          const chunkSize = 32768;
+                          for (let i = 0; i < len; i += chunkSize) {
+                            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+                          }
+                          const base64 = btoa(binary);
+
+                          // บันทึกลงตาราง order_slips ใน Cloudflare D1
+                          await db
+                            .prepare(`
+                              INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
+                              VALUES (?, ?, ?, ?)
+                              ON CONFLICT(order_id) DO UPDATE SET
+                                mime_type = excluded.mime_type,
+                                image_base64 = excluded.image_base64,
+                                created_at = excluded.created_at
+                            `)
+                            .bind(order.order_id, mimeType, base64, new Date().toISOString())
+                            .run();
+
+                          // URL รูปภาพสลิปของ Cloudflare Worker
+                          const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
+
+                          // อัปเดตตาราง orders
+                          await db
+                            .prepare(`
+                              UPDATE orders SET slip_url = ?, status = 'ชำระเงิน' WHERE order_id = ?
+                            `)
+                            .bind(slipUrl, order.order_id)
+                            .run();
+                        }
+                      } catch (err) {
+                        console.error('Background slip save error:', err);
                       }
+                    };
+
+                    if (ctx && typeof ctx.waitUntil === 'function') {
+                      ctx.waitUntil(saveSlipTask());
+                    } else {
+                      await saveSlipTask();
                     }
                   } else {
                     if (ev.replyToken) {
