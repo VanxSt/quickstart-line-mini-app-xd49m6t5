@@ -10,6 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap"
     rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
   <style>
     :root {
@@ -1720,31 +1721,10 @@
     }
     
     /* Interactive Chart */
-    .chart-svg-container {
+    .chart-canvas-container {
       width: 100%;
-      height: 250px;
+      height: 260px;
       position: relative;
-    }
-    .chart-svg {
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-    }
-    .chart-tooltip {
-      position: absolute;
-      background: rgba(15, 23, 42, 0.95);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      pointer-events: none;
-      z-index: 10;
-      display: none;
-      white-space: nowrap;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      transform: translate(-50%, -100%);
-      margin-top: -8px;
-      transition: opacity 0.15s ease;
     }
     .chart-legend {
       display: flex;
@@ -2186,33 +2166,37 @@
 
         <!-- Charts Row: 7-Day Trend & Status Breakdown -->
         <section class="overview-charts-row">
-          <!-- 7-Day Sales & Orders Interactive SVG Chart -->
+          <!-- 7-Day Sales & Orders Modern Canvas Chart -->
           <div class="overview-card">
-            <div class="overview-card-header">
+            <div class="overview-card-header" style="flex-wrap: wrap; gap: 10px;">
               <div>
-                <h3 class="overview-card-title">📊 แนวโน้มยอดขายและคำสั่งซื้อย้อนหลัง 7 วัน</h3>
-                <p class="overview-card-subtitle">แสดงยอดขาย (บาท) และจำนวนออเดอร์ในแต่ละวัน</p>
+                <h3 class="overview-card-title">📈 แนวโน้มยอดขายและคำสั่งซื้อ (7 วันล่าสุด)</h3>
+                <p class="overview-card-subtitle">วิเคราะห์แนวโน้มรายได้และปริมาณออเดอร์ในแต่ละวัน</p>
               </div>
-              <div style="font-size: 13px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 4px 10px; border-radius: 8px;">
-                7 วันล่าสุด
+              <div style="display: flex; gap: 6px; align-items: center; background: #f1f5f9; padding: 4px; border-radius: 10px;">
+                <button type="button" class="tab-btn active" id="btnChartModeAll" onclick="setChartDisplayMode('all', this)" style="padding: 5px 12px; font-size: 12px; border-radius: 6px;">📊 ทั้งหมด</button>
+                <button type="button" class="tab-btn" id="btnChartModeSales" onclick="setChartDisplayMode('sales', this)" style="padding: 5px 12px; font-size: 12px; border-radius: 6px;">💰 ยอดขาย</button>
+                <button type="button" class="tab-btn" id="btnChartModeOrders" onclick="setChartDisplayMode('orders', this)" style="padding: 5px 12px; font-size: 12px; border-radius: 6px;">🛒 ออเดอร์</button>
               </div>
             </div>
 
-            <div class="chart-svg-container" id="overviewChartContainer">
-              <svg id="overviewSalesChart" class="chart-svg" viewBox="0 0 650 220" preserveAspectRatio="none">
-                <!-- SVG Chart Generated Dynamically -->
-              </svg>
-              <div id="chartTooltip" class="chart-tooltip"></div>
+            <div class="chart-canvas-container" style="position: relative; width: 100%; height: 260px;">
+              <canvas id="overviewSalesChartCanvas"></canvas>
             </div>
 
-            <div class="chart-legend">
-              <div class="chart-legend-item">
-                <div class="chart-legend-dot" style="background: linear-gradient(180deg, #3b82f6, #1d4ed8);"></div>
-                <span>ยอดขาย (บาท)</span>
+            <div class="chart-legend" style="margin-top: 14px; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 12px; flex-wrap: wrap; gap: 10px;">
+              <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <span>💡</span> <span>ชี้ที่จุดหรือแท่งบนกราฟเพื่อดูสถิติรายวัน</span>
               </div>
-              <div class="chart-legend-item">
-                <div class="chart-legend-dot" style="background: #10b981; border-radius: 50%;"></div>
-                <span>จำนวนออเดอร์</span>
+              <div style="display: flex; gap: 16px; align-items: center;">
+                <div class="chart-legend-item">
+                  <div class="chart-legend-dot" style="background: #2563eb; border-radius: 3px;"></div>
+                  <span style="font-weight: 600; color: #1e293b;">ยอดขาย (฿)</span>
+                </div>
+                <div class="chart-legend-item">
+                  <div class="chart-legend-dot" style="background: #10b981; border-radius: 50%;"></div>
+                  <span style="font-weight: 600; color: #1e293b;">จำนวนออเดอร์</span>
+                </div>
               </div>
             </div>
           </div>
@@ -3231,37 +3215,21 @@
       return String(num);
     }
 
-    function showChartTip(e, dateLabel, sales, orders) {
-      const tip = document.getElementById('chartTooltip');
-      if (!tip) return;
-      tip.innerHTML = `
-        <div style="font-weight:700; font-size:12px; margin-bottom:4px; color:#93c5fd;">📅 ${dateLabel}</div>
-        <div>💰 ยอดขาย: <strong style="color:#ffffff;">฿${Number(sales).toLocaleString()}</strong></div>
-        <div>🛒 คำสั่งซื้อ: <strong style="color:#34d399;">${Number(orders).toLocaleString()} รายการ</strong></div>
-      `;
-      tip.style.display = 'block';
-      moveChartTip(e);
-    }
+    let currentChartDisplayMode = 'all';
+    let overviewChartInstance = null;
 
-    function moveChartTip(e) {
-      const tip = document.getElementById('chartTooltip');
-      const container = document.getElementById('overviewChartContainer');
-      if (!tip || !container) return;
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      tip.style.left = x + 'px';
-      tip.style.top = y + 'px';
-    }
-
-    function hideChartTip() {
-      const tip = document.getElementById('chartTooltip');
-      if (tip) tip.style.display = 'none';
+    function setChartDisplayMode(mode, btn) {
+      currentChartDisplayMode = mode;
+      document.querySelectorAll('#btnChartModeAll, #btnChartModeSales, #btnChartModeOrders').forEach(b => {
+        b.classList.remove('active');
+      });
+      if (btn) btn.classList.add('active');
+      render7DayTrendChart();
     }
 
     function render7DayTrendChart() {
-      const svg = document.getElementById('overviewSalesChart');
-      if (!svg) return;
+      const canvas = document.getElementById('overviewSalesChartCanvas');
+      if (!canvas) return;
 
       const days = [];
       const dayLabels = [];
@@ -3299,76 +3267,274 @@
         } catch(e) {}
       });
 
+      if (typeof Chart !== 'undefined') {
+        renderWithChartJs(canvas, dayLabels, daySales, dayOrders);
+      } else {
+        renderWithCanvasFallback(canvas, dayLabels, daySales, dayOrders);
+      }
+    }
+
+    function renderWithChartJs(canvas, dayLabels, daySales, dayOrders) {
+      const ctx = canvas.getContext('2d');
+      if (overviewChartInstance) {
+        overviewChartInstance.destroy();
+        overviewChartInstance = null;
+      }
+
+      // Elegant gradient for Sales Bars
+      const salesGrad = ctx.createLinearGradient(0, 0, 0, 240);
+      salesGrad.addColorStop(0, '#2563eb');
+      salesGrad.addColorStop(1, '#60a5fa');
+
+      // Subtle fill gradient for Orders Line
+      const ordersFillGrad = ctx.createLinearGradient(0, 0, 0, 240);
+      ordersFillGrad.addColorStop(0, 'rgba(16, 185, 129, 0.22)');
+      ordersFillGrad.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
+
+      const showSales = (currentChartDisplayMode === 'all' || currentChartDisplayMode === 'sales');
+      const showOrders = (currentChartDisplayMode === 'all' || currentChartDisplayMode === 'orders');
+
+      const datasets = [];
+
+      if (showSales) {
+        datasets.push({
+          type: 'bar',
+          label: 'ยอดขาย (บาท)',
+          data: daySales,
+          backgroundColor: salesGrad,
+          hoverBackgroundColor: '#1d4ed8',
+          borderRadius: 8,
+          borderSkipped: false,
+          barPercentage: 0.42,
+          categoryPercentage: 0.65,
+          yAxisID: 'ySales',
+          order: 2
+        });
+      }
+
+      if (showOrders) {
+        datasets.push({
+          type: 'line',
+          label: 'จำนวนออเดอร์',
+          data: dayOrders,
+          borderColor: '#10b981',
+          backgroundColor: ordersFillGrad,
+          borderWidth: 3,
+          tension: 0.35,
+          fill: (currentChartDisplayMode === 'orders'),
+          pointBackgroundColor: '#ffffff',
+          pointBorderColor: '#10b981',
+          pointBorderWidth: 2.5,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          pointHoverBackgroundColor: '#10b981',
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 3,
+          yAxisID: showSales ? 'yOrders' : 'ySales',
+          order: 1
+        });
+      }
+
+      overviewChartInstance = new Chart(ctx, {
+        data: {
+          labels: dayLabels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 500,
+            easing: 'easeOutQuart'
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: true,
+              backgroundColor: 'rgba(15, 23, 42, 0.94)',
+              titleColor: '#93c5fd',
+              bodyColor: '#ffffff',
+              titleFont: { family: "'Prompt', 'Inter', sans-serif", size: 13, weight: '700' },
+              bodyFont: { family: "'Prompt', 'Inter', sans-serif", size: 12.5, weight: '600' },
+              padding: 12,
+              cornerRadius: 12,
+              boxPadding: 6,
+              usePointStyle: true,
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              borderWidth: 1,
+              callbacks: {
+                label: function(ctxItem) {
+                  const val = Number(ctxItem.raw || 0);
+                  if (ctxItem.dataset.label.includes('ยอดขาย')) {
+                    return `  💰 ยอดขาย: ฿${val.toLocaleString()}`;
+                  } else {
+                    return `  🛒 คำสั่งซื้อ: ${val.toLocaleString()} รายการ`;
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: "'Prompt', sans-serif", size: 12, weight: '500' },
+                color: '#64748b'
+              }
+            },
+            ySales: {
+              type: 'linear',
+              display: showSales,
+              position: 'left',
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(226, 232, 240, 0.7)',
+                drawBorder: false
+              },
+              ticks: {
+                font: { family: "'Prompt', sans-serif", size: 11, weight: '500' },
+                color: '#64748b',
+                callback: function(v) {
+                  return '฿' + formatCompactNumber(v);
+                }
+              }
+            },
+            yOrders: {
+              type: 'linear',
+              display: showSales && showOrders,
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: {
+                font: { family: "'Prompt', sans-serif", size: 11, weight: '600' },
+                color: '#10b981',
+                precision: 0,
+                callback: function(v) {
+                  return v + ' ออเดอร์';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderWithCanvasFallback(canvas, dayLabels, daySales, dayOrders) {
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = rect.height || 260;
+
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
       const maxSales = Math.max(...daySales, 1000);
       const maxOrders = Math.max(...dayOrders, 5);
 
-      let svgContent = `
-        <defs>
-          <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#3b82f6" />
-            <stop offset="100%" stop-color="#1d4ed8" />
-          </linearGradient>
-        </defs>
-        <!-- Grid Lines -->
-        <line x1="45" y1="45" x2="625" y2="45" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
-        <line x1="45" y1="115" x2="625" y2="115" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
-        <line x1="45" y1="185" x2="625" y2="185" stroke="#cbd5e1" stroke-width="1.5" />
-        <!-- Y Axis Labels -->
-        <text x="38" y="49" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(maxSales)}</text>
-        <text x="38" y="119" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(Math.round(maxSales/2))}</text>
-        <text x="38" y="188" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿0</text>
-      `;
+      const padLeft = 60;
+      const padRight = 50;
+      const padTop = 30;
+      const padBottom = 35;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const baseLineY = padTop + plotH;
 
-      const colWidth = 580 / 7;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      [0, 0.5, 1].forEach(pct => {
+        const y = padTop + plotH * (1 - pct);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(w - padRight, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = "500 11px 'Prompt', sans-serif";
+        ctx.textAlign = 'right';
+        ctx.fillText('฿' + formatCompactNumber(Math.round(maxSales * pct)), padLeft - 10, y + 4);
+      });
+      ctx.setLineDash([]);
+
+      const colW = plotW / 7;
       const orderPoints = [];
 
       for (let i = 0; i < 7; i++) {
-        const xCenter = 45 + (i + 0.5) * colWidth;
-        const barWidth = 36;
-        const barX = xCenter - (barWidth / 2);
-        const barHeight = (daySales[i] / maxSales) * 140;
-        const barY = 185 - barHeight;
-
-        const orderY = 185 - ((dayOrders[i] / maxOrders) * 130);
-        orderPoints.push(`${xCenter},${orderY}`);
-
-        svgContent += `
-          <rect class="chart-bar" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(4, barHeight)}" rx="6" fill="url(#barGradient)" style="cursor: pointer; opacity: 0.9; transition: all 0.2s;" onmouseenter="this.style.opacity='1'; showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="this.style.opacity='0.9'; hideChartTip();" />
-        `;
+        const cx = padLeft + (i + 0.5) * colW;
+        const bW = Math.min(36, colW * 0.55);
+        const bX = cx - bW / 2;
+        const bH = (daySales[i] / maxSales) * (plotH - 15);
+        const bY = baseLineY - bH;
 
         if (daySales[i] > 0) {
-          svgContent += `
-            <text x="${xCenter}" y="${barY - 6}" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">฿${formatCompactNumber(daySales[i])}</text>
-          `;
+          const grad = ctx.createLinearGradient(0, bY, 0, baseLineY);
+          grad.addColorStop(0, '#2563eb');
+          grad.addColorStop(1, '#60a5fa');
+          ctx.fillStyle = grad;
+
+          ctx.beginPath();
+          const r = Math.min(6, bH / 2);
+          ctx.moveTo(bX + r, bY);
+          ctx.lineTo(bX + bW - r, bY);
+          ctx.quadraticCurveTo(bX + bW, bY, bX + bW, bY + r);
+          ctx.lineTo(bX + bW, baseLineY);
+          ctx.lineTo(bX, baseLineY);
+          ctx.lineTo(bX, bY + r);
+          ctx.quadraticCurveTo(bX, bY, bX + r, bY);
+          ctx.fill();
+
+          ctx.fillStyle = '#1e40af';
+          ctx.font = "700 10.5px 'Prompt', sans-serif";
+          ctx.textAlign = 'center';
+          ctx.fillText('฿' + formatCompactNumber(daySales[i]), cx, bY - 6);
         }
 
-        const isToday = (i === 6);
-        svgContent += `
-          <text x="${xCenter}" y="206" text-anchor="middle" font-size="11.5" font-family="'Prompt', sans-serif" font-weight="${isToday ? '700' : '500'}" fill="${isToday ? '#2563eb' : '#64748b'}">${dayLabels[i]}</text>
-        `;
+        ctx.fillStyle = (i === 6) ? '#2563eb' : '#64748b';
+        ctx.font = (i === 6) ? "700 12px 'Prompt', sans-serif" : "500 12px 'Prompt', sans-serif";
+        ctx.textAlign = 'center';
+        ctx.fillText(dayLabels[i], cx, baseLineY + 20);
+
+        const oY = baseLineY - (dayOrders[i] / maxOrders) * (plotH - 25);
+        orderPoints.push({ x: cx, y: oY, orders: dayOrders[i] });
       }
 
       if (orderPoints.length > 0) {
-        svgContent += `
-          <polyline points="${orderPoints.join(' ')}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-        `;
-
-        for (let i = 0; i < 7; i++) {
-          const parts = orderPoints[i].split(',');
-          const cx = parts[0];
-          const cy = parts[1];
-          svgContent += `
-            <circle cx="${cx}" cy="${cy}" r="5" fill="#ffffff" stroke="#10b981" stroke-width="2.5" style="cursor:pointer;" onmouseenter="showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="hideChartTip();" />
-          `;
-          if (dayOrders[i] > 0) {
-            svgContent += `
-              <text x="${cx}" y="${Number(cy) - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#059669">${dayOrders[i]}</text>
-            `;
-          }
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(orderPoints[0].x, orderPoints[0].y);
+        for (let i = 0; i < orderPoints.length - 1; i++) {
+          const xc = (orderPoints[i].x + orderPoints[i + 1].x) / 2;
+          const yc = (orderPoints[i].y + orderPoints[i + 1].y) / 2;
+          ctx.quadraticCurveTo(orderPoints[i].x, orderPoints[i].y, xc, yc);
         }
-      }
+        ctx.lineTo(orderPoints[orderPoints.length - 1].x, orderPoints[orderPoints.length - 1].y);
+        ctx.stroke();
 
-      svg.innerHTML = svgContent;
+        orderPoints.forEach(pt => {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          if (pt.orders > 0) {
+            ctx.fillStyle = '#059669';
+            ctx.font = "700 10px 'Prompt', sans-serif";
+            ctx.textAlign = 'center';
+            ctx.fillText(pt.orders, pt.x, pt.y - 7);
+          }
+        });
+      }
     }
 
     function renderStatusBreakdown(stats) {
