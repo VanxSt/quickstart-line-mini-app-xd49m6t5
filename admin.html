@@ -2093,7 +2093,7 @@
   <!-- ========================================== -->
   <!-- ADMIN LOGIN OVERLAY -->
   <!-- ========================================== -->
-  <div id="adminLoginOverlay" class="admin-login-overlay" style="display: none;">
+  <div id="adminLoginOverlay" class="admin-login-overlay">
     <div class="admin-login-card" id="adminLoginCard">
       <div class="login-header">
         <div class="login-icon-box">🔐</div>
@@ -4071,7 +4071,7 @@
       renderOverviewDashboard();
     }
 
-    function fetchOrders(showLoading = true) {
+    async function fetchOrders(showLoading = true) {
       const loading = document.getElementById('loadingIndicator');
 
       // 1. ตรวจสอบข้อมูลจาก Cache ก่อน เพื่อแสดงผลทันทีแบบ 0ms
@@ -4370,7 +4370,7 @@
       }
     }
 
-    function fetchMembers(showLoading = true) {
+    async function fetchMembers(showLoading = true) {
       const loading = document.getElementById('membersLoadingIndicator');
       if (showLoading && loading) {
         loading.style.display = 'flex';
