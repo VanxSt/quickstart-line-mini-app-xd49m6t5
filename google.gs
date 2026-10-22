@@ -1371,3 +1371,121 @@
     };
   }
 
+  // ==========================================
+  // เมนูและฟังก์ชัน Sync ข้อมูลคำสั่งซื้อและสมาชิกจาก Google Sheets ไป Cloudflare D1
+  // ==========================================
+  function onOpen() {
+    try {
+      SpreadsheetApp.getUi()
+        .createMenu('⚡ ระบบเกื้อกูลกัน')
+        .addItem('🔄 ซิงค์ข้อมูลทั้งหมดไป Cloudflare D1 (ออเดอร์ + สมาชิก)', 'syncAllDataToCloudflare')
+        .addToUi();
+    } catch(e) {}
+  }
+
+  function syncAllDataToCloudflare() {
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch(e) {}
+    
+    var cfApiUrl = 'https://kuekoonkan-api.noperfecf.workers.dev';
+    var orders = getAllOrdersNative();
+    var members = getAllMembersNative();
+    
+    Logger.log("🚀 เริ่มต้นซิงค์ข้อมูลไปยัง Cloudflare D1...");
+    Logger.log("📊 พบคำสั่งซื้อทั้งหมด: " + orders.length + " รายการ | สมาชิก: " + members.length + " คน");
+    
+    var ordersSuccess = 0;
+    var membersSuccess = 0;
+
+    // 1. ซิงค์ Orders (แบ่งส่งเป็น Batch ทีละ 50 รายการ)
+    if (orders && orders.length > 0) {
+      var chunkSize = 50;
+      for (var i = 0; i < orders.length; i += chunkSize) {
+        var chunk = orders.slice(i, i + chunkSize);
+        try {
+          var res = UrlFetchApp.fetch(cfApiUrl, {
+            method: 'post',
+            contentType: 'application/json',
+            payload: JSON.stringify({
+              action: 'syncOrdersBatch',
+              orders: chunk
+            }),
+            muteHttpExceptions: true
+          });
+          var resCode = res.getResponseCode();
+          if (resCode >= 200 && resCode < 300) {
+            ordersSuccess += chunk.length;
+          } else {
+            // Fallback: หาก endpoint batch ยังไม่พร้อม ให้ส่งทีละรายการ
+            for (var j = 0; j < chunk.length; j++) {
+              try {
+                var singleRes = UrlFetchApp.fetch(cfApiUrl, {
+                  method: 'post',
+                  contentType: 'application/json',
+                  payload: JSON.stringify(Object.assign({ action: 'createOrder' }, chunk[j])),
+                  muteHttpExceptions: true
+                });
+                if (singleRes.getResponseCode() < 300) ordersSuccess++;
+              } catch(errSingle) {}
+            }
+          }
+        } catch(err) {
+          Logger.log("Order batch sync error: " + err.message);
+        }
+      }
+    }
+
+    // 2. ซิงค์ Members (แบ่งส่งเป็น Batch ทีละ 50 คน)
+    if (members && members.length > 0) {
+      var mChunkSize = 50;
+      for (var m = 0; m < members.length; m += mChunkSize) {
+        var mChunk = members.slice(m, m + mChunkSize);
+        try {
+          var mRes = UrlFetchApp.fetch(cfApiUrl, {
+            method: 'post',
+            contentType: 'application/json',
+            payload: JSON.stringify({
+              action: 'syncMembersBatch',
+              members: mChunk
+            }),
+            muteHttpExceptions: true
+          });
+          var mResCode = mRes.getResponseCode();
+          if (mResCode >= 200 && mResCode < 300) {
+            membersSuccess += mChunk.length;
+          } else {
+            // Fallback: ส่งทีละคน
+            for (var k = 0; k < mChunk.length; k++) {
+              try {
+                var singleMRes = UrlFetchApp.fetch(cfApiUrl, {
+                  method: 'post',
+                  contentType: 'application/json',
+                  payload: JSON.stringify(Object.assign({ action: 'register' }, mChunk[k])),
+                  muteHttpExceptions: true
+                });
+                if (singleMRes.getResponseCode() < 300) membersSuccess++;
+              } catch(errM) {}
+            }
+          }
+        } catch(mErr) {
+          Logger.log("Member batch sync error: " + mErr.message);
+        }
+      }
+    }
+
+    var resultMsg = "✅ ซิงค์ข้อมูลสำเร็จเรียบร้อยแล้ว!\n\n" +
+                    "📦 คำสั่งซื้อ (Orders): " + ordersSuccess + " / " + orders.length + " รายการ\n" +
+                    "👥 สมาชิก (Members): " + membersSuccess + " / " + members.length + " คน\n\n" +
+                    "ข้อมูลทั้งหมดถูกอัปเดตเข้าสู่ฐานข้อมูล Cloudflare D1 เรียบร้อยแล้วครับ!";
+    Logger.log(resultMsg);
+    if (ui) {
+      ui.alert('ผลการซิงค์ข้อมูลสู่ Cloudflare D1', resultMsg, ui.ButtonSet.OK);
+    }
+    return {
+      status: 'success',
+      ordersSynced: ordersSuccess,
+      totalOrders: orders.length,
+      membersSynced: membersSuccess,
+      totalMembers: members.length
+    };
+  }

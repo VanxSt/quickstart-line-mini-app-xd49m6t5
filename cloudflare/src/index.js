@@ -845,6 +845,109 @@ export default {
           return jsonResponse({ status: 'success', message: 'Order items updated' });
         }
 
+        // 4.5 Action: syncOrdersBatch OR POST /api/orders/batch (Migrate/Sync Orders from Sheets)
+        if (postAction === 'syncOrdersBatch' || url.pathname === '/api/orders/batch') {
+          const orders = postData.orders || [];
+          if (!Array.isArray(orders) || orders.length === 0) {
+            return jsonResponse({ status: 'success', imported: 0, message: 'No orders provided' });
+          }
+
+          const insertStmt = db.prepare(`
+            INSERT INTO orders (
+              order_id, timestamp, user_id, customer_name, phone, gps_location, address_details,
+              slip_url, total_price, status, payment_method, items_text, items_json,
+              delivery_type, preorder_time, shipping_option, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(order_id) DO UPDATE SET
+              status = excluded.status,
+              total_price = excluded.total_price,
+              items_text = excluded.items_text,
+              items_json = excluded.items_json
+          `);
+
+          const batch = [];
+          for (const o of orders) {
+            if (!o.orderId) continue;
+            const items = o.items || [];
+            const itemsText = o.itemsText || (Array.isArray(items) ? items.map((it) => `${it.name || ''} x${it.qty || 1}`).join(', ') : '');
+            const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
+
+            batch.push(
+              insertStmt.bind(
+                o.orderId,
+                o.timestamp || new Date().toISOString(),
+                o.userId || 'unknown',
+                o.customerName || o.displayName || '',
+                o.phone || '',
+                o.gpsLocation || '',
+                o.addressDetails || '',
+                o.slipUrl || '',
+                Number(o.totalPrice || 0),
+                o.status || 'รอตรวจสอบ',
+                o.paymentMethod || 'ปลายทาง',
+                itemsText,
+                itemsJson,
+                o.deliveryType || 'ทันที',
+                o.preorderTime || '',
+                o.shippingOption || 'จัดส่ง',
+                o.note || ''
+              )
+            );
+          }
+
+          if (batch.length > 0) {
+            await db.batch(batch);
+          }
+
+          return jsonResponse({ status: 'success', imported: batch.length });
+        }
+
+        // 4.6 Action: syncMembersBatch OR POST /api/members/batch (Migrate/Sync Members from Sheets)
+        if (postAction === 'syncMembersBatch' || url.pathname === '/api/members/batch') {
+          const members = postData.members || [];
+          if (!Array.isArray(members) || members.length === 0) {
+            return jsonResponse({ status: 'success', imported: 0, message: 'No members provided' });
+          }
+
+          const insertStmt = db.prepare(`
+            INSERT INTO members (
+              user_id, display_name, status_message, email, picture_url, phone,
+              gps_location, address_details, address_label, saved_addresses_json, registered_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+              display_name = COALESCE(NULLIF(excluded.display_name, ''), members.display_name),
+              phone = COALESCE(NULLIF(excluded.phone, ''), members.phone),
+              saved_addresses_json = COALESCE(NULLIF(excluded.saved_addresses_json, '[]'), members.saved_addresses_json),
+              updated_at = CURRENT_TIMESTAMP
+          `);
+
+          const batch = [];
+          for (const m of members) {
+            if (!m.userId) continue;
+            batch.push(
+              insertStmt.bind(
+                m.userId,
+                m.displayName || '',
+                m.statusMessage || '',
+                m.email || '',
+                m.pictureUrl || '',
+                m.phone || '',
+                m.gpsLocation || '',
+                m.addressDetails || '',
+                m.addressLabel || '',
+                m.savedAddresses || m.saved_addresses_json || '[]',
+                m.registeredAt || new Date().toISOString()
+              )
+            );
+          }
+
+          if (batch.length > 0) {
+            await db.batch(batch);
+          }
+
+          return jsonResponse({ status: 'success', imported: batch.length });
+        }
+
         // 5. Action: register (หรือ Default Member Upsert) OR POST /api/members
         if (postAction === 'register' || url.pathname === '/api/members' || postData.userId) {
           const userId = postData.userId;

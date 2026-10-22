@@ -338,7 +338,8 @@
       color: #b45309;
     }
 
-    .status-pending, .status-checking {
+    .status-pending,
+    .status-checking {
       background-color: #fef3c7;
       color: #b45309;
     }
@@ -363,7 +364,8 @@
       color: #055160;
     }
 
-    .status-confirmed, .status-completed {
+    .status-confirmed,
+    .status-completed {
       background-color: #dcfce7;
       color: #15803d;
     }
@@ -643,20 +645,31 @@
       position: relative;
       animation: mapSlideIn 0.3s ease;
     }
+
     @keyframes mapSlideIn {
-      from { opacity: 0; max-height: 0; }
-      to { opacity: 1; max-height: 350px; }
+      from {
+        opacity: 0;
+        max-height: 0;
+      }
+
+      to {
+        opacity: 1;
+        max-height: 350px;
+      }
     }
+
     .modal-map-frame {
       width: 100%;
       height: 280px;
       background: #e2e8f0;
     }
+
     .modal-map-frame iframe {
       width: 100%;
       height: 100%;
       border: none;
     }
+
     .btn-close-map {
       position: absolute;
       top: 10px;
@@ -672,9 +685,11 @@
       backdrop-filter: blur(4px);
       z-index: 10;
     }
+
     .btn-close-map:hover {
       background: rgba(15, 23, 42, 0.9);
     }
+
     .btn-open-map {
       display: inline-flex;
       align-items: center;
@@ -691,16 +706,21 @@
       box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
       transition: all 0.2s;
     }
+
     .btn-open-map:hover {
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
       transform: translateY(-1px);
     }
+
     .gps-link {
       color: #3b82f6;
       text-decoration: underline;
       cursor: pointer;
     }
-    .gps-link:hover { color: #1d4ed8; }
+
+    .gps-link:hover {
+      color: #1d4ed8;
+    }
 
     /* Delete item button */
     .btn-delete-item {
@@ -718,16 +738,19 @@
       transition: all 0.2s;
       padding: 0;
     }
+
     .btn-delete-item:hover {
       background: var(--danger);
       color: white;
       border-color: var(--danger);
       transform: scale(1.1);
     }
+
     .btn-delete-item:disabled {
       opacity: 0.3;
       pointer-events: none;
     }
+
     /* Edit Order Items UI */
     .btn-warning {
       background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -743,10 +766,12 @@
       gap: 6px;
       transition: all 0.2s ease;
     }
+
     .btn-warning:hover {
       background: linear-gradient(135deg, #d97706, #b45309);
       box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
     }
+
     .btn-secondary {
       background: #64748b;
       color: white;
@@ -761,9 +786,11 @@
       gap: 6px;
       transition: all 0.2s ease;
     }
+
     .btn-secondary:hover {
       background: #475569;
     }
+
     .input-edit-qty {
       width: 65px;
       padding: 6px 8px;
@@ -777,10 +804,12 @@
       background: #ffffff;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .input-edit-qty:focus {
       border-color: #f59e0b;
       box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
     }
+
     .input-edit-price {
       width: 85px;
       padding: 6px 8px;
@@ -794,10 +823,12 @@
       background: #ffffff;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .input-edit-price:focus {
       border-color: #f59e0b;
       box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
     }
+
     .edit-note-box {
       margin-top: 16px;
       background: #fefce8;
@@ -805,6 +836,7 @@
       border-radius: 12px;
       padding: 14px 16px;
     }
+
     .edit-note-box label {
       display: block;
       font-weight: 600;
@@ -812,6 +844,7 @@
       color: #a16207;
       margin-bottom: 6px;
     }
+
     .edit-note-box input {
       width: 100%;
       padding: 9px 12px;
@@ -822,14 +855,17 @@
       background: white;
       outline: none;
     }
+
     .edit-note-box input:focus {
       border-color: #eab308;
       box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
     }
+
     .row-subtotal-text {
       font-weight: 700;
       color: var(--text-main);
     }
+
     /* Unread Red Dot Badges & Sound Toggle */
     .unread-badge {
       display: inline-block;
@@ -842,11 +878,24 @@
       box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
       animation: pulseRedDot 1.5s infinite;
     }
+
     @keyframes pulseRedDot {
-      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+
+      70% {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+      }
+
+      100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
     }
+
     .unread-count-tag {
       background: #ef4444;
       color: white;
@@ -857,6 +906,7 @@
       margin-left: 6px;
       box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
     }
+
     .btn-sound-toggle {
       background: #f1f5f9;
       color: var(--text-main);
@@ -871,14 +921,17 @@
       gap: 6px;
       transition: all 0.2s ease;
     }
+
     .btn-sound-toggle.active {
       background: #dbeafe;
       color: #1e40af;
       border-color: #93c5fd;
     }
+
     .btn-sound-toggle:hover {
       transform: translateY(-1px);
     }
+
     /* Toast Notification */
     .toast-notification {
       position: fixed;
@@ -898,22 +951,48 @@
       animation: toastIn 0.4s ease, toastOut 0.4s ease 3.6s forwards;
       pointer-events: none;
     }
+
     .toast-notification .toast-icon {
       font-size: 28px;
       animation: toastBounce 0.6s ease 0.2s;
     }
+
     @keyframes toastIn {
-      from { transform: translateX(120%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from {
+        transform: translateX(120%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
+
     @keyframes toastOut {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(120%); opacity: 0; }
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+
+      to {
+        transform: translateX(120%);
+        opacity: 0;
+      }
     }
+
     @keyframes toastBounce {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.3); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.3);
+      }
     }
+
     /* Product Catalog Styles (Admin View) */
     .view-toggle-group {
       display: flex;
@@ -923,6 +1002,7 @@
       gap: 4px;
       border: 1px solid var(--border);
     }
+
     .view-toggle-group .btn-sound-toggle {
       padding: 6px 14px;
       font-size: 13px;
@@ -930,12 +1010,14 @@
       background: transparent;
       color: var(--text-muted);
     }
+
     .view-toggle-group .btn-sound-toggle.active {
       background: white;
       color: var(--primary);
       box-shadow: var(--shadow-sm);
       font-weight: 700;
     }
+
     .product-table-thumb {
       width: 48px;
       height: 48px;
@@ -947,12 +1029,14 @@
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+
     .product-table-thumb:hover {
       transform: scale(1.18);
       box-shadow: var(--shadow-md);
       z-index: 10;
       position: relative;
     }
+
     .category-pills-bar {
       display: flex;
       gap: 8px;
@@ -963,13 +1047,16 @@
       scrollbar-width: thin;
       align-items: center;
     }
+
     .category-pills-bar::-webkit-scrollbar {
       height: 4px;
     }
+
     .category-pills-bar::-webkit-scrollbar-thumb {
       background: #cbd5e1;
       border-radius: 4px;
     }
+
     .cat-pill {
       display: inline-flex;
       align-items: center;
@@ -986,18 +1073,21 @@
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
     }
+
     .cat-pill:hover {
       border-color: var(--primary);
       color: var(--primary);
       background: #eff6ff;
       transform: translateY(-1px);
     }
+
     .cat-pill.active {
       background: var(--primary);
       color: #ffffff;
       border-color: var(--primary);
       box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
     }
+
     .cat-pill .pill-count {
       font-size: 11px;
       padding: 2px 7px;
@@ -1006,6 +1096,7 @@
       color: inherit;
       font-weight: 700;
     }
+
     .cat-pill.active .pill-count {
       background: rgba(255, 255, 255, 0.28);
       color: #ffffff;
@@ -1018,6 +1109,7 @@
       gap: 14px;
       padding: 4px 0;
     }
+
     .product-thumb-large {
       width: 52px;
       height: 52px;
@@ -1029,17 +1121,20 @@
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+
     .product-thumb-large:hover {
       transform: scale(1.12);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
       border-color: var(--primary);
     }
+
     .product-info-text {
       display: flex;
       flex-direction: column;
       gap: 4px;
       min-width: 0;
     }
+
     .product-title-text {
       font-size: 14px;
       font-weight: 600;
@@ -1051,16 +1146,19 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+
     .product-title-text:hover {
       color: var(--primary);
       text-decoration: underline;
     }
+
     .product-sub-badges {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
     }
+
     .sku-chip {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       background: #f1f5f9;
@@ -1076,14 +1174,17 @@
       cursor: pointer;
       transition: all 0.15s ease;
     }
+
     .sku-chip:hover {
       background: #e2e8f0;
       color: var(--primary);
       border-color: #cbd5e1;
     }
+
     .sku-chip:active {
       transform: scale(0.96);
     }
+
     .price-tag-big {
       font-size: 16px;
       font-weight: 700;
@@ -1102,6 +1203,7 @@
       border: 1px solid #dbeafe;
       white-space: nowrap;
     }
+
     .tag-badge {
       display: inline-block;
       background: #fef3c7;
@@ -1113,13 +1215,17 @@
       border: 1px solid #fde68a;
       white-space: nowrap;
     }
-    .tag-badge.empty { display: none; }
+
+    .tag-badge.empty {
+      display: none;
+    }
 
     .admin-products-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
       gap: 16px;
     }
+
     .admin-product-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -1131,11 +1237,13 @@
       box-shadow: var(--shadow-sm);
       position: relative;
     }
+
     .admin-product-card:hover {
       transform: translateY(-3px);
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
       border-color: #93c5fd;
     }
+
     .admin-product-card-img-wrap {
       width: 100%;
       height: 160px;
@@ -1143,15 +1251,18 @@
       position: relative;
       overflow: hidden;
     }
+
     .admin-product-card-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       transition: transform 0.3s ease;
     }
+
     .admin-product-card:hover .admin-product-card-img {
       transform: scale(1.06);
     }
+
     .admin-product-card-tag {
       position: absolute;
       top: 8px;
@@ -1166,6 +1277,7 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       z-index: 2;
     }
+
     .admin-product-card-category-float {
       position: absolute;
       bottom: 8px;
@@ -1179,12 +1291,14 @@
       backdrop-filter: blur(4px);
       z-index: 2;
     }
+
     .admin-product-card-body {
       padding: 14px;
       display: flex;
       flex-direction: column;
       flex: 1;
     }
+
     .admin-product-card-title {
       font-size: 13.5px;
       font-weight: 600;
@@ -1197,6 +1311,7 @@
       overflow: hidden;
       height: 38px;
     }
+
     .admin-product-card-footer {
       margin-top: auto;
       display: flex;
@@ -1205,11 +1320,13 @@
       padding-top: 10px;
       border-top: 1px dashed var(--border);
     }
+
     .admin-product-card-price {
       font-size: 16px;
       font-weight: 700;
       color: #059669;
     }
+
     #productDetailModal .modal-content {
       border-radius: 20px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -1248,8 +1365,15 @@
     }
 
     @keyframes loginCardPop {
-      0% { opacity: 0; transform: scale(0.92) translateY(12px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
+      0% {
+        opacity: 0;
+        transform: scale(0.92) translateY(12px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
     }
 
     .admin-login-card.shake {
@@ -1257,9 +1381,21 @@
     }
 
     @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      20%, 60% { transform: translateX(-8px); }
-      40%, 80% { transform: translateX(8px); }
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-8px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(8px);
+      }
     }
 
     .login-header {
@@ -1433,7 +1569,8 @@
         <div class="login-field">
           <label for="adminPasswordInput">🔑 รหัสผ่านผู้ดูแลระบบ (Admin Password)</label>
           <div class="password-input-box">
-            <input type="password" id="adminPasswordInput" placeholder="กรอกรหัสผ่านเพื่อเข้าใช้งาน" autocomplete="current-password" required />
+            <input type="password" id="adminPasswordInput" placeholder="กรอกรหัสผ่านเพื่อเข้าใช้งาน"
+              autocomplete="current-password" required />
             <button type="button" class="btn-toggle-eye" onclick="toggleAdminPasswordEye()" title="ดูรหัสผ่าน">
               👁️
             </button>
@@ -1478,7 +1615,8 @@
 
       <div class="sidebar-footer" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 4px;">
-          <div style="width: 38px; height: 38px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
+          <div
+            style="width: 38px; height: 38px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
             👤
           </div>
           <div style="flex: 1; overflow: hidden;">
@@ -1487,10 +1625,12 @@
           </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px;">
-          <button onclick="openChangePasswordModal()" style="width: 100%; padding: 8px 12px; background: #f8fafc; color: #475569; border: 1px solid var(--border); border-radius: 8px; font-weight: 500; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          <button onclick="openChangePasswordModal()"
+            style="width: 100%; padding: 8px 12px; background: #f8fafc; color: #475569; border: 1px solid var(--border); border-radius: 8px; font-weight: 500; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
             🔑 เปลี่ยนรหัสผ่าน
           </button>
-          <button onclick="adminLogout()" style="width: 100%; padding: 8px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          <button onclick="adminLogout()"
+            style="width: 100%; padding: 8px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
             🚪 ออกจากระบบ
           </button>
         </div>
@@ -1503,19 +1643,23 @@
         <header class="header">
           <div>
             <h1>จัดการคำสั่งซื้อ</h1>
-            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน <span style="font-size:11px;color:#10b981;font-weight:700;">• v3</span></p>
+            <p class="subtitle">ระบบบริหารจัดการออเดอร์ ร้านเกื้อกูลกัน <span
+                style="font-size:11px;color:#10b981;font-weight:700;">• v3</span></p>
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button id="soundToggleBtn" class="btn-sound-toggle active" onclick="toggleSound()">
               🔔 เสียงเตือน: เปิด
             </button>
-            <button class="btn-sound-toggle" onclick="testSound()" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">
+            <button class="btn-sound-toggle" onclick="testSound()"
+              style="background:#fef3c7; color:#92400e; border-color:#fde68a;">
               🔊 ทดสอบเสียง
             </button>
             <button id="refreshBtn" class="btn-primary" onclick="fetchOrders(true)">
               <span class="icon">🔄</span> รีเฟรชข้อมูล
             </button>
-            <button id="syncCatalogBtn" onclick="syncCatalog()" style="background:#059669;color:white;border:none;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;" title="Export สินค้าจากชีต Catalog เป็น products.json เพื่อโหลดเร็วขึ้น">
+            <button id="syncCatalogBtn" onclick="syncCatalog()"
+              style="background:#059669;color:white;border:none;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+              title="Export สินค้าจากชีต Catalog เป็น products.json เพื่อโหลดเร็วขึ้น">
               📦 Sync Catalog
             </button>
           </div>
@@ -1559,14 +1703,14 @@
             <div class="filter-tabs" id="filterTabs">
               <button class="tab-btn" onclick="setFilter('all', this)">ทั้งหมด <span class="tab-count"
                   id="count-all">0</span></button>
-              <button class="tab-btn active" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span class="tab-count"
-                  id="count-pending">0</span></button>
+              <button class="tab-btn active" onclick="setFilter('กำลังตรวจสอบออเดอร์', this)">⏳ ตรวจสอบ <span
+                  class="tab-count" id="count-pending">0</span></button>
               <button class="tab-btn" onclick="setFilter('รอการยืนยัน', this)">⏳ รอการยืนยัน <span class="tab-count"
                   id="count-waiting">0</span></button>
               <button class="tab-btn" onclick="setFilter('ชำระเงิน', this)">💳 ชำระเงิน <span class="tab-count"
                   id="count-payment">0</span></button>
-              <button class="tab-btn" onclick="setFilter('กำลังจัดเตรียมสินค้า', this)">📦 เตรียมสินค้า <span class="tab-count"
-                  id="count-preparing">0</span></button>
+              <button class="tab-btn" onclick="setFilter('กำลังจัดเตรียมสินค้า', this)">📦 เตรียมสินค้า <span
+                  class="tab-count" id="count-preparing">0</span></button>
               <button class="tab-btn" onclick="setFilter('กำลังจัดส่ง', this)">🚚 กำลังจัดส่ง <span class="tab-count"
                   id="count-shipping">0</span></button>
               <button class="tab-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">✅ จัดส่งสำเร็จ <span class="tab-count"
@@ -1575,7 +1719,8 @@
                   id="count-cancelled">0</span></button>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <select id="paymentFilterSelect" onchange="setPaymentFilter(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+              <select id="paymentFilterSelect" onchange="setPaymentFilter(this.value)"
+                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="all">💳 ช่องทางชำระเงิน: ทั้งหมด</option>
                 <option value="โอนจ่าย">🏦 โอนจ่าย</option>
                 <option value="โอนเงินผสมเงินสด">💵 โอนเงินผสมเงินสด</option>
@@ -1622,10 +1767,12 @@
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <div class="view-toggle-group">
-              <button id="btnViewTable" class="btn-sound-toggle active" title="มุมมองตาราง" onclick="setProductViewMode('table')">
+              <button id="btnViewTable" class="btn-sound-toggle active" title="มุมมองตาราง"
+                onclick="setProductViewMode('table')">
                 📋 ตาราง
               </button>
-              <button id="btnViewGrid" class="btn-sound-toggle" title="มุมมองการ์ด" onclick="setProductViewMode('grid')">
+              <button id="btnViewGrid" class="btn-sound-toggle" title="มุมมองการ์ด"
+                onclick="setProductViewMode('grid')">
                 🔲 การ์ด
               </button>
             </div>
@@ -1678,18 +1825,23 @@
             <!-- Search input with Instant Clear Button -->
             <div class="search-box" style="margin: 0; min-width: 280px; flex: 1; position: relative;">
               <span class="search-icon">🔍</span>
-              <input type="text" id="adminProductSearchInput" oninput="onProductSearch(this.value)" placeholder="ค้นหา ชื่อสินค้า, รหัส SKU, หมวดหมู่..." style="padding-right: 36px;" />
-              <button id="btnClearProductSearch" onclick="clearProductSearch()" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; align-items: center; justify-content: center; font-size: 11px; color: #64748b; transition: all 0.15s ease;" title="ล้างการค้นหา">✕</button>
+              <input type="text" id="adminProductSearchInput" oninput="onProductSearch(this.value)"
+                placeholder="ค้นหา ชื่อสินค้า, รหัส SKU, หมวดหมู่..." style="padding-right: 36px;" />
+              <button id="btnClearProductSearch" onclick="clearProductSearch()"
+                style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; align-items: center; justify-content: center; font-size: 11px; color: #64748b; transition: all 0.15s ease;"
+                title="ล้างการค้นหา">✕</button>
             </div>
 
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <!-- Tag Filter -->
-              <select id="productTagFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+              <select id="productTagFilter" onchange="onProductFilterChange()"
+                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="all">🏷️ แท็ก: ทั้งหมด</option>
               </select>
 
               <!-- Sort Order -->
-              <select id="productSortFilter" onchange="onProductFilterChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+              <select id="productSortFilter" onchange="onProductFilterChange()"
+                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="default">↕️ เรียงตาม: ค่าเริ่มต้น</option>
                 <option value="name_asc">🔤 ชื่อสินค้า (ก - ฮ)</option>
                 <option value="price_asc">💵 ราคา (น้อย → มาก)</option>
@@ -1705,12 +1857,17 @@
           </div>
 
           <!-- Filter Info Bar -->
-          <div style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div
+            style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span id="productShowingCountText" style="font-weight: 600; color: var(--text-main);">กำลังโหลดสินค้า...</span>
-              <button id="btnResetFilters" onclick="resetAllProductFilters()" style="display: none; background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline;">✕ ล้างตัวกรอง</button>
+              <span id="productShowingCountText"
+                style="font-weight: 600; color: var(--text-main);">กำลังโหลดสินค้า...</span>
+              <button id="btnResetFilters" onclick="resetAllProductFilters()"
+                style="display: none; background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline;">✕
+                ล้างตัวกรอง</button>
             </div>
-            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่รหัสสินค้าเพื่อคัดลอก SKU | กด "ดูข้อมูล" เพื่อดูรูปใหญ่และรายละเอียด</span>
+            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่รหัสสินค้าเพื่อคัดลอก SKU | กด "ดูข้อมูล"
+              เพื่อดูรูปใหญ่และรายละเอียด</span>
           </div>
 
           <!-- Table View Container -->
@@ -1744,8 +1901,10 @@
           </div>
 
           <!-- Load More Bar / Sentinel -->
-          <div id="productLoadMoreContainer" style="padding: 16px 24px; text-align: center; border-top: 1px solid var(--border); display: none;">
-            <button id="btnLoadMoreProducts" class="btn-sound-toggle" onclick="loadMoreProducts()" style="padding: 8px 24px; font-size: 13px;">
+          <div id="productLoadMoreContainer"
+            style="padding: 16px 24px; text-align: center; border-top: 1px solid var(--border); display: none;">
+            <button id="btnLoadMoreProducts" class="btn-sound-toggle" onclick="loadMoreProducts()"
+              style="padding: 8px 24px; font-size: 13px;">
               ⬇️ แสดงสินค้าเพิ่มเติม (โหลดอีก 50 รายการ)
             </button>
           </div>
@@ -1839,8 +1998,11 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <h3 style="margin: 0;">รายการสินค้า</h3>
             <div id="addItemContainer" style="display: none; align-items: center; gap: 8px;">
-              <input type="text" id="addSkuInput" placeholder="รหัสสินค้า" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; width: 100px;">
-              <button id="btnAddSku" class="btn" style="padding: 4px 12px; font-size: 14px; background: #3b82f6; color: white; border-radius: 4px; border: none; cursor: pointer;" onclick="addNewItemBySku()">+ เพิ่ม</button>
+              <input type="text" id="addSkuInput" placeholder="รหัสสินค้า"
+                style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; width: 100px;">
+              <button id="btnAddSku" class="btn"
+                style="padding: 4px 12px; font-size: 14px; background: #3b82f6; color: white; border-radius: 4px; border: none; cursor: pointer;"
+                onclick="addNewItemBySku()">+ เพิ่ม</button>
             </div>
           </div>
           <table class="items-table">
@@ -1859,14 +2021,17 @@
           </table>
           <div id="editNoteContainer" class="edit-note-box" style="display:none;">
             <label for="editChangeNote">📌 หมายเหตุการแก้ไข (ส่งแจ้งเตือนให้ลูกค้าผ่าน LINE):</label>
-            <input type="text" id="editChangeNote" placeholder="เช่น ปรับเปลี่ยนราคาตามป้าย / สินค้าหมดเปลี่ยนเป็น..." />
+            <input type="text" id="editChangeNote"
+              placeholder="เช่น ปรับเปลี่ยนราคาตามป้าย / สินค้าหมดเปลี่ยนเป็น..." />
           </div>
-          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <div
+            style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
             <div style="font-size: 14px; color: #64748b;">
               รวมค่าสินค้า: <strong id="modalSubtotalPrice" style="color: #1e293b;">฿0</strong>
             </div>
             <div style="font-size: 14px; color: #64748b;">
-              ค่าจัดส่ง (<span id="modalShippingOptionLabel">จัดส่ง</span>): <strong id="modalShippingFee" style="color: #2563eb;">฿0</strong>
+              ค่าจัดส่ง (<span id="modalShippingOptionLabel">จัดส่ง</span>): <strong id="modalShippingFee"
+                style="color: #2563eb;">฿0</strong>
             </div>
             <h3 class="modal-total" style="margin-top: 4px; font-size: 18px; font-weight: 700; color: #0f172a;">
               ยอดสุทธิ: <span id="modalTotalPrice" style="color: #2563eb;">฿0</span>
@@ -1893,26 +2058,33 @@
       </header>
       <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
         <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap;">
-          <img id="detailProductImg" src="" alt="Product Image" style="width: 140px; height: 140px; object-fit: cover; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0;" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+          <img id="detailProductImg" src="" alt="Product Image"
+            style="width: 140px; height: 140px; object-fit: cover; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0;"
+            onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
           <div style="flex: 1; min-width: 220px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
               <span id="detailProductCategory" class="category-badge"></span>
               <span id="detailProductTag" class="tag-badge"></span>
             </div>
-            <h3 id="detailProductName" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; line-height: 1.4;"></h3>
+            <h3 id="detailProductName"
+              style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; line-height: 1.4;">
+            </h3>
             <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 12px;">
               ฿<span id="detailProductPrice">0</span>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <span style="font-size: 13px; color: var(--text-muted);">รหัสสินค้า (SKU):</span>
-              <code id="detailProductSku" style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1e293b; border: 1px solid #e2e8f0;"></code>
+              <code id="detailProductSku"
+                style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1e293b; border: 1px solid #e2e8f0;"></code>
               <button class="btn-copy-sku" onclick="copySkuFromModal()" title="คัดลอก SKU">📋 คัดลอก</button>
             </div>
           </div>
         </div>
         <div style="border-top: 1px solid var(--border); padding-top: 16px;">
-          <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">📌 รายละเอียด / คำอธิบายสินค้า</h4>
-          <div id="detailProductDesc" style="font-size: 13px; color: #475569; line-height: 1.6; white-space: pre-line; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid var(--border); max-height: 240px; overflow-y: auto;">
+          <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">📌 รายละเอียด /
+            คำอธิบายสินค้า</h4>
+          <div id="detailProductDesc"
+            style="font-size: 13px; color: #475569; line-height: 1.6; white-space: pre-line; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid var(--border); max-height: 240px; overflow-y: auto;">
           </div>
         </div>
       </div>
@@ -1934,17 +2106,25 @@
         <form id="changePasswordForm" onsubmit="handleSaveNewPassword(event)">
           <div style="margin-bottom: 14px;">
             <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">รหัสผ่านเดิม</label>
-            <input type="password" id="inputCurrentPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กรอกรหัสผ่านปัจจุบัน" required />
+            <input type="password" id="inputCurrentPassword"
+              style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;"
+              placeholder="กรอกรหัสผ่านปัจจุบัน" required />
           </div>
           <div style="margin-bottom: 14px;">
             <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">รหัสผ่านใหม่</label>
-            <input type="password" id="inputNewPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กำหนดรหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)" required minlength="4" />
+            <input type="password" id="inputNewPassword"
+              style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;"
+              placeholder="กำหนดรหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)" required minlength="4" />
           </div>
           <div style="margin-bottom: 14px;">
-            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">ยืนยันรหัสผ่านใหม่</label>
-            <input type="password" id="inputConfirmPassword" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="4" />
+            <label
+              style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">ยืนยันรหัสผ่านใหม่</label>
+            <input type="password" id="inputConfirmPassword"
+              style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px;"
+              placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="4" />
           </div>
-          <div id="changePwdError" style="display: none; color: #dc2626; font-size: 12.5px; margin-bottom: 12px; font-weight: 500;"></div>
+          <div id="changePwdError"
+            style="display: none; color: #dc2626; font-size: 12.5px; margin-bottom: 12px; font-weight: 500;"></div>
           <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
             <button type="button" class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
             <button type="submit" class="btn-primary">💾 บันทึกรหัสผ่านใหม่</button>
@@ -2775,7 +2955,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลัง Sync...'; }
 
       google.script.run
-        .withSuccessHandler(function(jsonStr) {
+        .withSuccessHandler(function (jsonStr) {
           try {
             const data = JSON.parse(jsonStr);
             if (data.status !== 'success' || !Array.isArray(data.products)) {
@@ -2794,12 +2974,12 @@
 
             if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
             alert('✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (' + data.total + ' สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!');
-          } catch(e) {
+          } catch (e) {
             alert('❌ Error parsing JSON: ' + e.message);
             if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           alert('❌ ไม่สามารถดึงข้อมูลสินค้าได้: ' + err.message);
           if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
         })
@@ -2976,7 +3156,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
 
       await fetchAdminProducts();
-      
+
       if (btn) { btn.disabled = false; btn.textContent = '+ เพิ่ม'; }
 
       const product = adminProducts.find(p => String(p.id) === String(sku));
@@ -3005,7 +3185,7 @@
     function syncOrderItemsFromDOM(order) {
       const qtyInputs = document.querySelectorAll('.input-edit-qty');
       const priceInputs = document.querySelectorAll('.input-edit-price');
-      
+
       order.items.forEach((item, idx) => {
         const qInput = qtyInputs[idx];
         const pInput = priceInputs[idx];
@@ -3195,7 +3375,7 @@
       if (btnCancel) btnCancel.disabled = true;
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           if (result.status === 'success') {
             alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
             if (originalOrder) {
@@ -3218,7 +3398,7 @@
             if (btnCancel) btnCancel.disabled = false;
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           console.error('Save order error:', err);
           alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
           if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
@@ -3247,7 +3427,7 @@
         });
 
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             if (result.status === 'success') {
               order.items = newItems;
               order.totalPrice = newTotal;
@@ -3258,7 +3438,7 @@
               alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             console.error('Delete item error:', err);
             alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
           })
@@ -3307,7 +3487,7 @@
 
       const toast = document.createElement('div');
       toast.className = 'custom-toast';
-      
+
       let bgColor = '#10b981'; // Green
       let icon = '✅';
       if (type === 'error') {
@@ -3501,7 +3681,7 @@
                 resolve(null);
               })
               .getProductsNative();
-          } catch(e) {
+          } catch (e) {
             clearTimeout(timer);
             resolve(null);
           }

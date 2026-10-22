@@ -390,3 +390,4 @@ if (btnFavoriteOrders) {
     window.location.href = 'second.html?open=favorites';
   });
 }
+}
