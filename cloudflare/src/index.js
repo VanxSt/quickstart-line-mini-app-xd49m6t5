@@ -937,10 +937,7 @@ export default {
           const messages = [];
           const pm = order.payment_method || '';
 
-          if (
-            (status === 'ชำระเงิน' || status === 'รอชำระเงิน') &&
-            (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))
-          ) {
+          if (status === 'รอชำระเงิน' && (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))) {
             messages.push(
               buildStatusFlexMessage(
                 '💳 ยืนยันออเดอร์ & แจ้งชำระเงิน',
@@ -994,6 +991,23 @@ export default {
                 ],
               },
             });
+          } else if (status === 'ชำระเงิน') {
+            messages.push(
+              buildStatusFlexMessage(
+                '🧾 ยืนยันการชำระเงินเรียบร้อย',
+                orderId,
+                'ทางร้านได้รับยอดชำระเงินเรียบร้อยแล้วครับ ขอบคุณครับ ✨ แอดมินกำลังเร่งจัดเตรียมสินค้าให้นะครับ 🧑‍🍳',
+                '#16a34a',
+                order.customer_name,
+                order.phone,
+                order.shipping_option,
+                order.delivery_type,
+                order.preorder_time,
+                items,
+                order.total_price,
+                pm
+              )
+            );
           } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
             messages.push(
               buildStatusFlexMessage(
@@ -1064,12 +1078,15 @@ export default {
             );
           }
 
-          let pushResult = null;
           if (messages.length > 0 && order.user_id) {
-            pushResult = await sendLinePush(env, order.user_id, messages);
+            if (ctx && typeof ctx.waitUntil === 'function') {
+              ctx.waitUntil(sendLinePush(env, order.user_id, messages));
+            } else {
+              await sendLinePush(env, order.user_id, messages);
+            }
           }
 
-          return jsonResponse({ status: 'success', debug: pushResult });
+          return jsonResponse({ status: 'success' });
         }
 
         // 4. Action: updateOrderItems OR POST /api/orders/items
@@ -1137,7 +1154,11 @@ export default {
               },
             };
 
-            await sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]);
+            if (ctx && typeof ctx.waitUntil === 'function') {
+              ctx.waitUntil(sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]));
+            } else {
+              await sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]);
+            }
           }
 
           return jsonResponse({ status: 'success', message: 'Order items updated' });

@@ -4094,49 +4094,8 @@
         if (tbody) tbody.innerHTML = '';
       }
 
-      let loaded = false;
-
-      // 2. ถ้าอยู่ในสภาพแวดล้อม Google Apps Script ให้เรียกฟังก์ชันตรงผ่าน google.script.run
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        try {
-          google.script.run
-            .withSuccessHandler(function (orders) {
-              if (loaded) return;
-              loaded = true;
-              try {
-                processIncomingOrders(orders);
-              } finally {
-                if (loading) loading.style.display = 'none';
-              }
-            })
-            .withFailureHandler(function (err) {
-              console.error("google.script.run failed, falling back to URL fetch:", err);
-              if (!loaded) {
-                loaded = true;
-                fetchOrdersViaFetch(showLoading);
-              }
-            })
-            .getAllOrdersNative();
-        } catch (e) {
-          console.error("google.script.run error:", e);
-          if (!loaded) {
-            loaded = true;
-            fetchOrdersViaFetch(showLoading);
-          }
-        }
-      } else {
-        loaded = true;
-        fetchOrdersViaFetch(showLoading);
-      }
-
-      // Auto fallback if native call hangs or takes > 3.5s
-      setTimeout(() => {
-        if (!loaded) {
-          console.warn("Native load timeout, fallback to fetch API");
-          loaded = true;
-          fetchOrdersViaFetch(showLoading);
-        }
-      }, 3500);
+      // ดึงข้อมูลผ่าน Cloudflare Worker API (D1 Edge) โดยตรงเพื่อความรวดเร็วสูงสุด
+      await fetchOrdersViaFetch(showLoading);
     }
 
     async function fetchOrdersViaFetch(showLoading) {
@@ -4418,45 +4377,8 @@
         document.getElementById('membersBody').innerHTML = '';
       }
 
-      let loaded = false;
-
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        try {
-          google.script.run
-            .withSuccessHandler(function (members) {
-              if (loaded) return;
-              loaded = true;
-              allMembers = members || [];
-              renderMembers();
-              updateMemberStats();
-              renderOverviewDashboard();
-              if (loading) loading.style.display = 'none';
-            })
-            .withFailureHandler(function (err) {
-              console.error(err);
-              if (!loaded) {
-                loaded = true;
-                fetchMembersViaFetch(showLoading);
-              }
-            })
-            .getAllMembersNative();
-        } catch (e) {
-          if (!loaded) {
-            loaded = true;
-            fetchMembersViaFetch(showLoading);
-          }
-        }
-      } else {
-        loaded = true;
-        fetchMembersViaFetch(showLoading);
-      }
-
-      setTimeout(() => {
-        if (!loaded) {
-          loaded = true;
-          fetchMembersViaFetch(showLoading);
-        }
-      }, 3500);
+      // ดึงข้อมูลสมาชิกผ่าน Cloudflare Worker API (D1 Edge) โดยตรงเพื่อความรวดเร็วสูงสุด
+      await fetchMembersViaFetch(showLoading);
     }
 
     async function fetchMembersViaFetch(showLoading) {
@@ -5007,37 +4929,47 @@
       if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ กำลังบันทึก & แจ้งลูกค้า...'; }
       if (btnCancel) btnCancel.disabled = true;
 
-      google.script.run
-        .withSuccessHandler(function (result) {
-          if (result.status === 'success') {
-            alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
-            if (originalOrder) {
-              originalOrder.items = updatedItems;
-              originalOrder.totalPrice = newGrandTotal;
-            }
-            isModalEditMode = false;
-            currentEditingOrder = null;
-
-            const noteBox = document.getElementById('editNoteContainer');
-            if (noteBox) noteBox.style.display = 'none';
-
-            renderModalItems(order, false);
-            renderModalActions(order);
-            renderOrders();
-            updateStats();
-          } else {
-            alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
-            if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
-            if (btnCancel) btnCancel.disabled = false;
-          }
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateOrderItems',
+          orderId: currentViewingOrderId,
+          items: updatedItems,
+          totalPrice: newGrandTotal,
+          changeNote: changeNote
         })
-        .withFailureHandler(function (err) {
-          console.error('Save order error:', err);
-          alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (result.status === 'success') {
+          alert('✅ บันทึกการแก้ไขข้อมูลและแจ้งเตือนลูกค้าผ่าน LINE เรียบร้อยแล้ว!');
+          if (originalOrder) {
+            originalOrder.items = updatedItems;
+            originalOrder.totalPrice = newGrandTotal;
+          }
+          isModalEditMode = false;
+          currentEditingOrder = null;
+
+          const noteBox = document.getElementById('editNoteContainer');
+          if (noteBox) noteBox.style.display = 'none';
+
+          renderModalItems(order, false);
+          renderModalActions(order);
+          renderOrders();
+          updateStats();
+        } else {
+          alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
           if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
           if (btnCancel) btnCancel.disabled = false;
-        })
-        .updateOrderItemsNative(currentViewingOrderId, updatedItems, newGrandTotal, true, changeNote);
+        }
+      })
+      .catch(err => {
+        console.error('Save order error:', err);
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 บันทึกการแก้ไข & แจ้งลูกค้า'; }
+        if (btnCancel) btnCancel.disabled = false;
+      });
     }
 
     function deleteOrderItem(orderId, itemIndex) {
@@ -5059,23 +4991,33 @@
           newTotal += Number(item.subtotal || (Number(item.price || 0) * Number(item.qty || 1)));
         });
 
-        google.script.run
-          .withSuccessHandler(function (result) {
-            if (result.status === 'success') {
-              order.items = newItems;
-              order.totalPrice = newTotal;
-              renderModalItems(order, isModalEditMode);
-              renderOrders();
-              updateStats();
-            } else {
-              alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
-            }
+        fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'updateOrderItems',
+            orderId: orderId,
+            items: newItems,
+            totalPrice: newTotal,
+            changeNote: 'ลบรายการสินค้า "' + itemName + '" ออกจากออเดอร์'
           })
-          .withFailureHandler(function (err) {
-            console.error('Delete item error:', err);
-            alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-          })
-          .updateOrderItemsNative(orderId, newItems, newTotal, true, 'ลบรายการสินค้า "' + itemName + '" ออกจากออเดอร์');
+        })
+        .then(res => res.json())
+        .then(result => {
+          if (result.status === 'success') {
+            order.items = newItems;
+            order.totalPrice = newTotal;
+            renderModalItems(order, isModalEditMode);
+            renderOrders();
+            updateStats();
+          } else {
+            alert('❌ ไม่สามารถบันทึกได้: ' + (result.message || 'Unknown error'));
+          }
+        })
+        .catch(err => {
+          console.error('Delete item error:', err);
+          alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        });
       }, 350);
     }
 
@@ -5192,31 +5134,37 @@
       // Show temporary loading toast
       const loadingToast = showToast('กำลังอัปเดตสถานะออเดอร์เป็น "' + newStatus + '"...', 'loading');
 
-      // 2. Perform network request in background
-      google.script.run
-        .withSuccessHandler(function (result) {
-          if (loadingToast && loadingToast.parentNode) loadingToast.remove();
-          if (result.status === 'success') {
-            showToast("อัปเดตสถานะออเดอร์สำเร็จ!");
-            // Fetch silently in background to keep data fully synced
-            fetchOrders(false);
-          } else {
-            // Rollback on failure
-            allOrders[orderIndex].status = originalStatus;
-            renderOrders();
-            updateStats();
-            showToast("ไม่สามารถอัปเดตสถานะได้: " + result.message, 'error');
-          }
+      // 2. Perform network request directly to Cloudflare Worker (D1 Edge)
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateOrderStatus',
+          orderId: orderId,
+          status: newStatus
         })
-        .withFailureHandler(function (err) {
-          if (loadingToast && loadingToast.parentNode) loadingToast.remove();
-          // Rollback on connection failure
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (loadingToast && loadingToast.parentNode) loadingToast.remove();
+        if (result.status === 'success') {
+          showToast("อัปเดตสถานะออเดอร์สำเร็จ!");
+          fetchOrders(false);
+        } else {
           allOrders[orderIndex].status = originalStatus;
           renderOrders();
           updateStats();
-          showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error');
-        })
-        .updateOrderStatusNative(orderId, newStatus);
+          showToast("ไม่สามารถอัปเดตสถานะได้: " + (result.message || 'Unknown error'), 'error');
+        }
+      })
+      .catch(err => {
+        if (loadingToast && loadingToast.parentNode) loadingToast.remove();
+        allOrders[orderIndex].status = originalStatus;
+        renderOrders();
+        updateStats();
+        showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error');
+        console.error("Update status error:", err);
+      });
     }
 
     // Helper: robustly extract Google Maps URL from HYPERLINK formula, plain text URL, coordinates, or search fallback
