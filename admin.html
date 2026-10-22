@@ -1542,13 +1542,442 @@
       transform: translateY(0);
     }
 
-    .login-footer-info {
-      text-align: center;
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
+    /* ========================================== */
+    /* OVERVIEW DASHBOARD STYLES */
+    /* ========================================== */
+    .overview-hero-alert {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1.5px solid #fde68a;
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+      animation: alertPulse 2s infinite ease-in-out;
+    }
+    @keyframes alertPulse {
+      0%, 100% { border-color: #fde68a; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1); }
+      50% { border-color: #f59e0b; box-shadow: 0 6px 20px rgba(245, 158, 11, 0.22); }
+    }
+    .overview-alert-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .overview-alert-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: #f59e0b;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+    }
+    .overview-alert-text h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 2px;
+    }
+    .overview-alert-text p {
+      font-size: 13px;
+      color: #b45309;
+      margin: 0;
+    }
+    .overview-kpis-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .overview-kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .overview-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: transparent;
+      transition: all 0.2s;
+    }
+    .overview-kpi-card.kpi-revenue::before { background: linear-gradient(90deg, #10b981, #059669); }
+    .overview-kpi-card.kpi-today::before { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+    .overview-kpi-card.kpi-orders::before { background: linear-gradient(90deg, #8b5cf6, #6d28d9); }
+    .overview-kpi-card.kpi-pending::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .overview-kpi-card.kpi-members::before { background: linear-gradient(90deg, #06b6d4, #0891b2); }
+    .overview-kpi-card.kpi-products::before { background: linear-gradient(90deg, #ec4899, #be185d); }
+    .overview-kpi-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
+      border-color: #cbd5e1;
+    }
+    .overview-kpi-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .overview-kpi-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .overview-kpi-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .kpi-revenue .overview-kpi-icon { background: #dcfce7; color: #15803d; }
+    .kpi-today .overview-kpi-icon { background: #dbeafe; color: #1d4ed8; }
+    .kpi-orders .overview-kpi-icon { background: #ede9fe; color: #6d28d9; }
+    .kpi-pending .overview-kpi-icon { background: #fef3c7; color: #b45309; }
+    .kpi-members .overview-kpi-icon { background: #cffafe; color: #0e7490; }
+    .kpi-products .overview-kpi-icon { background: #fce7f3; color: #be185d; }
+    .overview-kpi-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.2;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+    .overview-kpi-sub {
       font-size: 11.5px;
-      color: #94a3b8;
+      color: var(--text-muted);
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .kpi-badge-pill {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    /* Charts Row */
+    .overview-charts-row {
+      display: grid;
+      grid-template-columns: 1.7fr 1.1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .overview-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+    .overview-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .overview-card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .overview-card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Interactive Chart */
+    .chart-svg-container {
+      width: 100%;
+      height: 250px;
+      position: relative;
+    }
+    .chart-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .chart-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: translate(-50%, -100%);
+      margin-top: -8px;
+      transition: opacity 0.15s ease;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      align-items: center;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chart-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    /* Breakdown lists */
+    .breakdown-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .breakdown-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .breakdown-item-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .breakdown-bar-bg {
+      width: 100%;
+      height: 9px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .breakdown-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Data feeds 2-col */
+    .overview-data-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1.1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .overview-table-mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .overview-table-mini th {
+      background: #f8fafc;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border-bottom: 1px solid var(--border);
+    }
+    .overview-table-mini td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .overview-table-mini tr:last-child td {
+      border-bottom: none;
+    }
+    .overview-table-mini tr:hover td {
+      background: #f8fafc;
+    }
+
+    /* Top Sellers List */
+    .top-sellers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .top-seller-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .top-seller-item:hover {
+      background: white;
+      border-color: #cbd5e1;
+      transform: translateX(4px);
+      box-shadow: var(--shadow-sm);
+    }
+    .top-seller-rank {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .rank-1 { background: #fef3c7; color: #b45309; }
+    .rank-2 { background: #f1f5f9; color: #475569; }
+    .rank-3 { background: #ffedd5; color: #c2410c; }
+    .rank-other { background: #f8fafc; color: #94a3b8; font-size: 12px; }
+    .top-seller-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .top-seller-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .top-seller-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .top-seller-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+    }
+    .top-seller-sales {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .top-seller-revenue {
+      font-size: 14px;
+      font-weight: 700;
+      color: #059669;
+    }
+    .top-seller-qty {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Quick Action Cards */
+    .overview-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .overview-action-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .overview-action-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      background: var(--primary-light);
+    }
+    .overview-action-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      background: white;
+      border: 1px solid var(--border);
+    }
+    .overview-action-info h4 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+    .overview-action-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    @media (max-width: 1200px) {
+      .overview-kpis-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .overview-charts-row,
+      .overview-data-row {
+        grid-template-columns: 1fr;
+      }
+      .overview-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 768px) {
+      .overview-kpis-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .overview-hero-alert {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .overview-actions-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1606,7 +2035,10 @@
         <h2>Admin Panel</h2>
       </div>
       <nav class="nav-menu">
-        <a href="#" class="nav-item active" id="navOrders" onclick="switchTab('orders')">
+        <a href="#" class="nav-item active" id="navOverview" onclick="switchTab('overview')">
+          📊 ภาพรวม (Dashboard)
+        </a>
+        <a href="#" class="nav-item" id="navOrders" onclick="switchTab('orders')">
           📦 คำสั่งซื้อ <span id="navUnreadBadge" class="unread-count-tag" style="display:none;">0</span>
         </a>
         <a href="#" class="nav-item" id="navProducts" onclick="switchTab('products')">🏷️ รายการสินค้า (Products)</a>
@@ -1638,8 +2070,267 @@
     </aside>
 
     <main class="main-content">
+      <!-- Overview View (Dashboard) -->
+      <div id="viewOverview">
+        <header class="header">
+          <div>
+            <h1>📊 ภาพรวมระบบ (Dashboard)</h1>
+            <p class="subtitle">สรุปสถิติ ยอดขาย คำสั่งซื้อ และข้อมูลสมาชิกร้านเกื้อกูลกัน</p>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div id="overviewDateBadge" style="background: white; border: 1px solid var(--border); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+              📅 <span id="overviewCurrentDate">-</span>
+            </div>
+            <button class="btn-primary" onclick="refreshOverviewData()">
+              <span class="icon">🔄</span> รีเฟรชข้อมูลภาพรวม
+            </button>
+          </div>
+        </header>
+
+        <!-- Urgent Alert Banner (Only shown if pending orders exist) -->
+        <div id="overviewAlertBanner" class="overview-hero-alert" style="display: none;">
+          <div class="overview-alert-content">
+            <div class="overview-alert-icon">⚡</div>
+            <div class="overview-alert-text">
+              <h4 id="overviewAlertTitle">มีคำสั่งซื้อรอตรวจสอบ X รายการ</h4>
+              <p>กรุณาตรวจสอบความถูกต้องและยืนยันออเดอร์เพื่อเตรียมจัดส่งสินค้าให้ลูกค้า</p>
+            </div>
+          </div>
+          <button onclick="goToPendingOrders()" class="btn-primary" style="background:#b45309; border:none; padding:10px 18px; white-space:nowrap; cursor:pointer;">
+            👉 จัดการออเดอร์รอตรวจสอบ
+          </button>
+        </div>
+
+        <!-- 6 KPI Stat Cards -->
+        <section class="overview-kpis-grid">
+          <!-- Total Revenue -->
+          <div class="overview-kpi-card kpi-revenue">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">ยอดขายรวมทั้งหมด</span>
+              <div class="overview-kpi-icon">💰</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatTotalSales">฿0</div>
+            <div class="overview-kpi-sub">
+              <span class="kpi-badge-pill" id="ovStatCompletedCount" style="background:#dcfce7; color:#15803d;">0 ออเดอร์</span>
+              <span>จัดส่งสำเร็จแล้ว</span>
+            </div>
+          </div>
+
+          <!-- Today's Sales -->
+          <div class="overview-kpi-card kpi-today">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">ยอดขายวันนี้</span>
+              <div class="overview-kpi-icon">📈</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatTodaySales">฿0</div>
+            <div class="overview-kpi-sub">
+              <span class="kpi-badge-pill" id="ovStatTodayOrders" style="background:#dbeafe; color:#1e40af;">0 ออเดอร์</span>
+              <span>คำสั่งซื้อในวันนี้</span>
+            </div>
+          </div>
+
+          <!-- Total Orders -->
+          <div class="overview-kpi-card kpi-orders">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">คำสั่งซื้อทั้งหมด</span>
+              <div class="overview-kpi-icon">🛒</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatTotalOrders">0</div>
+            <div class="overview-kpi-sub">
+              <span>สำเร็จ</span> <strong id="ovStatCompletedPercent" style="color:#10b981;">0%</strong>
+              <span style="color:#cbd5e1;">•</span>
+              <span>ยกเลิก</span> <strong id="ovStatCancelledCount" style="color:#ef4444;">0</strong>
+            </div>
+          </div>
+
+          <!-- Pending & Payment -->
+          <div class="overview-kpi-card kpi-pending">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">รอดำเนินการ</span>
+              <div class="overview-kpi-icon">⏳</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatPendingTotal">0</div>
+            <div class="overview-kpi-sub">
+              <span>รอตรวจ <strong id="ovStatCheckingCount" style="color:#b45309;">0</strong></span>
+              <span style="color:#cbd5e1;">•</span>
+              <span>รอชำระ <strong id="ovStatPaymentCount" style="color:#0284c7;">0</strong></span>
+            </div>
+          </div>
+
+          <!-- Total Members -->
+          <div class="overview-kpi-card kpi-members">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">สมาชิกทั้งหมด</span>
+              <div class="overview-kpi-icon">👥</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatTotalMembers">0</div>
+            <div class="overview-kpi-sub">
+              <span class="kpi-badge-pill" id="ovStatPhoneMembers" style="background:#cffafe; color:#0e7490;">0 คน</span>
+              <span>ลงทะเบียนเบอร์โทร</span>
+            </div>
+          </div>
+
+          <!-- Products in Catalog -->
+          <div class="overview-kpi-card kpi-products">
+            <div class="overview-kpi-head">
+              <span class="overview-kpi-title">สินค้าพร้อมขาย</span>
+              <div class="overview-kpi-icon">📦</div>
+            </div>
+            <div class="overview-kpi-val" id="ovStatTotalProducts">0</div>
+            <div class="overview-kpi-sub">
+              <span class="kpi-badge-pill" id="ovStatCategories" style="background:#fce7f3; color:#be185d;">0 หมวดหมู่</span>
+              <span>ในแคตตาล็อก</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Charts Row: 7-Day Trend & Status Breakdown -->
+        <section class="overview-charts-row">
+          <!-- 7-Day Sales & Orders Interactive SVG Chart -->
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div>
+                <h3 class="overview-card-title">📊 แนวโน้มยอดขายและคำสั่งซื้อย้อนหลัง 7 วัน</h3>
+                <p class="overview-card-subtitle">แสดงยอดขาย (บาท) และจำนวนออเดอร์ในแต่ละวัน</p>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 4px 10px; border-radius: 8px;">
+                7 วันล่าสุด
+              </div>
+            </div>
+
+            <div class="chart-svg-container" id="overviewChartContainer">
+              <svg id="overviewSalesChart" class="chart-svg" viewBox="0 0 650 220" preserveAspectRatio="none">
+                <!-- SVG Chart Generated Dynamically -->
+              </svg>
+              <div id="chartTooltip" class="chart-tooltip"></div>
+            </div>
+
+            <div class="chart-legend">
+              <div class="chart-legend-item">
+                <div class="chart-legend-dot" style="background: linear-gradient(180deg, #3b82f6, #1d4ed8);"></div>
+                <span>ยอดขาย (บาท)</span>
+              </div>
+              <div class="chart-legend-item">
+                <div class="chart-legend-dot" style="background: #10b981; border-radius: 50%;"></div>
+                <span>จำนวนออเดอร์</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Status & Payment Methods Breakdown -->
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div>
+                <h3 class="overview-card-title">📌 สัดส่วนสถานะคำสั่งซื้อ</h3>
+                <p class="overview-card-subtitle">ความคืบหน้าของคำสั่งซื้อทั้งหมดในระบบ</p>
+              </div>
+            </div>
+
+            <div class="breakdown-list" id="overviewStatusBreakdown">
+              <!-- Dynamically rendered -->
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border);">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                <span>💳 สัดส่วนวิธีชำระเงิน</span>
+                <span id="ovPaymentTotalCount" style="font-size: 12px; color: var(--text-muted); font-weight: normal;">0 รายการ</span>
+              </div>
+              <div id="overviewPaymentBreakdown" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Payment methods breakdown -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Two Columns Data: Recent Orders & Top Selling Products -->
+        <section class="overview-data-row">
+          <!-- Recent Orders -->
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div>
+                <h3 class="overview-card-title">🛒 คำสั่งซื้อล่าสุด</h3>
+                <p class="overview-card-subtitle">รายการออเดอร์ที่เข้ามาในระบบล่าสุด</p>
+              </div>
+              <button onclick="switchTab('orders')" class="btn-sound-toggle" style="padding: 6px 12px; font-size: 12.5px;">
+                ดูคำสั่งซื้อทั้งหมด ➔
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="overview-table-mini">
+                <thead>
+                  <tr>
+                    <th>รหัส / ช่องทาง</th>
+                    <th>เวลา</th>
+                    <th>ลูกค้า</th>
+                    <th>ยอดสุทธิ</th>
+                    <th>สถานะ</th>
+                    <th style="text-align: right;">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="overviewRecentOrdersBody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Top Selling Products -->
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div>
+                <h3 class="overview-card-title">🏆 สินค้าขายดียอดนิยม</h3>
+                <p class="overview-card-subtitle">5 อันดับสินค้าที่มียอดสั่งซื้อสูงสุด</p>
+              </div>
+              <button onclick="switchTab('products')" class="btn-sound-toggle" style="padding: 6px 12px; font-size: 12.5px;">
+                ดูสินค้าทั้งหมด ➔
+              </button>
+            </div>
+
+            <div class="top-sellers-list" id="overviewTopSellersList">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Quick Navigation Action Cards -->
+        <section style="margin-top: 10px; margin-bottom: 24px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 14px;">⚡ ทางลัดการทำงานด่วน</h3>
+          <div class="overview-actions-grid">
+            <div class="overview-action-card" onclick="switchTab('orders')">
+              <div class="overview-action-icon" style="color: #2563eb;">📦</div>
+              <div class="overview-action-info">
+                <h4>จัดการคำสั่งซื้อ</h4>
+                <p>ดูรายการออเดอร์ทั้งหมด เปลี่ยนสถานะ</p>
+              </div>
+            </div>
+            <div class="overview-action-card" onclick="goToPendingOrders()">
+              <div class="overview-action-icon" style="color: #f59e0b;">⏳</div>
+              <div class="overview-action-info">
+                <h4>ตรวจสอบออเดอร์ใหม่</h4>
+                <p>กรองเฉพาะออเดอร์ที่รอการอนุมัติ</p>
+              </div>
+            </div>
+            <div class="overview-action-card" onclick="switchTab('products')">
+              <div class="overview-action-icon" style="color: #10b981;">🏷️</div>
+              <div class="overview-action-info">
+                <h4>แคตตาล็อกสินค้า</h4>
+                <p>ดูสินค้า เช็คราคา หมวดหมู่ และ SKU</p>
+              </div>
+            </div>
+            <div class="overview-action-card" onclick="switchTab('members')">
+              <div class="overview-action-icon" style="color: #8b5cf6;">👥</div>
+              <div class="overview-action-info">
+                <h4>รายชื่อสมาชิก</h4>
+                <p>ดูประวัติลูกค้า เบอร์โทร และ LINE ID</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <!-- Orders View -->
-      <div id="viewOrders">
+      <div id="viewOrders" style="display: none;">
         <header class="header">
           <div>
             <h1>จัดการคำสั่งซื้อ</h1>
@@ -2174,7 +2865,7 @@
     let searchQuery = '';
     let memberSearchQuery = '';
     let currentViewingOrderId = null;
-    let currentTab = 'orders';
+    let currentTab = 'overview';
 
     // Product Catalog State
     let allProducts = [];
@@ -2460,9 +3151,16 @@
       updateSoundButtonUI();
       fetchOrders(true);
       fetchProducts(false);
+      fetchMembers(false);
+      renderOverviewDashboard();
       setInterval(() => {
-        if (currentTab === 'orders') fetchOrders(false);
-        else if (currentTab === 'members') fetchMembers(false);
+        if (currentTab === 'overview') {
+          fetchOrders(false);
+        } else if (currentTab === 'orders') {
+          fetchOrders(false);
+        } else if (currentTab === 'members') {
+          fetchMembers(false);
+        }
       }, 12000);
     }
 
@@ -2474,17 +3172,25 @@
 
     function switchTab(tab) {
       currentTab = tab;
+      const navOverview = document.getElementById('navOverview');
       const navOrders = document.getElementById('navOrders');
       const navProducts = document.getElementById('navProducts');
       const navMembers = document.getElementById('navMembers');
+
+      const viewOverview = document.getElementById('viewOverview');
       const viewOrders = document.getElementById('viewOrders');
       const viewProducts = document.getElementById('viewProducts');
       const viewMembers = document.getElementById('viewMembers');
 
-      [navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
-      [viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
+      [navOverview, navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
+      [viewOverview, viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
 
-      if (tab === 'orders') {
+      if (tab === 'overview') {
+        if (navOverview) navOverview.classList.add('active');
+        if (viewOverview) viewOverview.style.display = 'block';
+        renderOverviewDashboard();
+        fetchOrders(false);
+      } else if (tab === 'orders') {
         if (navOrders) navOrders.classList.add('active');
         if (viewOrders) viewOrders.style.display = 'block';
         fetchOrders(false);
@@ -2492,11 +3198,501 @@
         if (navProducts) navProducts.classList.add('active');
         if (viewProducts) viewProducts.style.display = 'block';
         fetchProducts(allProducts.length === 0);
-      } else {
+      } else if (tab === 'members') {
         if (navMembers) navMembers.classList.add('active');
         if (viewMembers) viewMembers.style.display = 'block';
-        fetchMembers(true);
+        fetchMembers(allMembers.length === 0);
       }
+    }
+
+    function goToPendingOrders() {
+      switchTab('orders');
+      const pendingBtn = document.querySelector('.tab-btn[onclick*="กำลังตรวจสอบออเดอร์"]');
+      if (pendingBtn) {
+        setFilter('กำลังตรวจสอบออเดอร์', pendingBtn);
+      } else {
+        activeFilter = 'กำลังตรวจสอบออเดอร์';
+        renderOrders();
+      }
+    }
+
+    function refreshOverviewData() {
+      fetchOrders(true);
+      fetchProducts(true);
+      fetchMembers(true);
+      renderOverviewDashboard();
+      showToast('รีเฟรชข้อมูลภาพรวมแล้ว', 'success');
+    }
+
+    function formatCompactNumber(num) {
+      if (!num) return '0';
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+      return String(num);
+    }
+
+    function showChartTip(e, dateLabel, sales, orders) {
+      const tip = document.getElementById('chartTooltip');
+      if (!tip) return;
+      tip.innerHTML = `
+        <div style="font-weight:700; font-size:12px; margin-bottom:4px; color:#93c5fd;">📅 ${dateLabel}</div>
+        <div>💰 ยอดขาย: <strong style="color:#ffffff;">฿${Number(sales).toLocaleString()}</strong></div>
+        <div>🛒 คำสั่งซื้อ: <strong style="color:#34d399;">${Number(orders).toLocaleString()} รายการ</strong></div>
+      `;
+      tip.style.display = 'block';
+      moveChartTip(e);
+    }
+
+    function moveChartTip(e) {
+      const tip = document.getElementById('chartTooltip');
+      const container = document.getElementById('overviewChartContainer');
+      if (!tip || !container) return;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      tip.style.left = x + 'px';
+      tip.style.top = y + 'px';
+    }
+
+    function hideChartTip() {
+      const tip = document.getElementById('chartTooltip');
+      if (tip) tip.style.display = 'none';
+    }
+
+    function render7DayTrendChart() {
+      const svg = document.getElementById('overviewSalesChart');
+      if (!svg) return;
+
+      const days = [];
+      const dayLabels = [];
+      const daySales = [0, 0, 0, 0, 0, 0, 0];
+      const dayOrders = [0, 0, 0, 0, 0, 0, 0];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().slice(0, 10);
+        days.push(dateStr);
+
+        if (i === 0) {
+          dayLabels.push('วันนี้');
+        } else {
+          const thDay = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+          dayLabels.push(thDay);
+        }
+      }
+
+      allOrders.forEach(o => {
+        if (!o.timestamp) return;
+        try {
+          const d = new Date(o.timestamp);
+          if (isNaN(d.getTime())) return;
+          const oDateStr = d.toISOString().slice(0, 10);
+          const dayIndex = days.indexOf(oDateStr);
+          if (dayIndex !== -1) {
+            dayOrders[dayIndex]++;
+            const meta = getStatusMeta(o.status);
+            if (meta.name !== 'ยกเลิก') {
+              daySales[dayIndex] += Number(o.totalPrice || 0);
+            }
+          }
+        } catch(e) {}
+      });
+
+      const maxSales = Math.max(...daySales, 1000);
+      const maxOrders = Math.max(...dayOrders, 5);
+
+      let svgContent = `
+        <defs>
+          <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6" />
+            <stop offset="100%" stop-color="#1d4ed8" />
+          </linearGradient>
+        </defs>
+        <!-- Grid Lines -->
+        <line x1="45" y1="45" x2="625" y2="45" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
+        <line x1="45" y1="115" x2="625" y2="115" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
+        <line x1="45" y1="185" x2="625" y2="185" stroke="#cbd5e1" stroke-width="1.5" />
+        <!-- Y Axis Labels -->
+        <text x="38" y="49" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(maxSales)}</text>
+        <text x="38" y="119" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(Math.round(maxSales/2))}</text>
+        <text x="38" y="188" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿0</text>
+      `;
+
+      const colWidth = 580 / 7;
+      const orderPoints = [];
+
+      for (let i = 0; i < 7; i++) {
+        const xCenter = 45 + (i + 0.5) * colWidth;
+        const barWidth = 36;
+        const barX = xCenter - (barWidth / 2);
+        const barHeight = (daySales[i] / maxSales) * 140;
+        const barY = 185 - barHeight;
+
+        const orderY = 185 - ((dayOrders[i] / maxOrders) * 130);
+        orderPoints.push(`${xCenter},${orderY}`);
+
+        svgContent += `
+          <rect class="chart-bar" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(4, barHeight)}" rx="6" fill="url(#barGradient)" style="cursor: pointer; opacity: 0.9; transition: all 0.2s;" onmouseenter="this.style.opacity='1'; showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="this.style.opacity='0.9'; hideChartTip();" />
+        `;
+
+        if (daySales[i] > 0) {
+          svgContent += `
+            <text x="${xCenter}" y="${barY - 6}" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">฿${formatCompactNumber(daySales[i])}</text>
+          `;
+        }
+
+        const isToday = (i === 6);
+        svgContent += `
+          <text x="${xCenter}" y="206" text-anchor="middle" font-size="11.5" font-family="'Prompt', sans-serif" font-weight="${isToday ? '700' : '500'}" fill="${isToday ? '#2563eb' : '#64748b'}">${dayLabels[i]}</text>
+        `;
+      }
+
+      if (orderPoints.length > 0) {
+        svgContent += `
+          <polyline points="${orderPoints.join(' ')}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        `;
+
+        for (let i = 0; i < 7; i++) {
+          const parts = orderPoints[i].split(',');
+          const cx = parts[0];
+          const cy = parts[1];
+          svgContent += `
+            <circle cx="${cx}" cy="${cy}" r="5" fill="#ffffff" stroke="#10b981" stroke-width="2.5" style="cursor:pointer;" onmouseenter="showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="hideChartTip();" />
+          `;
+          if (dayOrders[i] > 0) {
+            svgContent += `
+              <text x="${cx}" y="${Number(cy) - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#059669">${dayOrders[i]}</text>
+            `;
+          }
+        }
+      }
+
+      svg.innerHTML = svgContent;
+    }
+
+    function renderStatusBreakdown(stats) {
+      const container = document.getElementById('overviewStatusBreakdown');
+      if (!container) return;
+      const total = Math.max(stats.total, 1);
+
+      const items = [
+        { label: '⏳ รอตรวจสอบออเดอร์', count: stats.checking, color: '#f59e0b', bg: '#fef3c7' },
+        { label: '💳 ชำระเงิน / รอตรวจสอบยอด', count: stats.payment, color: '#0284c7', bg: '#e0f2fe' },
+        { label: '🚚 กำลังจัดเตรียม & จัดส่ง', count: stats.shipping, color: '#8b5cf6', bg: '#ede9fe' },
+        { label: '✅ จัดส่งสำเร็จ (ยอดขาย)', count: stats.completed, color: '#10b981', bg: '#dcfce7' },
+        { label: '❌ ยกเลิกคำสั่งซื้อ', count: stats.cancelled, color: '#ef4444', bg: '#fee2e2' }
+      ];
+
+      let html = '';
+      items.forEach(it => {
+        const pct = stats.total > 0 ? Math.round((it.count / total) * 100) : 0;
+        html += `
+          <div class="breakdown-item">
+            <div class="breakdown-item-header">
+              <span style="color: var(--text-main); font-weight: 600;">${it.label}</span>
+              <span>
+                <strong style="color: ${it.color};">${it.count.toLocaleString()}</strong> 
+                <span style="font-size: 11.5px; color: var(--text-muted); font-weight: normal;">(${pct}%)</span>
+              </span>
+            </div>
+            <div class="breakdown-bar-bg">
+              <div class="breakdown-bar-fill" style="width: ${pct}%; background: ${it.color};"></div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderPaymentBreakdown(counts, total) {
+      const container = document.getElementById('overviewPaymentBreakdown');
+      const totalEl = document.getElementById('ovPaymentTotalCount');
+      const sum = (counts['โอนจ่าย'] + counts['ปลายทาง'] + counts['เงินสด/อื่นๆ']);
+      if (totalEl) totalEl.textContent = sum.toLocaleString() + ' รายการ';
+      if (!container) return;
+
+      const validTotal = Math.max(sum, 1);
+      const methods = [
+        { name: '🏦 โอนจ่ายผ่านบัญชี', count: counts['โอนจ่าย'], color: '#2563eb' },
+        { name: '📦 ปลายทาง (เก็บเงินสด COD)', count: counts['ปลายทาง'], color: '#f59e0b' },
+        { name: '💵 เงินสด / ช่องทางอื่นๆ', count: counts['เงินสด/อื่นๆ'], color: '#10b981' }
+      ];
+
+      let html = '';
+      methods.forEach(m => {
+        const pct = sum > 0 ? Math.round((m.count / validTotal) * 100) : 0;
+        html += `
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+            <span style="font-weight: 500; color: var(--text-main);">${m.name}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; color: ${m.color};">${m.count.toLocaleString()}</span>
+              <span class="kpi-badge-pill" style="font-size: 10.5px;">${pct}%</span>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderRecentOrdersList() {
+      const tbody = document.getElementById('overviewRecentOrdersBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const recent = allOrders.slice(0, 6);
+      if (recent.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px 10px; color:var(--text-muted);">ยังไม่มีรายการคำสั่งซื้อ</td></tr>';
+        return;
+      }
+
+      recent.forEach(o => {
+        const tr = document.createElement('tr');
+        const meta = getStatusMeta(o.status);
+        const dateStr = o.timestamp ? new Date(o.timestamp).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        const isTransfer = (o.paymentMethod && (o.paymentMethod.includes('โอน') || o.paymentMethod.includes('บัญชีธนาคาร') || o.paymentMethod.includes('ผสม')));
+        const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+
+        tr.innerHTML = `
+          <td>
+            <strong style="color:var(--primary); font-size:13px;">${o.orderId || '-'}</strong>
+            <div style="margin-top:2px;"><span class="${payBadgeClass}" style="font-size:10px; padding:2px 6px;">${o.paymentMethod || 'โอนจ่าย'}</span></div>
+          </td>
+          <td style="font-size:12px; color:var(--text-muted);">${dateStr}</td>
+          <td>
+            <div style="font-weight:600; font-size:13px; color:var(--text-main);">${o.customerName || 'ไม่ระบุชื่อ'}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${(o.phone || '').replace(/'/g, '')}</div>
+          </td>
+          <td><strong style="font-size:13.5px; color:var(--text-main);">฿${Number(o.totalPrice || 0).toLocaleString()}</strong></td>
+          <td><span class="status-badge ${meta.class}" style="font-size:11px; padding:3px 8px;">${meta.icon} ${meta.name}</span></td>
+          <td style="text-align:right;">
+            <button class="btn-action" onclick="viewOrder('${o.orderId || ''}')" style="padding:4px 8px; font-size:11.5px;">👁️ ดู</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTopSellersList(itemSalesMap) {
+      const container = document.getElementById('overviewTopSellersList');
+      if (!container) return;
+      container.innerHTML = '';
+
+      let sortedItems = Object.values(itemSalesMap).sort((a, b) => b.qty - a.qty);
+
+      let isFallback = false;
+      if (sortedItems.length === 0 && allProducts.length > 0) {
+        isFallback = true;
+        sortedItems = allProducts.slice(0, 5).map(p => ({
+          id: p.id,
+          name: p.name,
+          qty: 0,
+          revenue: p.price || 0,
+          img: p.img
+        }));
+      }
+
+      if (sortedItems.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">ยังไม่มีข้อมูลสินค้าขายดี</div>';
+        return;
+      }
+
+      const top5 = sortedItems.slice(0, 5);
+      top5.forEach((item, idx) => {
+        const matchedProduct = allProducts.find(p => String(p.id) === String(item.id)) || {};
+        const imgUrl = getOptimizedImageUrl(item.img || matchedProduct.img);
+        const category = matchedProduct.category || 'ทั่วไป';
+
+        let rankClass = 'rank-other';
+        let rankLabel = String(idx + 1);
+        if (idx === 0) { rankClass = 'rank-1'; rankLabel = '🥇'; }
+        else if (idx === 1) { rankClass = 'rank-2'; rankLabel = '🥈'; }
+        else if (idx === 2) { rankClass = 'rank-3'; rankLabel = '🥉'; }
+
+        const div = document.createElement('div');
+        div.className = 'top-seller-item';
+        div.innerHTML = `
+          <div class="top-seller-rank ${rankClass}">${rankLabel}</div>
+          <img src="${imgUrl}" alt="${item.name || ''}" class="top-seller-img" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+          <div class="top-seller-details">
+            <div class="top-seller-name" title="${item.name}">${item.name || 'ไม่มีชื่อสินค้า'}</div>
+            <div class="top-seller-meta">
+              <span>รหัส: ${item.id}</span>
+              <span>•</span>
+              <span>📂 ${category}</span>
+            </div>
+          </div>
+          <div class="top-seller-sales">
+            <div class="top-seller-revenue">฿${Number(item.revenue || 0).toLocaleString()}</div>
+            <div class="top-seller-qty">${isFallback ? 'ราคาเริ่มต้น' : 'ขายแล้ว ' + item.qty.toLocaleString() + ' ชิ้น'}</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderOverviewDashboard() {
+      const dateEl = document.getElementById('overviewCurrentDate');
+      if (dateEl) {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateEl.textContent = now.toLocaleDateString('th-TH', options);
+      }
+
+      let totalSales = 0;
+      let completedCount = 0;
+      let checkingCount = 0;
+      let waitingCount = 0;
+      let paymentCount = 0;
+      let preparingCount = 0;
+      let shippingCount = 0;
+      let cancelledCount = 0;
+
+      let todaySales = 0;
+      let todayOrdersCount = 0;
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      const paymentMethodCounts = {
+        'โอนจ่าย': 0,
+        'ปลายทาง': 0,
+        'เงินสด/อื่นๆ': 0
+      };
+
+      const itemSalesMap = {};
+
+      allOrders.forEach(o => {
+        const meta = getStatusMeta(o.status);
+        const normStatus = meta.name;
+        const total = Number(o.totalPrice || 0);
+
+        let orderDateStr = '';
+        if (o.timestamp) {
+          try {
+            const dt = new Date(o.timestamp);
+            if (!isNaN(dt.getTime())) {
+              orderDateStr = dt.toISOString().slice(0, 10);
+            }
+          } catch(e) {}
+        }
+
+        if (orderDateStr === todayStr) {
+          todayOrdersCount++;
+          if (normStatus !== 'ยกเลิก') {
+            todaySales += total;
+          }
+        }
+
+        if (normStatus === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+        else if (normStatus === 'รอการยืนยัน') waitingCount++;
+        else if (normStatus === 'ชำระเงิน') paymentCount++;
+        else if (normStatus === 'กำลังจัดเตรียมสินค้า') preparingCount++;
+        else if (normStatus === 'กำลังจัดส่ง') shippingCount++;
+        else if (normStatus === 'จัดส่งสำเร็จ') {
+          completedCount++;
+          totalSales += total;
+        } else if (normStatus === 'ยกเลิก') {
+          cancelledCount++;
+        }
+
+        const pm = (o.paymentMethod || 'โอนจ่าย').trim();
+        if (pm.includes('โอน') || pm.includes('บัญชีธนาคาร')) {
+          paymentMethodCounts['โอนจ่าย']++;
+        } else if (pm.includes('ปลายทาง') || pm.includes('COD')) {
+          paymentMethodCounts['ปลายทาง']++;
+        } else {
+          paymentMethodCounts['เงินสด/อื่นๆ']++;
+        }
+
+        if (normStatus !== 'ยกเลิก' && Array.isArray(o.items)) {
+          o.items.forEach(it => {
+            const sku = String(it.id || it.name || 'item').trim();
+            const q = Number(it.qty || 1);
+            const p = Number(it.price || 0);
+            const sub = Number(it.subtotal || (p * q));
+
+            if (!itemSalesMap[sku]) {
+              itemSalesMap[sku] = {
+                id: it.id || sku,
+                name: it.name || sku,
+                qty: 0,
+                revenue: 0,
+                img: it.img || ''
+              };
+            }
+            itemSalesMap[sku].qty += q;
+            itemSalesMap[sku].revenue += sub;
+            if (it.img && !itemSalesMap[sku].img) itemSalesMap[sku].img = it.img;
+          });
+        }
+      });
+
+      const ovTotalSales = document.getElementById('ovStatTotalSales');
+      const ovCompletedCount = document.getElementById('ovStatCompletedCount');
+      if (ovTotalSales) ovTotalSales.textContent = '฿' + totalSales.toLocaleString();
+      if (ovCompletedCount) ovCompletedCount.textContent = completedCount + ' ออเดอร์';
+
+      const ovTodaySales = document.getElementById('ovStatTodaySales');
+      const ovTodayOrders = document.getElementById('ovStatTodayOrders');
+      if (ovTodaySales) ovTodaySales.textContent = '฿' + todaySales.toLocaleString();
+      if (ovTodayOrders) ovTodayOrders.textContent = todayOrdersCount + ' ออเดอร์';
+
+      const ovTotalOrders = document.getElementById('ovStatTotalOrders');
+      const ovCompletedPercent = document.getElementById('ovStatCompletedPercent');
+      const ovCancelledCount = document.getElementById('ovStatCancelledCount');
+      const totalOrdersCount = allOrders.length;
+      if (ovTotalOrders) ovTotalOrders.textContent = totalOrdersCount.toLocaleString();
+      const compRate = totalOrdersCount > 0 ? Math.round((completedCount / totalOrdersCount) * 100) : 0;
+      if (ovCompletedPercent) ovCompletedPercent.textContent = compRate + '%';
+      if (ovCancelledCount) ovCancelledCount.textContent = cancelledCount;
+
+      const ovPendingTotal = document.getElementById('ovStatPendingTotal');
+      const ovCheckingCount = document.getElementById('ovStatCheckingCount');
+      const ovPaymentCount = document.getElementById('ovStatPaymentCount');
+      const pendingTotalCount = checkingCount + waitingCount + paymentCount;
+      if (ovPendingTotal) ovPendingTotal.textContent = pendingTotalCount;
+      if (ovCheckingCount) ovCheckingCount.textContent = (checkingCount + waitingCount);
+      if (ovPaymentCount) ovPaymentCount.textContent = paymentCount;
+
+      const ovTotalMembers = document.getElementById('ovStatTotalMembers');
+      const ovPhoneMembers = document.getElementById('ovStatPhoneMembers');
+      if (ovTotalMembers) ovTotalMembers.textContent = allMembers.length.toLocaleString();
+      let phoneCount = 0;
+      allMembers.forEach(m => { if (m.phone && m.phone.trim() !== '') phoneCount++; });
+      if (ovPhoneMembers) ovPhoneMembers.textContent = phoneCount + ' คน';
+
+      const ovTotalProducts = document.getElementById('ovStatTotalProducts');
+      const ovCategories = document.getElementById('ovStatCategories');
+      if (ovTotalProducts) ovTotalProducts.textContent = allProducts.length.toLocaleString();
+      const catSet = new Set();
+      allProducts.forEach(p => { if (p.category) catSet.add(p.category); });
+      if (ovCategories) ovCategories.textContent = catSet.size + ' หมวดหมู่';
+
+      const alertBanner = document.getElementById('overviewAlertBanner');
+      const alertTitle = document.getElementById('overviewAlertTitle');
+      const urgentOrdersCount = checkingCount + waitingCount;
+      if (alertBanner && alertTitle) {
+        if (urgentOrdersCount > 0) {
+          alertTitle.textContent = '⚡ มีคำสั่งซื้อรอตรวจสอบ ' + urgentOrdersCount + ' รายการ ที่ต้องดำเนินการทันที';
+          alertBanner.style.display = 'flex';
+        } else {
+          alertBanner.style.display = 'none';
+        }
+      }
+
+      render7DayTrendChart();
+
+      renderStatusBreakdown({
+        checking: checkingCount + waitingCount,
+        payment: paymentCount,
+        shipping: preparingCount + shippingCount,
+        completed: completedCount,
+        cancelled: cancelledCount,
+        total: totalOrdersCount
+      });
+
+      renderPaymentBreakdown(paymentMethodCounts, totalOrdersCount);
+      renderRecentOrdersList();
+      renderTopSellersList(itemSalesMap);
     }
 
     function setFilter(status, el) {
@@ -2546,6 +3742,7 @@
 
       renderOrders();
       updateStats();
+      renderOverviewDashboard();
     }
 
     function fetchOrders(showLoading = true) {
@@ -2902,6 +4099,7 @@
               allMembers = members || [];
               renderMembers();
               updateMemberStats();
+              renderOverviewDashboard();
               if (loading) loading.style.display = 'none';
             })
             .withFailureHandler(function (err) {
@@ -2941,6 +4139,7 @@
             allMembers = data.members || [];
             renderMembers();
             updateMemberStats();
+            renderOverviewDashboard();
           }
         }
       } catch (err) {
@@ -3735,6 +4934,7 @@
       populateCategoryAndTagFilters();
       applyProductFilters();
       updateProductStats();
+      renderOverviewDashboard();
     }
 
     function populateCategoryAndTagFilters() {

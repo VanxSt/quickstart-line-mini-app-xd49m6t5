@@ -7,7 +7,7 @@ let activePaymentFilter = 'all';
 let searchQuery = '';
 let memberSearchQuery = '';
 let currentViewingOrderId = null;
-let currentTab = 'orders'; // 'orders' | 'products' | 'members'
+let currentTab = 'overview'; // 'overview' | 'orders' | 'products' | 'members'
 
 // Product Catalog State
 let allProducts = [];
@@ -106,37 +106,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fetchOrders(true);
   fetchProducts(false);
+  fetchMembers(false);
 
   // ตั้งเวลาดึงข้อมูลอัตโนมัติทุกๆ 12 วินาที
   setInterval(() => {
-    if (currentTab === 'orders') {
+    if (currentTab === 'overview') {
+      fetchOrders(false);
+    } else if (currentTab === 'orders') {
       fetchOrders(false);
     } else if (currentTab === 'members') {
       fetchMembers(false);
     }
   }, 12000);
 
-  document.getElementById('refreshBtn').addEventListener('click', () => fetchOrders(true));
+  const btnRefresh = document.getElementById('refreshBtn');
+  if (btnRefresh) btnRefresh.addEventListener('click', () => fetchOrders(true));
   const btnRefreshMembers = document.getElementById('refreshMembersBtn');
   if (btnRefreshMembers) {
     btnRefreshMembers.addEventListener('click', () => fetchMembers(true));
   }
-  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  const btnCloseModal = document.getElementById('closeModalBtn');
+  if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
 
-  // Navigation Switcher (Orders, Products, Members)
+  // Navigation Switcher (Overview, Orders, Products, Members)
+  const navOverview = document.getElementById('navOverview');
   const navOrders = document.getElementById('navOrders');
   const navProducts = document.getElementById('navProducts');
   const navMembers = document.getElementById('navMembers');
+  const viewOverview = document.getElementById('viewOverview');
   const viewOrders = document.getElementById('viewOrders');
   const viewProducts = document.getElementById('viewProducts');
   const viewMembers = document.getElementById('viewMembers');
 
   function switchDashboardTab(tab) {
     currentTab = tab;
-    [navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
-    [viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
+    [navOverview, navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
+    [viewOverview, viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
 
-    if (tab === 'orders') {
+    if (tab === 'overview') {
+      if (navOverview) navOverview.classList.add('active');
+      if (viewOverview) viewOverview.style.display = 'block';
+      if (typeof renderOverviewDashboard === 'function') renderOverviewDashboard();
+      fetchOrders(false);
+    } else if (tab === 'orders') {
       if (navOrders) navOrders.classList.add('active');
       if (viewOrders) viewOrders.style.display = 'block';
       fetchOrders(false);
@@ -147,16 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (tab === 'members') {
       if (navMembers) navMembers.classList.add('active');
       if (viewMembers) viewMembers.style.display = 'block';
-      fetchMembers(true);
+      fetchMembers(allMembers.length === 0);
     }
   }
   window.switchDashboardTab = switchDashboardTab;
+  window.switchTab = switchDashboardTab;
 
   const btnRefreshProducts = document.getElementById('refreshProductsBtn');
   if (btnRefreshProducts) {
     btnRefreshProducts.addEventListener('click', () => fetchProducts(true));
   }
 
+  if (navOverview) navOverview.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('overview'); });
   if (navOrders) navOrders.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('orders'); });
   if (navProducts) navProducts.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('products'); });
   if (navMembers) navMembers.addEventListener('click', (e) => { e.preventDefault(); switchDashboardTab('members'); });
@@ -231,7 +245,504 @@ function processIncomingOrders(orders) {
 
   renderOrders();
   updateStats();
+  renderOverviewDashboard();
 }
+
+function goToPendingOrders() {
+  switchDashboardTab('orders');
+  const pendingBtn = document.querySelector('.tab-btn[onclick*="กำลังตรวจสอบออเดอร์"]');
+  if (pendingBtn) {
+    setFilter('กำลังตรวจสอบออเดอร์', pendingBtn);
+  } else {
+    activeFilter = 'กำลังตรวจสอบออเดอร์';
+    renderOrders();
+  }
+}
+window.goToPendingOrders = goToPendingOrders;
+
+function refreshOverviewData() {
+  fetchOrders(true);
+  fetchProducts(true);
+  fetchMembers(true);
+  renderOverviewDashboard();
+  showToast('รีเฟรชข้อมูลภาพรวมแล้ว', 'success');
+}
+window.refreshOverviewData = refreshOverviewData;
+
+function formatCompactNumber(num) {
+  if (!num) return '0';
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  return String(num);
+}
+
+function showChartTip(e, dateLabel, sales, orders) {
+  const tip = document.getElementById('chartTooltip');
+  if (!tip) return;
+  tip.innerHTML = `
+    <div style="font-weight:700; font-size:12px; margin-bottom:4px; color:#93c5fd;">📅 ${dateLabel}</div>
+    <div>💰 ยอดขาย: <strong style="color:#ffffff;">฿${Number(sales).toLocaleString()}</strong></div>
+    <div>🛒 คำสั่งซื้อ: <strong style="color:#34d399;">${Number(orders).toLocaleString()} รายการ</strong></div>
+  `;
+  tip.style.display = 'block';
+  moveChartTip(e);
+}
+window.showChartTip = showChartTip;
+
+function moveChartTip(e) {
+  const tip = document.getElementById('chartTooltip');
+  const container = document.getElementById('overviewChartContainer');
+  if (!tip || !container) return;
+  const rect = container.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+window.moveChartTip = moveChartTip;
+
+function hideChartTip() {
+  const tip = document.getElementById('chartTooltip');
+  if (tip) tip.style.display = 'none';
+}
+window.hideChartTip = hideChartTip;
+
+function render7DayTrendChart() {
+  const svg = document.getElementById('overviewSalesChart');
+  if (!svg) return;
+
+  const days = [];
+  const dayLabels = [];
+  const daySales = [0, 0, 0, 0, 0, 0, 0];
+  const dayOrders = [0, 0, 0, 0, 0, 0, 0];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    days.push(dateStr);
+
+    if (i === 0) {
+      dayLabels.push('วันนี้');
+    } else {
+      const thDay = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      dayLabels.push(thDay);
+    }
+  }
+
+  allOrders.forEach(o => {
+    if (!o.timestamp) return;
+    try {
+      const d = new Date(o.timestamp);
+      if (isNaN(d.getTime())) return;
+      const oDateStr = d.toISOString().slice(0, 10);
+      const dayIndex = days.indexOf(oDateStr);
+      if (dayIndex !== -1) {
+        dayOrders[dayIndex]++;
+        const meta = getStatusMeta(o.status);
+        if (meta.name !== 'ยกเลิก') {
+          daySales[dayIndex] += Number(o.totalPrice || 0);
+        }
+      }
+    } catch(e) {}
+  });
+
+  const maxSales = Math.max(...daySales, 1000);
+  const maxOrders = Math.max(...dayOrders, 5);
+
+  let svgContent = `
+    <defs>
+      <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#3b82f6" />
+        <stop offset="100%" stop-color="#1d4ed8" />
+      </linearGradient>
+    </defs>
+    <!-- Grid Lines -->
+    <line x1="45" y1="45" x2="625" y2="45" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
+    <line x1="45" y1="115" x2="625" y2="115" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="4" />
+    <line x1="45" y1="185" x2="625" y2="185" stroke="#cbd5e1" stroke-width="1.5" />
+    <!-- Y Axis Labels -->
+    <text x="38" y="49" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(maxSales)}</text>
+    <text x="38" y="119" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿${formatCompactNumber(Math.round(maxSales/2))}</text>
+    <text x="38" y="188" text-anchor="end" font-size="10" font-weight="600" fill="#94a3b8">฿0</text>
+  `;
+
+  const colWidth = 580 / 7;
+  const orderPoints = [];
+
+  for (let i = 0; i < 7; i++) {
+    const xCenter = 45 + (i + 0.5) * colWidth;
+    const barWidth = 36;
+    const barX = xCenter - (barWidth / 2);
+    const barHeight = (daySales[i] / maxSales) * 140;
+    const barY = 185 - barHeight;
+
+    const orderY = 185 - ((dayOrders[i] / maxOrders) * 130);
+    orderPoints.push(`${xCenter},${orderY}`);
+
+    svgContent += `
+      <rect class="chart-bar" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(4, barHeight)}" rx="6" fill="url(#barGradient)" style="cursor: pointer; opacity: 0.9; transition: all 0.2s;" onmouseenter="this.style.opacity='1'; showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="this.style.opacity='0.9'; hideChartTip();" />
+    `;
+
+    if (daySales[i] > 0) {
+      svgContent += `
+        <text x="${xCenter}" y="${barY - 6}" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">฿${formatCompactNumber(daySales[i])}</text>
+      `;
+    }
+
+    const isToday = (i === 6);
+    svgContent += `
+      <text x="${xCenter}" y="206" text-anchor="middle" font-size="11.5" font-family="'Prompt', sans-serif" font-weight="${isToday ? '700' : '500'}" fill="${isToday ? '#2563eb' : '#64748b'}">${dayLabels[i]}</text>
+    `;
+  }
+
+  if (orderPoints.length > 0) {
+    svgContent += `
+      <polyline points="${orderPoints.join(' ')}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    `;
+
+    for (let i = 0; i < 7; i++) {
+      const parts = orderPoints[i].split(',');
+      const cx = parts[0];
+      const cy = parts[1];
+      svgContent += `
+        <circle cx="${cx}" cy="${cy}" r="5" fill="#ffffff" stroke="#10b981" stroke-width="2.5" style="cursor:pointer;" onmouseenter="showChartTip(event, '${dayLabels[i]}', ${daySales[i]}, ${dayOrders[i]})" onmousemove="moveChartTip(event)" onmouseleave="hideChartTip();" />
+      `;
+      if (dayOrders[i] > 0) {
+        svgContent += `
+          <text x="${cx}" y="${Number(cy) - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#059669">${dayOrders[i]}</text>
+        `;
+      }
+    }
+  }
+
+  svg.innerHTML = svgContent;
+}
+
+function renderStatusBreakdown(stats) {
+  const container = document.getElementById('overviewStatusBreakdown');
+  if (!container) return;
+  const total = Math.max(stats.total, 1);
+
+  const items = [
+    { label: '⏳ รอตรวจสอบออเดอร์', count: stats.checking, color: '#f59e0b', bg: '#fef3c7' },
+    { label: '💳 ชำระเงิน / รอตรวจสอบยอด', count: stats.payment, color: '#0284c7', bg: '#e0f2fe' },
+    { label: '🚚 กำลังจัดเตรียม & จัดส่ง', count: stats.shipping, color: '#8b5cf6', bg: '#ede9fe' },
+    { label: '✅ จัดส่งสำเร็จ (ยอดขาย)', count: stats.completed, color: '#10b981', bg: '#dcfce7' },
+    { label: '❌ ยกเลิกคำสั่งซื้อ', count: stats.cancelled, color: '#ef4444', bg: '#fee2e2' }
+  ];
+
+  let html = '';
+  items.forEach(it => {
+    const pct = stats.total > 0 ? Math.round((it.count / total) * 100) : 0;
+    html += `
+      <div class="breakdown-item">
+        <div class="breakdown-item-header">
+          <span style="color: var(--text-main); font-weight: 600;">${it.label}</span>
+          <span>
+            <strong style="color: ${it.color};">${it.count.toLocaleString()}</strong> 
+            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: normal;">(${pct}%)</span>
+          </span>
+        </div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" style="width: ${pct}%; background: ${it.color};"></div>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function renderPaymentBreakdown(counts, total) {
+  const container = document.getElementById('overviewPaymentBreakdown');
+  const totalEl = document.getElementById('ovPaymentTotalCount');
+  const sum = (counts['โอนจ่าย'] + counts['ปลายทาง'] + counts['เงินสด/อื่นๆ']);
+  if (totalEl) totalEl.textContent = sum.toLocaleString() + ' รายการ';
+  if (!container) return;
+
+  const validTotal = Math.max(sum, 1);
+  const methods = [
+    { name: '🏦 โอนจ่ายผ่านบัญชี', count: counts['โอนจ่าย'], color: '#2563eb' },
+    { name: '📦 ปลายทาง (เก็บเงินสด COD)', count: counts['ปลายทาง'], color: '#f59e0b' },
+    { name: '💵 เงินสด / ช่องทางอื่นๆ', count: counts['เงินสด/อื่นๆ'], color: '#10b981' }
+  ];
+
+  let html = '';
+  methods.forEach(m => {
+    const pct = sum > 0 ? Math.round((m.count / validTotal) * 100) : 0;
+    html += `
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+        <span style="font-weight: 500; color: var(--text-main);">${m.name}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; color: ${m.color};">${m.count.toLocaleString()}</span>
+          <span class="kpi-badge-pill" style="font-size: 10.5px;">${pct}%</span>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function renderRecentOrdersList() {
+  const tbody = document.getElementById('overviewRecentOrdersBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const recent = allOrders.slice(0, 6);
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px 10px; color:var(--text-muted);">ยังไม่มีรายการคำสั่งซื้อ</td></tr>';
+    return;
+  }
+
+  recent.forEach(o => {
+    const tr = document.createElement('tr');
+    const meta = getStatusMeta(o.status);
+    const dateStr = o.timestamp ? new Date(o.timestamp).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+    const isTransfer = (o.paymentMethod && (o.paymentMethod.includes('โอน') || o.paymentMethod.includes('บัญชีธนาคาร') || o.paymentMethod.includes('ผสม')));
+    const payBadgeClass = isTransfer ? 'pay-badge transfer' : 'pay-badge cod';
+
+    tr.innerHTML = `
+      <td>
+        <strong style="color:var(--primary); font-size:13px;">${o.orderId || '-'}</strong>
+        <div style="margin-top:2px;"><span class="${payBadgeClass}" style="font-size:10px; padding:2px 6px;">${o.paymentMethod || 'โอนจ่าย'}</span></div>
+      </td>
+      <td style="font-size:12px; color:var(--text-muted);">${dateStr}</td>
+      <td>
+        <div style="font-weight:600; font-size:13px; color:var(--text-main);">${o.customerName || 'ไม่ระบุชื่อ'}</div>
+        <div style="font-size:11px; color:var(--text-muted);">${(o.phone || '').replace(/'/g, '')}</div>
+      </td>
+      <td><strong style="font-size:13.5px; color:var(--text-main);">฿${Number(o.totalPrice || 0).toLocaleString()}</strong></td>
+      <td><span class="status-badge ${meta.class}" style="font-size:11px; padding:3px 8px;">${meta.icon} ${meta.name}</span></td>
+      <td style="text-align:right;">
+        <button class="btn-action" onclick="viewOrder('${o.orderId || ''}')" style="padding:4px 8px; font-size:11.5px;">👁️ ดู</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderTopSellersList(itemSalesMap) {
+  const container = document.getElementById('overviewTopSellersList');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let sortedItems = Object.values(itemSalesMap).sort((a, b) => b.qty - a.qty);
+
+  let isFallback = false;
+  if (sortedItems.length === 0 && allProducts.length > 0) {
+    isFallback = true;
+    sortedItems = allProducts.slice(0, 5).map(p => ({
+      id: p.id,
+      name: p.name,
+      qty: 0,
+      revenue: p.price || 0,
+      img: p.img
+    }));
+  }
+
+  if (sortedItems.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">ยังไม่มีข้อมูลสินค้าขายดี</div>';
+    return;
+  }
+
+  const top5 = sortedItems.slice(0, 5);
+  top5.forEach((item, idx) => {
+    const matchedProduct = allProducts.find(p => String(p.id) === String(item.id)) || {};
+    const imgUrl = getOptimizedImageUrl(item.img || matchedProduct.img);
+    const category = matchedProduct.category || 'ทั่วไป';
+
+    let rankClass = 'rank-other';
+    let rankLabel = String(idx + 1);
+    if (idx === 0) { rankClass = 'rank-1'; rankLabel = '🥇'; }
+    else if (idx === 1) { rankClass = 'rank-2'; rankLabel = '🥈'; }
+    else if (idx === 2) { rankClass = 'rank-3'; rankLabel = '🥉'; }
+
+    const div = document.createElement('div');
+    div.className = 'top-seller-item';
+    div.innerHTML = `
+      <div class="top-seller-rank ${rankClass}">${rankLabel}</div>
+      <img src="${imgUrl}" alt="${item.name || ''}" class="top-seller-img" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+      <div class="top-seller-details">
+        <div class="top-seller-name" title="${item.name}">${item.name || 'ไม่มีชื่อสินค้า'}</div>
+        <div class="top-seller-meta">
+          <span>รหัส: ${item.id}</span>
+          <span>•</span>
+          <span>📂 ${category}</span>
+        </div>
+      </div>
+      <div class="top-seller-sales">
+        <div class="top-seller-revenue">฿${Number(item.revenue || 0).toLocaleString()}</div>
+        <div class="top-seller-qty">${isFallback ? 'ราคาเริ่มต้น' : 'ขายแล้ว ' + item.qty.toLocaleString() + ' ชิ้น'}</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderOverviewDashboard() {
+  const dateEl = document.getElementById('overviewCurrentDate');
+  if (dateEl) {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    dateEl.textContent = now.toLocaleDateString('th-TH', options);
+  }
+
+  let totalSales = 0;
+  let completedCount = 0;
+  let checkingCount = 0;
+  let waitingCount = 0;
+  let paymentCount = 0;
+  let preparingCount = 0;
+  let shippingCount = 0;
+  let cancelledCount = 0;
+
+  let todaySales = 0;
+  let todayOrdersCount = 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const paymentMethodCounts = {
+    'โอนจ่าย': 0,
+    'ปลายทาง': 0,
+    'เงินสด/อื่นๆ': 0
+  };
+
+  const itemSalesMap = {};
+
+  allOrders.forEach(o => {
+    const meta = getStatusMeta(o.status);
+    const normStatus = meta.name;
+    const total = Number(o.totalPrice || 0);
+
+    let orderDateStr = '';
+    if (o.timestamp) {
+      try {
+        const dt = new Date(o.timestamp);
+        if (!isNaN(dt.getTime())) {
+          orderDateStr = dt.toISOString().slice(0, 10);
+        }
+      } catch(e) {}
+    }
+
+    if (orderDateStr === todayStr) {
+      todayOrdersCount++;
+      if (normStatus !== 'ยกเลิก') {
+        todaySales += total;
+      }
+    }
+
+    if (normStatus === 'กำลังตรวจสอบออเดอร์') checkingCount++;
+    else if (normStatus === 'รอการยืนยัน') waitingCount++;
+    else if (normStatus === 'ชำระเงิน') paymentCount++;
+    else if (normStatus === 'กำลังจัดเตรียมสินค้า') preparingCount++;
+    else if (normStatus === 'กำลังจัดส่ง') shippingCount++;
+    else if (normStatus === 'จัดส่งสำเร็จ') {
+      completedCount++;
+      totalSales += total;
+    } else if (normStatus === 'ยกเลิก') {
+      cancelledCount++;
+    }
+
+    const pm = (o.paymentMethod || 'โอนจ่าย').trim();
+    if (pm.includes('โอน') || pm.includes('บัญชีธนาคาร')) {
+      paymentMethodCounts['โอนจ่าย']++;
+    } else if (pm.includes('ปลายทาง') || pm.includes('COD')) {
+      paymentMethodCounts['ปลายทาง']++;
+    } else {
+      paymentMethodCounts['เงินสด/อื่นๆ']++;
+    }
+
+    if (normStatus !== 'ยกเลิก' && Array.isArray(o.items)) {
+      o.items.forEach(it => {
+        const sku = String(it.id || it.name || 'item').trim();
+        const q = Number(it.qty || 1);
+        const p = Number(it.price || 0);
+        const sub = Number(it.subtotal || (p * q));
+
+        if (!itemSalesMap[sku]) {
+          itemSalesMap[sku] = {
+            id: it.id || sku,
+            name: it.name || sku,
+            qty: 0,
+            revenue: 0,
+            img: it.img || ''
+          };
+        }
+        itemSalesMap[sku].qty += q;
+        itemSalesMap[sku].revenue += sub;
+        if (it.img && !itemSalesMap[sku].img) itemSalesMap[sku].img = it.img;
+      });
+    }
+  });
+
+  const ovTotalSales = document.getElementById('ovStatTotalSales');
+  const ovCompletedCount = document.getElementById('ovStatCompletedCount');
+  if (ovTotalSales) ovTotalSales.textContent = '฿' + totalSales.toLocaleString();
+  if (ovCompletedCount) ovCompletedCount.textContent = completedCount + ' ออเดอร์';
+
+  const ovTodaySales = document.getElementById('ovStatTodaySales');
+  const ovTodayOrders = document.getElementById('ovStatTodayOrders');
+  if (ovTodaySales) ovTodaySales.textContent = '฿' + todaySales.toLocaleString();
+  if (ovTodayOrders) ovTodayOrders.textContent = todayOrdersCount + ' ออเดอร์';
+
+  const ovTotalOrders = document.getElementById('ovStatTotalOrders');
+  const ovCompletedPercent = document.getElementById('ovStatCompletedPercent');
+  const ovCancelledCount = document.getElementById('ovStatCancelledCount');
+  const totalOrdersCount = allOrders.length;
+  if (ovTotalOrders) ovTotalOrders.textContent = totalOrdersCount.toLocaleString();
+  const compRate = totalOrdersCount > 0 ? Math.round((completedCount / totalOrdersCount) * 100) : 0;
+  if (ovCompletedPercent) ovCompletedPercent.textContent = compRate + '%';
+  if (ovCancelledCount) ovCancelledCount.textContent = cancelledCount;
+
+  const ovPendingTotal = document.getElementById('ovStatPendingTotal');
+  const ovCheckingCount = document.getElementById('ovStatCheckingCount');
+  const ovPaymentCount = document.getElementById('ovStatPaymentCount');
+  const pendingTotalCount = checkingCount + waitingCount + paymentCount;
+  if (ovPendingTotal) ovPendingTotal.textContent = pendingTotalCount;
+  if (ovCheckingCount) ovCheckingCount.textContent = (checkingCount + waitingCount);
+  if (ovPaymentCount) ovPaymentCount.textContent = paymentCount;
+
+  const ovTotalMembers = document.getElementById('ovStatTotalMembers');
+  const ovPhoneMembers = document.getElementById('ovStatPhoneMembers');
+  if (ovTotalMembers) ovTotalMembers.textContent = allMembers.length.toLocaleString();
+  let phoneCount = 0;
+  allMembers.forEach(m => { if (m.phone && m.phone.trim() !== '') phoneCount++; });
+  if (ovPhoneMembers) ovPhoneMembers.textContent = phoneCount + ' คน';
+
+  const ovTotalProducts = document.getElementById('ovStatTotalProducts');
+  const ovCategories = document.getElementById('ovStatCategories');
+  if (ovTotalProducts) ovTotalProducts.textContent = allProducts.length.toLocaleString();
+  const catSet = new Set();
+  allProducts.forEach(p => { if (p.category) catSet.add(p.category); });
+  if (ovCategories) ovCategories.textContent = catSet.size + ' หมวดหมู่';
+
+  const alertBanner = document.getElementById('overviewAlertBanner');
+  const alertTitle = document.getElementById('overviewAlertTitle');
+  const urgentOrdersCount = checkingCount + waitingCount;
+  if (alertBanner && alertTitle) {
+    if (urgentOrdersCount > 0) {
+      alertTitle.textContent = '⚡ มีคำสั่งซื้อรอตรวจสอบ ' + urgentOrdersCount + ' รายการ ที่ต้องดำเนินการทันที';
+      alertBanner.style.display = 'flex';
+    } else {
+      alertBanner.style.display = 'none';
+    }
+  }
+
+  render7DayTrendChart();
+
+  renderStatusBreakdown({
+    checking: checkingCount + waitingCount,
+    payment: paymentCount,
+    shipping: preparingCount + shippingCount,
+    completed: completedCount,
+    cancelled: cancelledCount,
+    total: totalOrdersCount
+  });
+
+  renderPaymentBreakdown(paymentMethodCounts, totalOrdersCount);
+  renderRecentOrdersList();
+  renderTopSellersList(itemSalesMap);
+}
+window.renderOverviewDashboard = renderOverviewDashboard;
 
 async function fetchOrders(showLoading = true) {
   const loading = document.getElementById('loadingIndicator');
@@ -1160,6 +1671,7 @@ async function fetchMembers(showLoading = true) {
       allMembers = result.members || [];
       renderMembers();
       updateMemberStats();
+      renderOverviewDashboard();
     } else {
       console.error("Error fetching members");
     }
@@ -1404,6 +1916,7 @@ function processIncomingProducts(products) {
   populateCategoryAndTagFilters();
   applyProductFilters();
   updateProductStats();
+  renderOverviewDashboard();
 }
 
 function populateCategoryAndTagFilters() {
