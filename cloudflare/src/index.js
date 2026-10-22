@@ -937,7 +937,10 @@ export default {
           const messages = [];
           const pm = order.payment_method || '';
 
-          if (status === 'รอชำระเงิน' && (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))) {
+          if (
+            (status === 'ชำระเงิน' || status === 'รอชำระเงิน') &&
+            (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))
+          ) {
             messages.push(
               buildStatusFlexMessage(
                 '💳 ยืนยันออเดอร์ & แจ้งชำระเงิน',
@@ -991,23 +994,6 @@ export default {
                 ],
               },
             });
-          } else if (status === 'ชำระเงิน') {
-            messages.push(
-              buildStatusFlexMessage(
-                '🧾 ยืนยันการชำระเงินเรียบร้อย',
-                orderId,
-                'ทางร้านได้รับยอดชำระเงินเรียบร้อยแล้วครับ ขอบคุณครับ ✨ แอดมินกำลังเร่งจัดเตรียมสินค้าให้นะครับ 🧑‍🍳',
-                '#16a34a',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
           } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
             messages.push(
               buildStatusFlexMessage(

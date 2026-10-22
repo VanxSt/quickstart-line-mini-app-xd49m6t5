@@ -1276,7 +1276,7 @@
         try {
           var messages = [];
           
-          if (newStatus === "รอชำระเงิน" && (paymentMethod.indexOf("โอน") > -1 || paymentMethod.indexOf("บัญชีธนาคาร") > -1 || paymentMethod.indexOf("ผสม") > -1)) {
+          if ((newStatus === "ชำระเงิน" || newStatus === "รอชำระเงิน") && (paymentMethod.indexOf("โอน") > -1 || paymentMethod.indexOf("บัญชีธนาคาร") > -1 || paymentMethod.indexOf("ผสม") > -1)) {
             messages.push(buildStatusFlexMessage("💳 ยืนยันออเดอร์ & แจ้งชำระเงิน", orderId, "แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨", "#2563eb", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
             
             // สร้าง QR Code PromptPay แบบ Dynamic ตามยอดเงินที่ต้องโอนจริง
@@ -1320,9 +1320,6 @@
                 ]
               }
             });
-          }
-          else if (newStatus === "ชำระเงิน") {
-            messages.push(buildStatusFlexMessage("🧾 ยืนยันการชำระเงินเรียบร้อย", orderId, "ทางร้านได้รับยอดชำระเงินเรียบร้อยแล้วครับ ขอบคุณครับ ✨ แอดมินกำลังเร่งจัดเตรียมสินค้าให้นะครับ 🧑‍🍳", "#16a34a", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
           }
           else if (newStatus === "กำลังจัดเตรียมสินค้า" || newStatus === "เตรียมออเดอร์" || newStatus === "จัดเตรียมสินค้าพร้อมส่ง") {
             messages.push(buildStatusFlexMessage("📦 กำลังจัดเตรียมสินค้า", orderId, "แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨", "#f59e0b", name, phone, shippingOption, deliveryType, preorderTime, itemsJson, totalPrice, paymentMethod));
