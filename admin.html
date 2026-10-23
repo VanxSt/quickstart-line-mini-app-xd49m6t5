@@ -1019,6 +1019,141 @@
       font-weight: 700;
     }
 
+    /* Product Status Toggle Switch (ตัวเลื่อนเปิด-ปิดสินค้า ไม่ให้ลูกค้าเห็น) */
+    .product-status-toggle-wrapper {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .switch-toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .switch-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider-round {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 34px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .slider-round:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch-toggle input:checked + .slider-round {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    }
+
+    .switch-toggle input:focus + .slider-round {
+      outline: 2px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .switch-toggle input:checked + .slider-round:before {
+      transform: translateX(20px);
+    }
+
+    .switch-toggle:hover .slider-round {
+      filter: brightness(1.05);
+    }
+
+    .switch-toggle-sm {
+      width: 38px;
+      height: 21px;
+    }
+
+    .switch-toggle-sm .slider-round:before {
+      height: 15px;
+      width: 15px;
+      left: 3px;
+      bottom: 3px;
+    }
+
+    .switch-toggle-sm input:checked + .slider-round:before {
+      transform: translateX(17px);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .status-pill-active {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .status-pill-inactive {
+      background-color: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+    }
+
+    tr.product-row-inactive {
+      background-color: #fafbfd;
+      opacity: 0.72;
+      transition: opacity 0.2s ease, background-color 0.2s ease;
+    }
+
+    tr.product-row-inactive:hover {
+      opacity: 1;
+      background-color: #f1f5f9;
+    }
+
+    tr.product-row-inactive .product-thumb-large,
+    tr.product-row-inactive .product-table-thumb {
+      filter: grayscale(40%);
+    }
+
+    .admin-product-card.card-inactive {
+      opacity: 0.76;
+      background: #fbfcfe;
+      border-color: #e2e8f0;
+    }
+
+    .admin-product-card.card-inactive:hover {
+      opacity: 1;
+    }
+
     .product-table-thumb {
       width: 48px;
       height: 48px;
@@ -2635,6 +2770,14 @@
             </div>
 
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <!-- Status Filter (เปิด/ปิดสินค้า) -->
+              <select id="productStatusFilter" onchange="onProductFilterChange()"
+                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+                <option value="all">👁️ สถานะ: ทั้งหมด</option>
+                <option value="active">🟢 กำลังเปิดแสดง (ลูกค้าเห็น)</option>
+                <option value="inactive">⚪ ปิดซ่อนอยู่ (ลูกค้าไม่เห็น)</option>
+              </select>
+
               <!-- Tag Filter -->
               <select id="productTagFilter" onchange="onProductFilterChange()"
                 style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
@@ -2668,8 +2811,7 @@
                 style="display: none; background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline;">✕
                 ล้างตัวกรอง</button>
             </div>
-            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่รหัสสินค้าเพื่อคัดลอก SKU | กด "ดูข้อมูล"
-              เพื่อดูรูปใหญ่และรายละเอียด</span>
+            <span style="font-size: 12px; color: #94a3b8;">💡 สวิตช์เปิด/ปิด: ควบคุมการมองเห็นของลูกค้าแบบเรียลไทม์ | คลิกที่รหัสสินค้าเพื่อคัดลอก SKU</span>
           </div>
 
           <!-- Table View Container -->
@@ -2679,8 +2821,9 @@
                 <tr>
                   <th>ข้อมูลสินค้า (รูปภาพ / ชื่อสินค้า / รหัส SKU / แท็ก)</th>
                   <th style="width: 170px;">หมวดหมู่</th>
-                  <th style="width: 130px;">ราคาขาย</th>
-                  <th style="text-align: right; width: 120px;">การจัดการ</th>
+                  <th style="width: 120px;">ราคาขาย</th>
+                  <th style="text-align: center; width: 160px;">แสดงให้ลูกค้าเห็น</th>
+                  <th style="text-align: right; width: 110px;">การจัดการ</th>
                 </tr>
               </thead>
               <tbody id="productsBody">
@@ -2891,6 +3034,24 @@
             </div>
           </div>
         </div>
+        <!-- Status Visibility Box inside Modal -->
+        <div class="detail-status-box" style="margin-bottom: 16px; padding: 14px 18px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+          <div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+              <span>👁️</span> สถานะการแสดงผลในหน้าร้าน
+            </div>
+            <div id="detailProductStatusHint" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="detailProductStatusBadge" class="status-pill status-pill-active">🟢 เปิดแสดง</span>
+            <label class="switch-toggle" title="เลื่อนเพื่อเปิดหรือปิดสินค้านี้">
+              <input type="checkbox" id="detailProductStatusCheckbox" onchange="toggleProductStatusFromModal(this.checked)">
+              <span class="slider-round"></span>
+            </label>
+          </div>
+        </div>
         <div style="border-top: 1px solid var(--border); padding-top: 16px;">
           <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">📌 รายละเอียด /
             คำอธิบายสินค้า</h4>
@@ -3011,6 +3172,7 @@
     let productSearchQuery = '';
     let productSelectedCategory = 'all';
     let productSelectedTag = 'all';
+    let productSelectedStatus = 'all';
     let productSortOrder = 'default';
     let productViewMode = 'table';
     let productVisibleLimit = 50;
@@ -5272,7 +5434,7 @@
       // 3. Fallback: URL fetch
       if (!fetchedData || fetchedData.length === 0) {
         try {
-          const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getProducts&_t=' + Date.now());
+          const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getProducts&all=true&_t=' + Date.now());
           if (res.ok) {
             const data = await res.json();
             if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
@@ -5407,6 +5569,7 @@
     function resetAllProductFilters() {
       productSelectedCategory = 'all';
       productSelectedTag = 'all';
+      productSelectedStatus = 'all';
       productSearchQuery = '';
       productSortOrder = 'default';
 
@@ -5414,6 +5577,8 @@
       if (catSelect) catSelect.value = 'all';
       const tagSelect = document.getElementById('productTagFilter');
       if (tagSelect) tagSelect.value = 'all';
+      const statusSelect = document.getElementById('productStatusFilter');
+      if (statusSelect) statusSelect.value = 'all';
       const sortSelect = document.getElementById('productSortFilter');
       if (sortSelect) sortSelect.value = 'default';
       const searchInput = document.getElementById('adminProductSearchInput');
@@ -5431,8 +5596,14 @@
 
     function applyProductFilters() {
       const search = productSearchQuery.toLowerCase();
+      const statusSelect = document.getElementById('productStatusFilter');
+      if (statusSelect) productSelectedStatus = statusSelect.value;
 
       filteredProducts = allProducts.filter(p => {
+        const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+        if (productSelectedStatus === 'active' && isInactive) return false;
+        if (productSelectedStatus === 'inactive' && !isInactive) return false;
+
         if (productSelectedCategory !== 'all' && p.category !== productSelectedCategory) {
           return false;
         }
@@ -5470,6 +5641,8 @@
       const countToDisplay = Math.min(productVisibleLimit, filteredProducts.length);
       if (showingText) {
         let filterDesc = '';
+        if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
+        else if (productSelectedStatus === 'inactive') filterDesc += ' (⚪ เฉพาะที่ซ่อน)';
         if (productSelectedCategory !== 'all') filterDesc += ' (หมวด: ' + productSelectedCategory + ')';
         if (productSelectedTag !== 'all') filterDesc += ' (แท็ก: ' + productSelectedTag + ')';
         if (productSearchQuery) filterDesc += ' (ค้นหา: "' + productSearchQuery + '")';
@@ -5479,7 +5652,7 @@
 
       const btnReset = document.getElementById('btnResetFilters');
       if (btnReset) {
-        const isFiltered = (productSelectedCategory !== 'all' || productSelectedTag !== 'all' || productSearchQuery !== '');
+        const isFiltered = (productSelectedCategory !== 'all' || productSelectedTag !== 'all' || productSelectedStatus !== 'all' || productSearchQuery !== '');
         btnReset.style.display = isFiltered ? 'inline-block' : 'none';
       }
 
@@ -5504,7 +5677,7 @@
 
       if (slice.length === 0) {
         tbody.innerHTML = '<tr>' +
-          '<td colspan="4" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<td colspan="5" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
           '<div style="font-size: 36px; margin-bottom: 8px;">🔍</div>' +
           '<p style="font-weight: 600; font-size: 15px; color: var(--text-main);">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
           '<p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">ลองเปลี่ยนคำค้นหา หรือกดเลือกหมวดหมู่ "ทั้งหมด"</p>' +
@@ -5519,6 +5692,12 @@
         const imgUrl = getOptimizedImageUrl(p.img);
         const tagHtml = p.tag ? '<span class="tag-badge">⭐ ' + p.tag + '</span>' : '';
         const catName = p.category || 'ทั่วไป';
+        const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+        const isActive = !isInactive;
+
+        if (!isActive) {
+          tr.classList.add('product-row-inactive');
+        }
 
         tr.innerHTML = '<td>' +
           '<div class="product-cell-main">' +
@@ -5528,12 +5707,24 @@
           '<div class="product-sub-badges">' +
           '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกเพื่อคัดลอกรหัสสินค้า">📋 ' + (p.id || '-') + '</span>' +
           tagHtml +
+          (!isActive ? '<span class="status-pill status-pill-inactive" style="font-size: 11px;">⚪ ซ่อนอยู่</span>' : '') +
           '</div>' +
           '</div>' +
           '</div>' +
           '</td>' +
           '<td><span class="category-badge">📂 ' + catName + '</span></td>' +
           '<td><span class="price-tag-big">฿' + (Number(p.price) || 0).toLocaleString() + '</span></td>' +
+          '<td style="text-align: center;">' +
+          '<div class="product-status-toggle-wrapper" onclick="event.stopPropagation()">' +
+          '<label class="switch-toggle" title="' + (isActive ? 'คลิกเพื่อปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'คลิกเพื่อเปิดให้ลูกค้าเห็นสินค้านี้') + '">' +
+          '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="toggleProductStatus(\'' + p.id + '\', this.checked, event)">' +
+          '<span class="slider-round"></span>' +
+          '</label>' +
+          '<span class="status-pill ' + (isActive ? 'status-pill-active' : 'status-pill-inactive') + '">' +
+          (isActive ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน') +
+          '</span>' +
+          '</div>' +
+          '</td>' +
           '<td style="text-align: right;">' +
           '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')" style="white-space: nowrap;">🔍 ดูข้อมูล</button>' +
           '</td>';
@@ -5563,16 +5754,33 @@
         card.className = 'admin-product-card';
         const imgUrl = getOptimizedImageUrl(p.img);
         const tagHtml = p.tag ? '<div class="admin-product-card-tag">⭐ ' + p.tag + '</div>' : '';
+        const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+        const isActive = !isInactive;
+
+        if (!isActive) {
+          card.classList.add('card-inactive');
+        }
 
         card.innerHTML = '<div class="admin-product-card-img-wrap" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' +
           '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
           tagHtml +
           '<div class="admin-product-card-category-float">' + (p.category || 'ทั่วไป') + '</div>' +
+          (!isActive ? '<div style="position: absolute; top: 8px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : '') +
           '</div>' +
           '<div class="admin-product-card-body">' +
           '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || 'ไม่มีชื่อสินค้า') + '</div>' +
-          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">' +
           '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกคัดลอก SKU">📋 ' + (p.id || '-') + '</span>' +
+          '</div>' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">' +
+          '<span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">แสดงให้ลูกค้าเห็น:</span>' +
+          '<div style="display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation()">' +
+          '<label class="switch-toggle switch-toggle-sm" title="' + (isActive ? 'ปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'เปิดแสดงสินค้านี้ให้ลูกค้าเห็น') + '">' +
+          '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="toggleProductStatus(\'' + p.id + '\', this.checked, event)">' +
+          '<span class="slider-round"></span>' +
+          '</label>' +
+          '<span style="font-size: 11.5px; font-weight: 600; color: ' + (isActive ? '#059669' : '#64748b') + ';">' + (isActive ? 'เปิด' : 'ปิด') + '</span>' +
+          '</div>' +
           '</div>' +
           '<div class="admin-product-card-footer">' +
           '<div class="admin-product-card-price">฿' + (Number(p.price) || 0).toLocaleString() + '</div>' +
@@ -5612,6 +5820,21 @@
       if (priceEl) priceEl.textContent = (Number(product.price) || 0).toLocaleString();
       if (skuEl) skuEl.textContent = product.id;
       if (descEl) descEl.textContent = product.desc || 'ไม่มีคำอธิบายสินค้าเพิ่มเติม';
+
+      // Status Switch in Detail Modal
+      const isInactive = (product.status && String(product.status).toLowerCase() === 'inactive');
+      const isActive = !isInactive;
+      const cb = document.getElementById('detailProductStatusCheckbox');
+      const badge = document.getElementById('detailProductStatusBadge');
+      const hint = document.getElementById('detailProductStatusHint');
+      if (cb) cb.checked = isActive;
+      if (badge) {
+        badge.className = 'status-pill ' + (isActive ? 'status-pill-active' : 'status-pill-inactive');
+        badge.textContent = isActive ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน';
+      }
+      if (hint) {
+        hint.textContent = isActive ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+      }
 
       if (modal) modal.classList.add('active');
     }
@@ -5673,10 +5896,12 @@
     function onProductFilterChange() {
       const catSelect = document.getElementById('productCategoryFilter');
       const tagSelect = document.getElementById('productTagFilter');
+      const statusSelect = document.getElementById('productStatusFilter');
       const sortSelect = document.getElementById('productSortFilter');
 
       if (catSelect) productSelectedCategory = catSelect.value;
       if (tagSelect) productSelectedTag = tagSelect.value;
+      if (statusSelect) productSelectedStatus = statusSelect.value;
       if (sortSelect) productSortOrder = sortSelect.value;
 
       applyProductFilters();
@@ -5693,24 +5918,118 @@
       const statTagged = document.getElementById('stat-tagged-products');
       const statAvg = document.getElementById('stat-avg-price');
 
-      if (statTotal) statTotal.textContent = allProducts.length.toLocaleString();
-
+      let activeCount = 0;
+      let inactiveCount = 0;
       const categories = new Set();
       let taggedCount = 0;
       let totalPriceSum = 0;
 
       allProducts.forEach(p => {
+        const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+        if (isInactive) {
+          inactiveCount++;
+        } else {
+          activeCount++;
+        }
         if (p.category) categories.add(p.category);
         if (p.tag) taggedCount++;
         totalPriceSum += Number(p.price) || 0;
       });
 
+      if (statTotal) {
+        statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | ⚪ ซ่อน ' + inactiveCount.toLocaleString() + '</span>';
+      }
       if (statCat) statCat.textContent = categories.size.toLocaleString();
       if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
       const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
       if (statAvg) statAvg.textContent = '฿' + avg.toLocaleString();
     }
+
+    // Toggle Product Status (เปิด/ปิดสินค้า ไม่ให้ลูกค้าเห็น)
+    async function toggleProductStatus(productId, isChecked, event) {
+      if (event) event.stopPropagation();
+      const product = allProducts.find(p => String(p.id) === String(productId));
+      if (!product) return;
+
+      const newStatus = isChecked ? 'active' : 'inactive';
+      product.status = newStatus;
+
+      // 1. บันทึกลง LocalStorage Cache ทันที (0ms)
+      try {
+        LS.setItem('cached_admin_products', JSON.stringify(allProducts));
+      } catch (e) { }
+
+      // อัปเดต Cache ของลูกค้าในเครื่องด้วย (ถ้ามีการเปิดหน้าร้านบนบราวเซอร์เดียวกัน)
+      try {
+        const custRaw = LS.getItem('cached_products_v2');
+        if (custRaw) {
+          const custObj = JSON.parse(custRaw);
+          if (Array.isArray(custObj.products)) {
+            const cp = custObj.products.find(p => String(p.id) === String(productId));
+            if (cp) {
+              cp.status = newStatus;
+              LS.setItem('cached_products_v2', JSON.stringify(custObj));
+            }
+          }
+        }
+      } catch (e) { }
+
+      // 2. ปรับปรุงหน้าจอทันที (Optimistic UI)
+      renderProductsList();
+      updateProductStats();
+
+      const statusMsg = isChecked ? 'เปิดแสดงสินค้าให้ลูกค้าเห็นแล้ว 🟢' : 'ปิดซ่อนสินค้าไม่ให้ลูกค้าเห็นแล้ว ⚪';
+      showToast((product.name ? '"' + product.name.substring(0, 25) + '..."' : 'สินค้า') + ' : ' + statusMsg, isChecked ? 'success' : 'info');
+
+      // อัปเดต Detail Modal ถ้าเปิดอยู่
+      if (currentViewingProduct && String(currentViewingProduct.id) === String(productId)) {
+        const cb = document.getElementById('detailProductStatusCheckbox');
+        const badge = document.getElementById('detailProductStatusBadge');
+        const hint = document.getElementById('detailProductStatusHint');
+        if (cb) cb.checked = isChecked;
+        if (badge) {
+          badge.className = 'status-pill ' + (isChecked ? 'status-pill-active' : 'status-pill-inactive');
+          badge.textContent = isChecked ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน';
+        }
+        if (hint) {
+          hint.textContent = isChecked ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+        }
+      }
+
+      // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database / Google Apps Script
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'updateProductStatus',
+            id: productId,
+            status: newStatus
+          })
+        });
+        const result = await res.json();
+        if (result && result.status === 'success') {
+          console.log('Product status saved to server:', result);
+        }
+      } catch (err) {
+        console.warn('Backend update error, attempting GAS fallback:', err);
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function (r) { console.log('GAS status saved:', r); })
+            .withFailureHandler(function (e) { console.error('GAS save failed:', e); })
+            .updateProductStatusNative(productId, newStatus);
+        }
+      }
+    }
+    window.toggleProductStatus = toggleProductStatus;
+
+    function toggleProductStatusFromModal(isChecked) {
+      if (currentViewingProduct && currentViewingProduct.id) {
+        toggleProductStatus(currentViewingProduct.id, isChecked);
+      }
+    }
+    window.toggleProductStatusFromModal = toggleProductStatusFromModal;
 
   </script>
 </body>

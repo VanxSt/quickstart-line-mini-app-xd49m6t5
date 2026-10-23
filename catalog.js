@@ -180,6 +180,7 @@ function renderProducts() {
   productsGrid.innerHTML = '';
 
   const filtered = PRODUCTS.filter(product => {
+    if (product.status && String(product.status).toLowerCase() === 'inactive') return false;
     if (!product._parsedParent) {
       const parsed = parseProductCategory(product.category);
       product._parsedParent = parsed.parent;
@@ -300,6 +301,10 @@ function openProductDetail(productOrId) {
     product = PRODUCTS.find(p => p.id === productOrId || String(p.id) === String(productOrId));
   }
   if (!product) return;
+  if (product.status && String(product.status).toLowerCase() === 'inactive') {
+    alert('ขออภัยครับ สินค้านี้ปิดการขายชั่วคราว');
+    return;
+  }
 
   activeProduct = product;
 
@@ -2488,6 +2493,7 @@ function initCategoryFilters() {
 
   // Build tree from loaded products
   PRODUCTS.forEach(product => {
+    if (product.status && String(product.status).toLowerCase() === 'inactive') return;
     const parsed = parseProductCategory(product.category);
     product._parsedParent = parsed.parent;
     product._parsedSub = parsed.sub;

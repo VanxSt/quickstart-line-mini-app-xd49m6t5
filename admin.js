@@ -15,6 +15,7 @@ let filteredProducts = [];
 let productSearchQuery = '';
 let productSelectedCategory = 'all';
 let productSelectedTag = 'all';
+let productSelectedStatus = 'all';
 let productSortOrder = 'default';
 let productViewMode = 'table'; // 'table' | 'grid'
 let productVisibleLimit = 50;
@@ -2163,7 +2164,7 @@ async function fetchProducts(showLoading = true) {
 
     if (!fetchedData) {
       try {
-        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`);
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
@@ -2255,8 +2256,14 @@ function populateCategoryAndTagFilters() {
 
 function applyProductFilters() {
   const search = productSearchQuery.toLowerCase();
+  const statusSelect = document.getElementById('productStatusFilter');
+  if (statusSelect) productSelectedStatus = statusSelect.value;
 
   filteredProducts = allProducts.filter(p => {
+    const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+    if (productSelectedStatus === 'active' && isInactive) return false;
+    if (productSelectedStatus === 'inactive' && !isInactive) return false;
+
     if (productSelectedCategory !== 'all' && p.category !== productSelectedCategory) {
       return false;
     }
@@ -2293,7 +2300,20 @@ function renderProductsList() {
   const showingText = document.getElementById('productShowingCountText');
   const countToDisplay = Math.min(productVisibleLimit, filteredProducts.length);
   if (showingText) {
-    showingText.textContent = `แสดง ${countToDisplay.toLocaleString()} จากที่ค้นพบ ${filteredProducts.length.toLocaleString()} รายการ (สินค้าทั้งหมดในระบบ ${allProducts.length.toLocaleString()} รายการ)`;
+    let filterDesc = '';
+    if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
+    else if (productSelectedStatus === 'inactive') filterDesc += ' (⚪ เฉพาะที่ซ่อน)';
+    if (productSelectedCategory !== 'all') filterDesc += ` (หมวด: ${productSelectedCategory})`;
+    if (productSelectedTag !== 'all') filterDesc += ` (แท็ก: ${productSelectedTag})`;
+    if (productSearchQuery) filterDesc += ` (ค้นหา: "${productSearchQuery}")`;
+
+    showingText.textContent = `แสดง ${countToDisplay.toLocaleString()} จากที่ค้นพบ ${filteredProducts.length.toLocaleString()} รายการ (สินค้าทั้งหมดในระบบ ${allProducts.length.toLocaleString()} รายการ)${filterDesc}`;
+  }
+
+  const btnReset = document.getElementById('btnResetFilters');
+  if (btnReset) {
+    const isFiltered = (productSelectedCategory !== 'all' || productSelectedTag !== 'all' || productSelectedStatus !== 'all' || productSearchQuery !== '');
+    btnReset.style.display = isFiltered ? 'inline-block' : 'none';
   }
 
   const loadMoreBtnContainer = document.getElementById('productLoadMoreContainer');
@@ -2318,7 +2338,7 @@ function renderProductsTable() {
   if (slice.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+        <td colspan="5" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
           <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
         </td>
@@ -2330,29 +2350,44 @@ function renderProductsTable() {
   slice.forEach(p => {
     const tr = document.createElement('tr');
     const imgUrl = getOptimizedImageUrl(p.img);
-    const tagHtml = p.tag ? `<span class="tag-badge">${p.tag}</span>` : `<span style="color:#cbd5e1;">-</span>`;
-    const catHtml = p.category ? `<span class="category-badge">${p.category}</span>` : `<span style="color:#cbd5e1;">-</span>`;
+    const tagHtml = p.tag ? `<span class="tag-badge">⭐ ${p.tag}</span>` : '';
+    const catHtml = p.category ? `<span class="category-badge">📂 ${p.category}</span>` : `<span style="color:#cbd5e1;">-</span>`;
+    const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+    const isActive = !isInactive;
+
+    if (!isActive) {
+      tr.classList.add('product-row-inactive');
+    }
 
     tr.innerHTML = `
       <td>
-        <img src="${imgUrl}" alt="${p.name}" class="product-table-thumb" onclick="openProductDetailModal('${p.id}')" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
-      </td>
-      <td>
-        <div class="sku-cell-wrapper">
-          <code class="sku-code">${p.id}</code>
-          <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)" title="คัดลอกรหัสสินค้า">📋</button>
-        </div>
-      </td>
-      <td>
-        <div style="cursor: pointer;" onclick="openProductDetailModal('${p.id}')">
-          <strong style="font-size: 13.5px; color: var(--text-main); display: block; line-height: 1.35;">${p.name}</strong>
+        <div class="product-cell-main" style="display: flex; align-items: center; gap: 12px;">
+          <img src="${imgUrl}" alt="${p.name}" class="product-table-thumb" onclick="openProductDetailModal('${p.id}')" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
+          <div class="product-info-text">
+            <span class="product-title-text" style="font-size: 13.5px; font-weight: 600; color: var(--text-main); cursor: pointer;" onclick="openProductDetailModal('${p.id}')">${p.name}</span>
+            <div class="product-sub-badges" style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+              <span class="sku-chip" onclick="copyProductSku('${p.id}', event)" title="คัดลอกรหัสสินค้า" style="cursor: pointer;">📋 ${p.id}</span>
+              ${tagHtml}
+              ${!isActive ? '<span class="status-pill status-pill-inactive" style="font-size: 11px;">⚪ ซ่อนอยู่</span>' : ''}
+            </div>
+          </div>
         </div>
       </td>
       <td>${catHtml}</td>
       <td>
         <strong style="color: #1e293b; font-size: 14px;">฿${(Number(p.price) || 0).toLocaleString()}</strong>
       </td>
-      <td>${tagHtml}</td>
+      <td style="text-align: center;">
+        <div class="product-status-toggle-wrapper" onclick="event.stopPropagation()">
+          <label class="switch-toggle" title="${isActive ? 'คลิกเพื่อปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'คลิกเพื่อเปิดให้ลูกค้าเห็นสินค้านี้'}">
+            <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleProductStatus('${p.id}', this.checked, event)">
+            <span class="slider-round"></span>
+          </label>
+          <span class="status-pill ${isActive ? 'status-pill-active' : 'status-pill-inactive'}">
+            ${isActive ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน'}
+          </span>
+        </div>
+      </td>
       <td style="text-align: right;">
         <button class="btn-view" onclick="openProductDetailModal('${p.id}')">🔍 ดูข้อมูล</button>
       </td>
@@ -2382,19 +2417,36 @@ function renderProductsGrid() {
     const card = document.createElement('div');
     card.className = 'admin-product-card';
     const imgUrl = getOptimizedImageUrl(p.img);
-    const tagHtml = p.tag ? `<div class="admin-product-card-tag">${p.tag}</div>` : '';
+    const tagHtml = p.tag ? `<div class="admin-product-card-tag">⭐ ${p.tag}</div>` : '';
+    const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+    const isActive = !isInactive;
+
+    if (!isActive) {
+      card.classList.add('card-inactive');
+    }
 
     card.innerHTML = `
-      <div class="admin-product-card-img-wrap" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">
+      <div class="admin-product-card-img-wrap" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer; position: relative;">
         <img src="${imgUrl}" alt="${p.name}" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
         ${tagHtml}
+        <div class="admin-product-card-category-float">${p.category || 'ทั่วไป'}</div>
+        ${!isActive ? '<div style="position: absolute; top: 8px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : ''}
       </div>
       <div class="admin-product-card-body">
-        <div class="admin-product-card-category">${p.category || 'ทั่วไป'}</div>
         <div class="admin-product-card-title" title="${p.name}" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">${p.name}</div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <code class="sku-code">${p.id}</code>
           <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)">📋 คัดลอก</button>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">แสดงให้ลูกค้าเห็น:</span>
+          <div style="display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation()">
+            <label class="switch-toggle switch-toggle-sm" title="${isActive ? 'ปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'เปิดแสดงสินค้านี้ให้ลูกค้าเห็น'}">
+              <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleProductStatus('${p.id}', this.checked, event)">
+              <span class="slider-round"></span>
+            </label>
+            <span style="font-size: 11.5px; font-weight: 600; color: ${isActive ? '#059669' : '#64748b'};">${isActive ? 'เปิด' : 'ปิด'}</span>
+          </div>
         </div>
         <div class="admin-product-card-footer">
           <div class="admin-product-card-price">฿${(Number(p.price) || 0).toLocaleString()}</div>
@@ -2435,6 +2487,21 @@ function openProductDetailModal(productId) {
   if (priceEl) priceEl.textContent = (Number(product.price) || 0).toLocaleString();
   if (skuEl) skuEl.textContent = product.id;
   if (descEl) descEl.textContent = product.desc || 'ไม่มีคำอธิบายสินค้าเพิ่มเติม';
+
+  // Status Switch in Detail Modal
+  const isInactive = (product.status && String(product.status).toLowerCase() === 'inactive');
+  const isActive = !isInactive;
+  const cb = document.getElementById('detailProductStatusCheckbox');
+  const badge = document.getElementById('detailProductStatusBadge');
+  const hint = document.getElementById('detailProductStatusHint');
+  if (cb) cb.checked = isActive;
+  if (badge) {
+    badge.className = 'status-pill ' + (isActive ? 'status-pill-active' : 'status-pill-inactive');
+    badge.textContent = isActive ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน';
+  }
+  if (hint) {
+    hint.textContent = isActive ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+  }
 
   if (modal) modal.classList.add('active');
 }
@@ -2496,10 +2563,12 @@ function setProductViewMode(mode) {
 function onProductFilterChange() {
   const catSelect = document.getElementById('productCategoryFilter');
   const tagSelect = document.getElementById('productTagFilter');
+  const statusSelect = document.getElementById('productStatusFilter');
   const sortSelect = document.getElementById('productSortFilter');
 
   if (catSelect) productSelectedCategory = catSelect.value;
   if (tagSelect) productSelectedTag = tagSelect.value;
+  if (statusSelect) productSelectedStatus = statusSelect.value;
   if (sortSelect) productSortOrder = sortSelect.value;
 
   applyProductFilters();
@@ -2511,23 +2580,114 @@ function updateProductStats() {
   const statTagged = document.getElementById('stat-tagged-products');
   const statAvg = document.getElementById('stat-avg-price');
 
-  if (statTotal) statTotal.textContent = allProducts.length.toLocaleString();
-
+  let activeCount = 0;
+  let inactiveCount = 0;
   const categories = new Set();
   let taggedCount = 0;
   let totalPriceSum = 0;
 
   allProducts.forEach(p => {
+    const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+    if (isInactive) {
+      inactiveCount++;
+    } else {
+      activeCount++;
+    }
     if (p.category) categories.add(p.category);
     if (p.tag) taggedCount++;
     totalPriceSum += Number(p.price) || 0;
   });
 
+  if (statTotal) {
+    statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | ⚪ ซ่อน ' + inactiveCount.toLocaleString() + '</span>';
+  }
   if (statCat) statCat.textContent = categories.size.toLocaleString();
   if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
   const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
   if (statAvg) statAvg.textContent = `฿${avg.toLocaleString()}`;
+}
+
+// Toggle Product Status (เปิด/ปิดสินค้า ไม่ให้ลูกค้าเห็น)
+async function toggleProductStatus(productId, isChecked, event) {
+  if (event) event.stopPropagation();
+  const product = allProducts.find(p => String(p.id) === String(productId));
+  if (!product) return;
+
+  const newStatus = isChecked ? 'active' : 'inactive';
+  product.status = newStatus;
+
+  // 1. บันทึกลง LocalStorage Cache ทันที (0ms)
+  try {
+    localStorage.setItem('cached_admin_products', JSON.stringify(allProducts));
+  } catch (e) { }
+
+  try {
+    const custRaw = localStorage.getItem('cached_products_v2');
+    if (custRaw) {
+      const custObj = JSON.parse(custRaw);
+      if (Array.isArray(custObj.products)) {
+        const cp = custObj.products.find(p => String(p.id) === String(productId));
+        if (cp) {
+          cp.status = newStatus;
+          localStorage.setItem('cached_products_v2', JSON.stringify(custObj));
+        }
+      }
+    }
+  } catch (e) { }
+
+  // 2. ปรับปรุงหน้าจอทันที (Optimistic UI)
+  renderProductsList();
+  updateProductStats();
+
+  const statusMsg = isChecked ? 'เปิดแสดงสินค้าให้ลูกค้าเห็นแล้ว 🟢' : 'ปิดซ่อนสินค้าไม่ให้ลูกค้าเห็นแล้ว ⚪';
+  showToast((product.name ? '"' + product.name.substring(0, 25) + '..."' : 'สินค้า') + ' : ' + statusMsg, isChecked ? 'success' : 'info');
+
+  // อัปเดต Detail Modal ถ้าเปิดอยู่
+  if (currentViewingProduct && String(currentViewingProduct.id) === String(productId)) {
+    const cb = document.getElementById('detailProductStatusCheckbox');
+    const badge = document.getElementById('detailProductStatusBadge');
+    const hint = document.getElementById('detailProductStatusHint');
+    if (cb) cb.checked = isChecked;
+    if (badge) {
+      badge.className = 'status-pill ' + (isChecked ? 'status-pill-active' : 'status-pill-inactive');
+      badge.textContent = isChecked ? '🟢 เปิดแสดง' : '⚪ ปิดซ่อน';
+    }
+    if (hint) {
+      hint.textContent = isChecked ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+    }
+  }
+
+  // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database / Google Apps Script
+  try {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'updateProductStatus',
+        id: productId,
+        status: newStatus
+      })
+    });
+    const result = await res.json();
+    if (result && result.status === 'success') {
+      console.log('Product status saved to server:', result);
+    }
+  } catch (err) {
+    console.warn('Backend update error, attempting GAS fallback:', err);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function (r) { console.log('GAS status saved:', r); })
+        .withFailureHandler(function (e) { console.error('GAS save failed:', e); })
+        .updateProductStatusNative(productId, newStatus);
+    }
+  }
+}
+
+function toggleProductStatusFromModal(isChecked) {
+  if (currentViewingProduct && currentViewingProduct.id) {
+    toggleProductStatus(currentViewingProduct.id, isChecked);
+  }
 }
 
 // Window exports
@@ -2539,3 +2699,6 @@ window.openProductDetailModal = openProductDetailModal;
 window.closeProductModal = closeProductModal;
 window.copyProductSku = copyProductSku;
 window.copySkuFromModal = copySkuFromModal;
+window.toggleProductStatus = toggleProductStatus;
+window.toggleProductStatusFromModal = toggleProductStatusFromModal;
+

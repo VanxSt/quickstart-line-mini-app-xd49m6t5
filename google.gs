@@ -31,7 +31,7 @@
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
       if (!row[0] || String(row[0]).trim() === '') continue;
-      if (String(row[7] || 'active').toLowerCase() === 'inactive') continue;
+      var status = String(row[7] || 'active').toLowerCase();
       products.push({
         id: String(row[0]).trim(),
         name: String(row[1] || ''),
@@ -39,14 +39,15 @@
         price: Number(row[3] || 0),
         desc: String(row[4] || ''),
         img: String(row[5] || ''),
-        tag: String(row[6] || '')
+        tag: String(row[6] || ''),
+        status: status === 'inactive' ? 'inactive' : 'active'
       });
     }
     return JSON.stringify({ status: 'success', products: products, total: products.length, exportedAt: new Date().getTime() });
   }
 
   // ดึงข้อมูลสินค้าแบบ Native Object สำหรับเรียกผ่าน google.script.run จากหน้า Admin
-  function getProductsNative() {
+  function getProductsNative(includeAll) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var catalogSheet = ss.getSheetByName("Catalog");
     if (!catalogSheet) return [];
@@ -57,7 +58,7 @@
       if (!row[0] && row[0] !== 0) continue;
       if (String(row[0]).trim() === '') continue;
       var status = String(row[7] || 'active').toLowerCase();
-      if (status === 'inactive') continue;
+      if (includeAll === false && status === 'inactive') continue;
       products.push({
         id: String(row[0] || '').trim(),
         name: String(row[1] || ''),
@@ -65,7 +66,8 @@
         price: Number(row[3] || 0),
         desc: String(row[4] || ''),
         img: String(row[5] || ''),
-        tag: String(row[6] || '')
+        tag: String(row[6] || ''),
+        status: status === 'inactive' ? 'inactive' : 'active'
       });
     }
     return products;
@@ -152,6 +154,8 @@
         return createOrderHandler(ss, data);
       } else if (action === 'updateOrderStatus') {
         return updateOrderStatusHandler(ss, data);
+      } else if (action === 'updateProductStatus') {
+        return updateProductStatusHandler(ss, data);
       } else if (action === 'updateOrderItems') {
         return updateOrderItemsHandler(ss, data);
       } else if (action === 'uploadSlip') {
@@ -163,6 +167,68 @@
     } catch (error) {
       return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // Handler สำหรับอัปเดตสถานะเปิด/ปิดสินค้าจากหน้า Admin
+  function updateProductStatusHandler(ss, data) {
+    try {
+      var productId = data.id || data.productId;
+      var newStatus = data.status; // 'active' หรือ 'inactive'
+      var result = updateProductStatusNative(productId, newStatus);
+      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // อัปเดตสถานะเปิด/ปิดสินค้าในชีต Catalog (คอลัมน์ H / Index 8)
+  function updateProductStatusNative(productId, newStatus) {
+    try {
+      if (!productId) return { status: 'error', message: 'Missing product ID' };
+      var cleanStatus = (String(newStatus).toLowerCase() === 'inactive') ? 'inactive' : 'active';
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var catalogSheet = ss.getSheetByName("Catalog");
+      if (!catalogSheet) return { status: 'error', message: 'Catalog sheet not found' };
+
+      var values = catalogSheet.getDataRange().getValues();
+      var foundRow = -1;
+      for (var i = 1; i < values.length; i++) {
+        if (values[i][0] && String(values[i][0]).trim() === String(productId).trim()) {
+          foundRow = i + 1; // 1-based index
+          break;
+        }
+      }
+
+      if (foundRow === -1) {
+        return { status: 'error', message: 'Product not found in Catalog: ' + productId };
+      }
+
+      // ตรวจสอบหัวตารางคอลัมน์ H (Index 8) ถ้ายังว่างให้ตั้งเป็น 'Status'
+      var lastCol = Math.max(catalogSheet.getLastColumn(), 8);
+      var headers = catalogSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      if (!headers[7] || String(headers[7]).trim() === '') {
+        catalogSheet.getRange(1, 8).setValue('Status');
+      }
+
+      // บันทึกสถานะใหม่ลงแถวที่พบ คอลัมน์ที่ 8 (Column H)
+      catalogSheet.getRange(foundRow, 8).setValue(cleanStatus);
+
+      // ล้าง Cache สินค้าทันทีเพื่อให้หน้าร้านและหน้าแอดมินได้รับข้อมูลล่าสุด
+      try {
+        var cache = CacheService.getScriptCache();
+        cache.remove('catalog_products_json');
+        cache.remove('catalog_products_json_v2');
+      } catch (cErr) {}
+
+      return {
+        status: 'success',
+        id: productId,
+        newStatus: cleanStatus,
+        message: 'อัปเดตสถานะสินค้าเป็น ' + cleanStatus + ' เรียบร้อยแล้ว'
+      };
+    } catch (err) {
+      return { status: 'error', message: err.message };
     }
   }
 
@@ -1776,4 +1842,34 @@
       membersSynced: membersSuccess,
       totalMembers: members.length
     };
+  }
+
+  // ==========================================
+  // Web App GET Handler (doGet)
+  // ==========================================
+  function doGet(e) {
+    try {
+      var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+      
+      if (action === 'getProducts') {
+        var includeAll = (e.parameter.all === 'true');
+        var products = getProductsNative(includeAll);
+        return ContentService.createTextOutput(JSON.stringify({
+          status: 'success',
+          products: products,
+          total: products.length
+        })).setMimeType(ContentService.MimeType.JSON);
+      } else if (action === 'updateProductStatus') {
+        var productId = e.parameter.id || e.parameter.productId;
+        var newStatus = e.parameter.status;
+        var result = updateProductStatusNative(productId, newStatus);
+        return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok', message: 'API ready' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   }

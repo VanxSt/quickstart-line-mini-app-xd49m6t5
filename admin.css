@@ -1042,6 +1042,147 @@ button {
   font-weight: 700;
 }
 
+/* ==========================================================================
+   Product Status Toggle Switch (ตัวเลื่อนเปิด-ปิดสินค้า ไม่ให้ลูกค้าเห็น)
+   ========================================================================== */
+
+.product-status-toggle-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 34px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.slider-round:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.switch-toggle input:checked + .slider-round {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.switch-toggle input:focus + .slider-round {
+  outline: 2px solid rgba(16, 185, 129, 0.35);
+}
+
+.switch-toggle input:checked + .slider-round:before {
+  transform: translateX(20px);
+}
+
+.switch-toggle:hover .slider-round {
+  filter: brightness(1.05);
+}
+
+/* Small toggle switch variant */
+.switch-toggle-sm {
+  width: 38px;
+  height: 21px;
+}
+
+.switch-toggle-sm .slider-round:before {
+  height: 15px;
+  width: 15px;
+  left: 3px;
+  bottom: 3px;
+}
+
+.switch-toggle-sm input:checked + .slider-round:before {
+  transform: translateX(17px);
+}
+
+/* Status Pill Badges */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.status-pill-active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.status-pill-inactive {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+/* Inactive Row & Card States */
+tr.product-row-inactive {
+  background-color: #fafbfd;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+tr.product-row-inactive:hover {
+  opacity: 1;
+  background-color: #f1f5f9;
+}
+
+tr.product-row-inactive .product-thumb-large,
+tr.product-row-inactive .product-table-thumb {
+  filter: grayscale(40%);
+}
+
+.admin-product-card.card-inactive {
+  opacity: 0.76;
+  background: #fbfcfe;
+  border-color: #e2e8f0;
+}
+
+.admin-product-card.card-inactive:hover {
+  opacity: 1;
+}
+
 .product-table-thumb {
   width: 48px;
   height: 48px;

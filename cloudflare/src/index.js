@@ -554,6 +554,19 @@ export default {
         if (action === 'clearProductCache') {
           return jsonResponse({ status: 'success', message: 'ล้าง Cache เรียบร้อย' });
         }
+
+        // Action: updateProductStatus (GET fallback)
+        if (action === 'updateProductStatus') {
+          const targetId = url.searchParams.get('id') || url.searchParams.get('productId');
+          const rawStatus = url.searchParams.get('status');
+          const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
+          if (targetId) {
+            await db.prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+              .bind(newStatus, String(targetId))
+              .run();
+          }
+          return jsonResponse({ status: 'success', id: targetId, productStatus: newStatus });
+        }
       }
 
       // ==========================================
@@ -1152,6 +1165,29 @@ export default {
           }
 
           return jsonResponse({ status: 'success', message: 'Order items updated' });
+        }
+
+        // 4.1 Action: updateProductStatus OR POST /api/products/status
+        if (postAction === 'updateProductStatus' || url.pathname === '/api/products/status') {
+          const targetId = postData.id || postData.productId;
+          const rawStatus = postData.status;
+          const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
+
+          if (!targetId) {
+            return jsonResponse({ status: 'error', message: 'Missing product id' }, 400);
+          }
+
+          await db
+            .prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .bind(newStatus, String(targetId))
+            .run();
+
+          return jsonResponse({
+            status: 'success',
+            message: `Product ${targetId} status updated to ${newStatus}`,
+            id: targetId,
+            productStatus: newStatus
+          });
         }
 
         // 4.5 Action: syncOrdersBatch OR POST /api/orders/batch (Migrate/Sync Orders from Sheets)
