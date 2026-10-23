@@ -1190,6 +1190,51 @@ export default {
           });
         }
 
+        // 4.3 Action: syncProductsBatch OR POST /api/products/batch (Migrate/Sync Products from Sheets)
+        if (postAction === 'syncProductsBatch' || url.pathname === '/api/products/batch') {
+          const products = postData.products || [];
+          if (!Array.isArray(products) || products.length === 0) {
+            return jsonResponse({ status: 'success', imported: 0, message: 'No products provided' });
+          }
+
+          const insertStmt = db.prepare(`
+            INSERT INTO products (id, name, category, price, desc, img, tag, status, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+              name = COALESCE(NULLIF(excluded.name, ''), products.name),
+              category = COALESCE(NULLIF(excluded.category, ''), products.category),
+              price = excluded.price,
+              desc = COALESCE(NULLIF(excluded.desc, ''), products.desc),
+              img = excluded.img,
+              tag = COALESCE(NULLIF(excluded.tag, ''), products.tag),
+              status = COALESCE(NULLIF(excluded.status, ''), products.status),
+              updated_at = CURRENT_TIMESTAMP
+          `);
+
+          const batch = [];
+          for (const p of products) {
+            if (!p.id) continue;
+            batch.push(
+              insertStmt.bind(
+                String(p.id).trim(),
+                p.name || '',
+                p.category || 'ทั่วไป',
+                Number(p.price || 0),
+                p.desc || '',
+                p.img || '',
+                p.tag || '',
+                p.status || 'active'
+              )
+            );
+          }
+
+          if (batch.length > 0) {
+            await db.batch(batch);
+          }
+
+          return jsonResponse({ status: 'success', imported: batch.length });
+        }
+
         // 4.5 Action: syncOrdersBatch OR POST /api/orders/batch (Migrate/Sync Orders from Sheets)
         if (postAction === 'syncOrdersBatch' || url.pathname === '/api/orders/batch') {
           const orders = postData.orders || [];

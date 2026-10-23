@@ -1732,9 +1732,202 @@
     try {
       SpreadsheetApp.getUi()
         .createMenu('⚡ ระบบเกื้อกูลกัน')
+        .addItem('🔄 อัปเดตราคาและรูปภาพจากแท็บ test_api สู่ Catalog', 'updateCatalogFromTestApiSheet')
+        .addItem('☁️ ซิงค์สินค้าทั้งหมดไป Cloudflare D1', 'syncProductsToCloudflare')
         .addItem('🔄 ซิงค์ข้อมูลทั้งหมดไป Cloudflare D1 (ออเดอร์ + สมาชิก)', 'syncAllDataToCloudflare')
         .addToUi();
     } catch(e) {}
+  }
+
+  // ==========================================
+  // ฟังก์ชันอัปเดตราคาและรูปภาพสินค้าในชีต Catalog โดยอิงจากชีต test_api (ตาม ID สินค้า)
+  // ==========================================
+  function updateCatalogFromTestApiSheet() {
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch(e) {}
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var testApiSheet = ss.getSheetByName("test_api");
+    var catalogSheet = ss.getSheetByName("Catalog");
+
+    if (!testApiSheet) {
+      var msg = "❌ ไม่พบแท็บชีตที่ชื่อ 'test_api' ใน Google Sheets นี้ครับ กรุณาตรวจสอบชื่อชีตอีกครั้ง";
+      if (ui) ui.alert("เกิดข้อผิดพลาด", msg, ui.ButtonSet.OK);
+      return { status: 'error', message: msg };
+    }
+    if (!catalogSheet) {
+      var msg = "❌ ไม่พบชีตที่ชื่อ 'Catalog' ใน Google Sheets นี้ครับ";
+      if (ui) ui.alert("เกิดข้อผิดพลาด", msg, ui.ButtonSet.OK);
+      return { status: 'error', message: msg };
+    }
+
+    // 1. อ่านข้อมูลทั้งหมดจากแท็บ test_api
+    var testValues = testApiSheet.getDataRange().getValues();
+    if (testValues.length <= 1) {
+      var msg = "⚠️ ชีต 'test_api' ไม่มีข้อมูลสินค้า (มีเพียงหัวตาราง)";
+      if (ui) ui.alert("แจ้งเตือน", msg, ui.ButtonSet.OK);
+      return { status: 'error', message: msg };
+    }
+
+    var testHeaders = testValues[0].map(function(h) { return String(h || '').trim().toLowerCase(); });
+    
+    // ค้นหาตำแหน่งคอลัมน์ใน test_api (ID, Price, Img)
+    var colId = -1;
+    var colPrice = -1;
+    var colImg = -1;
+
+    for (var c = 0; c < testHeaders.length; c++) {
+      var h = testHeaders[c];
+      if (colId === -1 && (h === 'id' || h === 'รหัส' || h === 'รหัสสินค้า' || h === 'barcode' || h === 'sku' || h.indexOf('id') !== -1)) {
+        colId = c;
+      }
+      if (colPrice === -1 && (h === 'price' || h === 'ราคา' || h === 'ราคาสินค้า' || h.indexOf('ราคา') !== -1 || h.indexOf('price') !== -1)) {
+        colPrice = c;
+      }
+      if (colImg === -1 && (h === 'img' || h === 'image' || h === 'รูป' || h === 'รูปภาพ' || h === 'ลิ้ง' || h === 'link' || h === 'url' || h.indexOf('img') !== -1 || h.indexOf('รูป') !== -1 || h.indexOf('image') !== -1)) {
+        colImg = c;
+      }
+    }
+
+    // หากไม่พบจากชื่อหัวตาราง ให้ใช้ตำแหน่งเริ่มต้น
+    if (colId === -1) colId = 0;
+    if (colPrice === -1) {
+      for (var c = 1; c < testValues[1].length; c++) {
+        if (typeof testValues[1][c] === 'number') { colPrice = c; break; }
+      }
+      if (colPrice === -1) colPrice = 3;
+    }
+    if (colImg === -1) {
+      for (var c = 1; c < testValues[1].length; c++) {
+        var str = String(testValues[1][c] || '');
+        if (str.indexOf('http') !== -1 || str.indexOf('.jpg') !== -1 || str.indexOf('.png') !== -1) { colImg = c; break; }
+      }
+      if (colImg === -1) colImg = 5;
+    }
+
+    Logger.log("ตำแหน่งคอลัมน์ test_api: ID=" + colId + ", Price=" + colPrice + ", Img=" + colImg);
+
+    // รวบรวมข้อมูลสินค้าจากแท็บ test_api ตาม ID
+    var testApiDataMap = {};
+    var testCount = 0;
+    for (var i = 1; i < testValues.length; i++) {
+      var row = testValues[i];
+      var rawId = row[colId];
+      if (rawId === undefined || rawId === null || String(rawId).trim() === '') continue;
+      var cleanId = String(rawId).trim();
+      
+      var rawPrice = row[colPrice];
+      var cleanPrice = (rawPrice !== '' && !isNaN(rawPrice)) ? Number(rawPrice) : null;
+      
+      var rawImg = row[colImg];
+      var cleanImg = String(rawImg || '').trim();
+
+      testApiDataMap[cleanId] = {
+        price: cleanPrice,
+        img: cleanImg
+      };
+      testCount++;
+    }
+
+    // 2. อัปเดตลงในแท็บ Catalog
+    var catalogRange = catalogSheet.getDataRange();
+    var catalogValues = catalogRange.getValues();
+    var updatedCount = 0;
+    var notFoundCount = 0;
+
+    for (var j = 1; j < catalogValues.length; j++) {
+      var catRow = catalogValues[j];
+      var catId = catRow[0];
+      if (catId === undefined || catId === null || String(catId).trim() === '') continue;
+      var cleanCatId = String(catId).trim();
+
+      if (testApiDataMap.hasOwnProperty(cleanCatId)) {
+        var itemData = testApiDataMap[cleanCatId];
+
+        // อัปเดตราคาใหม่ (คอลัมน์ D = Index 3) ถ้ามีระบุใน test_api
+        if (itemData.price !== null) {
+          catRow[3] = itemData.price;
+        }
+
+        // ลบลิงก์รูปภาพเดิมทั้งหมด และใส่ลิงก์รูปภาพใหม่จาก test_api (คอลัมน์ F = Index 5)
+        catRow[5] = itemData.img || '';
+
+        updatedCount++;
+      } else {
+        notFoundCount++;
+      }
+    }
+
+    // บันทึกข้อมูลกลับลงใน Catalog sheet รวดเดียว
+    catalogRange.setValues(catalogValues);
+
+    // ล้าง Cache ของสินค้าในระบบทันที
+    try {
+      var cache = CacheService.getScriptCache();
+      cache.remove('catalog_products_json');
+      cache.remove('catalog_products_json_v2');
+    } catch(cErr) {}
+
+    var resultMsg = "✅ อัปเดตข้อมูลสำเร็จเรียบร้อยแล้ว!\n\n" +
+                    "📦 ข้อมูลใน test_api: " + testCount + " รายการ\n" +
+                    "✨ อัปเดตราคาและรูปภาพใหม่ลง Catalog แล้ว: " + updatedCount + " รายการ\n" +
+                    (notFoundCount > 0 ? "ℹ️ สินค้าใน Catalog ที่ไม่พบใน test_api: " + notFoundCount + " รายการ\n\n" : "\n") +
+                    "ลิงก์รูปภาพเดิมถูกเคลียร์และแทนที่ด้วยลิงก์ใหม่ตาม ID สินค้าเรียบร้อยแล้วครับ!";
+
+    Logger.log(resultMsg);
+    if (ui) {
+      ui.alert('ผลการอัปเดตราคาและรูปภาพสินค้า', resultMsg, ui.ButtonSet.OK);
+    }
+
+    return {
+      status: 'success',
+      updatedCount: updatedCount,
+      testCount: testCount,
+      message: resultMsg
+    };
+  }
+
+  // ==========================================
+  // ซิงค์สินค้าจากชีต Catalog ไป Cloudflare D1
+  // ==========================================
+  function syncProductsToCloudflare() {
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch(e) {}
+
+    var cfApiUrl = 'https://kuekoonkan-api.noperfecf.workers.dev';
+    var products = getProductsNative(true);
+
+    if (!products || products.length === 0) {
+      if (ui) ui.alert('แจ้งเตือน', 'ไม่พบข้อมูลสินค้าใน Catalog', ui.ButtonSet.OK);
+      return;
+    }
+
+    var successCount = 0;
+    var chunkSize = 50;
+    for (var i = 0; i < products.length; i += chunkSize) {
+      var chunk = products.slice(i, i + chunkSize);
+      try {
+        var res = UrlFetchApp.fetch(cfApiUrl, {
+          method: 'post',
+          contentType: 'application/json',
+          payload: JSON.stringify({
+            action: 'syncProductsBatch',
+            products: chunk
+          }),
+          muteHttpExceptions: true
+        });
+        if (res.getResponseCode() >= 200 && res.getResponseCode() < 300) {
+          successCount += chunk.length;
+        }
+      } catch(e) {
+        Logger.log("Product batch sync error: " + e.message);
+      }
+    }
+
+    var msg = "✅ ซิงค์สินค้าสู่ Cloudflare D1 สำเร็จ: " + successCount + " / " + products.length + " รายการ";
+    Logger.log(msg);
+    if (ui) ui.alert('ผลการซิงค์สินค้า', msg, ui.ButtonSet.OK);
+    return { status: 'success', synced: successCount, total: products.length };
   }
 
   function syncAllDataToCloudflare() {
