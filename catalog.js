@@ -590,6 +590,10 @@ function saveCart() {
 }
 
 function addToCart(product, quantity = 1) {
+  if (product && product.status && String(product.status).toLowerCase() === 'inactive') {
+    alert('ขออภัยครับ สินค้านี้ปิดการขายชั่วคราว');
+    return;
+  }
   const existingItem = cart.find(item => item.id === product.id);
   if (existingItem) {
     existingItem.qty += quantity;
@@ -2680,6 +2684,16 @@ async function syncInactiveProductStatuses() {
           } catch(e) {}
           initCategoryFilters();
           renderProducts();
+
+          // หากสินค้าที่ถูกปิดค้างอยู่ในตะกร้า ให้นำออกอัตโนมัติ
+          if (cart && cart.length > 0) {
+            const beforeLen = cart.length;
+            cart = cart.filter(item => !inactiveSet.has(String(item.id)));
+            if (cart.length !== beforeLen) {
+              saveCart();
+              if (typeof renderCartItems === 'function') renderCartItems();
+            }
+          }
         }
       }
     }
@@ -2687,6 +2701,23 @@ async function syncInactiveProductStatuses() {
     console.warn('syncInactiveProductStatuses error:', e.message);
   }
 }
+
+// ตรวจจับสถานะเปิด/ปิดสินค้าแบบสดๆ (Live Update) ทุก 15 วินาทีขณะที่ลูกค้าเปิดดูแอปอยู่
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    syncInactiveProductStatuses();
+  }
+}, 15000);
+
+// ตรวจสอบทันทีเมื่อลูกค้าสลับกลับมาที่หน้าเว็บ/แอป LINE
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncInactiveProductStatuses();
+  }
+});
+window.addEventListener('focus', () => {
+  syncInactiveProductStatuses();
+});
 
 async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
