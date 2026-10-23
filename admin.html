@@ -1238,6 +1238,80 @@
       color: #ffffff;
     }
 
+    .pills-divider {
+      width: 1px;
+      height: 22px;
+      background: #e2e8f0;
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    /* Status Filter Quick Pills (ฟิลเตอร์ด่วน: ปิด/เปิด การแสดงผล) */
+    .cat-pill.status-filter-pill {
+      font-weight: 700;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .cat-pill.status-filter-pill.inactive-filter {
+      border-color: #f87171;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .cat-pill.status-filter-pill.inactive-filter:hover {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: #ef4444;
+      color: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    .cat-pill.status-filter-pill.inactive-filter.active {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+      color: #ffffff !important;
+      border-color: #dc2626 !important;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+    }
+
+    .cat-pill.status-filter-pill.inactive-filter .pill-count {
+      background: rgba(239, 68, 68, 0.18);
+      color: inherit;
+    }
+
+    .cat-pill.status-filter-pill.inactive-filter.active .pill-count {
+      background: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
+    .cat-pill.status-filter-pill.active-filter {
+      border-color: #34d399;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .cat-pill.status-filter-pill.active-filter:hover {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: #10b981;
+      color: #059669;
+      transform: translateY(-1px);
+    }
+
+    .cat-pill.status-filter-pill.active-filter.active {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      color: #ffffff !important;
+      border-color: #059669 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    .cat-pill.status-filter-pill.active-filter .pill-count {
+      background: rgba(16, 185, 129, 0.18);
+      color: inherit;
+    }
+
+    .cat-pill.status-filter-pill.active-filter.active .pill-count {
+      background: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
     /* Product Table Main Cell (Image + Name + SKU + Tag) */
     .product-cell-main {
       display: flex;
@@ -2774,8 +2848,8 @@
               <select id="productStatusFilter" onchange="onProductFilterChange()"
                 style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
                 <option value="all">👁️ สถานะ: ทั้งหมด</option>
-                <option value="active">🟢 กำลังเปิดแสดง (ลูกค้าเห็น)</option>
-                <option value="inactive">⚪ ปิดซ่อนอยู่ (ลูกค้าไม่เห็น)</option>
+                <option value="inactive">🚫 ปิดการแสดงผล (ลูกค้าไม่เห็น)</option>
+                <option value="active">🟢 เปิดการแสดงผล (ลูกค้าเห็น)</option>
               </select>
 
               <!-- Tag Filter -->
@@ -5526,9 +5600,35 @@
 
       // 1. Populate Category Pills Bar (Horizontal Quick Tabs)
       if (pillsContainer) {
-        let pillsHtml = '<button class="cat-pill ' + (productSelectedCategory === 'all' ? 'active' : '') + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
+        let inactiveCount = 0;
+        let activeCount = 0;
+        allProducts.forEach(p => {
+          if (p.status && String(p.status).toLowerCase() === 'inactive') {
+            inactiveCount++;
+          } else {
+            activeCount++;
+          }
+        });
+
+        const isAllActive = (productSelectedCategory === 'all' && productSelectedStatus === 'all') ? ' active' : '';
+        const isInactiveActive = (productSelectedStatus === 'inactive') ? ' active' : '';
+        const isActiveActive = (productSelectedStatus === 'active') ? ' active' : '';
+
+        let pillsHtml = '<button class="cat-pill ' + isAllActive + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
           '📂 ทั้งหมด <span class="pill-count">' + allProducts.length.toLocaleString() + '</span>' +
           '</button>';
+
+        // ปุ่มฟิลเตอร์ด่วน: ปิดการแสดงผล (🚫) และ เปิดแสดงผล (🟢)
+        pillsHtml += '<button class="cat-pill status-filter-pill inactive-filter' + isInactiveActive + '" data-status="inactive" onclick="selectStatusPill(\'inactive\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่ถูกปิดการแสดงผล (ลูกค้าไม่เห็น)">' +
+          '🚫 ปิดการแสดงผล <span id="pill-inactive-count" class="pill-count">' + inactiveCount.toLocaleString() + '</span>' +
+          '</button>';
+
+        pillsHtml += '<button class="cat-pill status-filter-pill active-filter' + isActiveActive + '" data-status="active" onclick="selectStatusPill(\'active\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่เปิดการแสดงผล (ลูกค้าเห็นในแอป)">' +
+          '🟢 เปิดแสดงผล <span id="pill-active-count" class="pill-count">' + activeCount.toLocaleString() + '</span>' +
+          '</button>';
+
+        pillsHtml += '<div class="pills-divider"></div>';
+
         sortedCats.forEach(c => {
           const count = allProducts.filter(p => p.category === c).length;
           const isActive = (productSelectedCategory === c) ? ' active' : '';
@@ -5566,7 +5666,7 @@
       const catSelect = document.getElementById('productCategoryFilter');
       if (catSelect) catSelect.value = cat;
 
-      document.querySelectorAll('.cat-pill').forEach(pill => {
+      document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
         if (pill.dataset.category === cat) {
           pill.classList.add('active');
         } else {
@@ -5575,6 +5675,40 @@
       });
 
       applyProductFilters();
+    }
+
+    function selectStatusPill(status) {
+      if (productSelectedStatus === status) {
+        productSelectedStatus = 'all';
+      } else {
+        productSelectedStatus = status;
+      }
+
+      const statusSelect = document.getElementById('productStatusFilter');
+      if (statusSelect) statusSelect.value = productSelectedStatus;
+
+      syncStatusPillsUI();
+      applyProductFilters();
+    }
+
+    function syncStatusPillsUI() {
+      const statusPills = document.querySelectorAll('.cat-pill.status-filter-pill');
+      statusPills.forEach(pill => {
+        if (pill.dataset.status === productSelectedStatus) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+
+      const allPill = document.querySelector('.cat-pill[data-category="all"]');
+      if (allPill) {
+        if (productSelectedCategory === 'all' && productSelectedStatus === 'all') {
+          allPill.classList.add('active');
+        } else if (productSelectedCategory !== 'all') {
+          allPill.classList.remove('active');
+        }
+      }
     }
 
     function clearProductSearch() {
@@ -5606,11 +5740,12 @@
       const clearBtn = document.getElementById('btnClearProductSearch');
       if (clearBtn) clearBtn.style.display = 'none';
 
-      document.querySelectorAll('.cat-pill').forEach(pill => {
+      document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
         if (pill.dataset.category === 'all') pill.classList.add('active');
         else pill.classList.remove('active');
       });
 
+      syncStatusPillsUI();
       applyProductFilters();
     }
 
@@ -5662,7 +5797,7 @@
       if (showingText) {
         let filterDesc = '';
         if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
-        else if (productSelectedStatus === 'inactive') filterDesc += ' (⚪ เฉพาะที่ซ่อน)';
+        else if (productSelectedStatus === 'inactive') filterDesc += ' (🚫 เฉพาะที่ปิดการแสดงผล)';
         if (productSelectedCategory !== 'all') filterDesc += ' (หมวด: ' + productSelectedCategory + ')';
         if (productSelectedTag !== 'all') filterDesc += ' (แท็ก: ' + productSelectedTag + ')';
         if (productSearchQuery) filterDesc += ' (ค้นหา: "' + productSearchQuery + '")';
@@ -5924,6 +6059,7 @@
       if (statusSelect) productSelectedStatus = statusSelect.value;
       if (sortSelect) productSortOrder = sortSelect.value;
 
+      syncStatusPillsUI();
       applyProductFilters();
     }
 
@@ -5957,10 +6093,15 @@
       });
 
       if (statTotal) {
-        statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | ⚪ ซ่อน ' + inactiveCount.toLocaleString() + '</span>';
+        statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | 🚫 ปิด ' + inactiveCount.toLocaleString() + '</span>';
       }
       if (statCat) statCat.textContent = categories.size.toLocaleString();
       if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
+
+      const pillInactive = document.getElementById('pill-inactive-count');
+      if (pillInactive) pillInactive.textContent = inactiveCount.toLocaleString();
+      const pillActive = document.getElementById('pill-active-count');
+      if (pillActive) pillActive.textContent = activeCount.toLocaleString();
 
       const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
       if (statAvg) statAvg.textContent = '฿' + avg.toLocaleString();
@@ -6050,6 +6191,9 @@
       }
     }
     window.toggleProductStatusFromModal = toggleProductStatusFromModal;
+    window.selectStatusPill = selectStatusPill;
+    window.selectCategoryPill = selectCategoryPill;
+    window.syncStatusPillsUI = syncStatusPillsUI;
 
   </script>
 </body>

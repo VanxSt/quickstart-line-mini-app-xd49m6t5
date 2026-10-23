@@ -2237,10 +2237,10 @@ function processIncomingProducts(products) {
 function populateCategoryAndTagFilters() {
   const catSelect = document.getElementById('productCategoryFilter');
   const tagSelect = document.getElementById('productTagFilter');
-  if (!catSelect || !tagSelect) return;
+  const pillsContainer = document.getElementById('productCategoryPills');
 
-  const currentCatVal = catSelect.value;
-  const currentTagVal = tagSelect.value;
+  const currentCatVal = catSelect ? catSelect.value : 'all';
+  const currentTagVal = tagSelect ? tagSelect.value : 'all';
 
   const categories = new Set();
   const tags = new Set();
@@ -2257,21 +2257,155 @@ function populateCategoryAndTagFilters() {
   const sortedCats = Array.from(categories).sort((a, b) => a.localeCompare(b, 'th'));
   const sortedTags = Array.from(tags).sort((a, b) => a.localeCompare(b, 'th'));
 
-  let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
-  sortedCats.forEach(c => {
-    const count = allProducts.filter(p => p.category === c).length;
-    catHtml += `<option value="${c}">${c} (${count.toLocaleString()})</option>`;
-  });
-  catSelect.innerHTML = catHtml;
-  if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
+  // 1. Populate Category Pills Bar (Horizontal Quick Tabs)
+  if (pillsContainer) {
+    let inactiveCount = 0;
+    let activeCount = 0;
+    allProducts.forEach(p => {
+      if (p.status && String(p.status).toLowerCase() === 'inactive') {
+        inactiveCount++;
+      } else {
+        activeCount++;
+      }
+    });
 
-  let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
-  sortedTags.forEach(t => {
-    const count = allProducts.filter(p => p.tag === t).length;
-    tagHtml += `<option value="${t}">${t} (${count.toLocaleString()})</option>`;
+    const isAllActive = (productSelectedCategory === 'all' && productSelectedStatus === 'all') ? ' active' : '';
+    const isInactiveActive = (productSelectedStatus === 'inactive') ? ' active' : '';
+    const isActiveActive = (productSelectedStatus === 'active') ? ' active' : '';
+
+    let pillsHtml = '<button class="cat-pill ' + isAllActive + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
+      '📂 ทั้งหมด <span class="pill-count">' + allProducts.length.toLocaleString() + '</span>' +
+      '</button>';
+
+    // ปุ่มฟิลเตอร์ด่วน: ปิดการแสดงผล (🚫) และ เปิดแสดงผล (🟢)
+    pillsHtml += '<button class="cat-pill status-filter-pill inactive-filter' + isInactiveActive + '" data-status="inactive" onclick="selectStatusPill(\'inactive\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่ถูกปิดการแสดงผล (ลูกค้าไม่เห็น)">' +
+      '🚫 ปิดการแสดงผล <span id="pill-inactive-count" class="pill-count">' + inactiveCount.toLocaleString() + '</span>' +
+      '</button>';
+
+    pillsHtml += '<button class="cat-pill status-filter-pill active-filter' + isActiveActive + '" data-status="active" onclick="selectStatusPill(\'active\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่เปิดการแสดงผล (ลูกค้าเห็นในแอป)">' +
+      '🟢 เปิดแสดงผล <span id="pill-active-count" class="pill-count">' + activeCount.toLocaleString() + '</span>' +
+      '</button>';
+
+    pillsHtml += '<div class="pills-divider"></div>';
+
+    sortedCats.forEach(c => {
+      const count = allProducts.filter(p => p.category === c).length;
+      const isActive = (productSelectedCategory === c) ? ' active' : '';
+      pillsHtml += '<button class="cat-pill' + isActive + '" data-category="' + c + '" onclick="selectCategoryPill(\'' + c.replace(/'/g, "\\'") + '\')">' +
+        c + ' <span class="pill-count">' + count.toLocaleString() + '</span>' +
+        '</button>';
+    });
+    pillsContainer.innerHTML = pillsHtml;
+  }
+
+  // 2. Populate Dropdowns
+  if (catSelect) {
+    let catHtml = '<option value="all">📂 หมวดหมู่ทั้งหมด (' + allProducts.length.toLocaleString() + ')</option>';
+    sortedCats.forEach(c => {
+      const count = allProducts.filter(p => p.category === c).length;
+      catHtml += `<option value="${c}">${c} (${count.toLocaleString()})</option>`;
+    });
+    catSelect.innerHTML = catHtml;
+    if (sortedCats.includes(currentCatVal)) catSelect.value = currentCatVal;
+  }
+
+  if (tagSelect) {
+    let tagHtml = '<option value="all">🏷️ แท็ก: ทั้งหมด</option>';
+    sortedTags.forEach(t => {
+      const count = allProducts.filter(p => p.tag === t).length;
+      tagHtml += `<option value="${t}">${t} (${count.toLocaleString()})</option>`;
+    });
+    tagSelect.innerHTML = tagHtml;
+    if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
+  }
+}
+
+function selectCategoryPill(cat) {
+  productSelectedCategory = cat;
+  const catSelect = document.getElementById('productCategoryFilter');
+  if (catSelect) catSelect.value = cat;
+
+  document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
+    if (pill.dataset.category === cat) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
   });
-  tagSelect.innerHTML = tagHtml;
-  if (sortedTags.includes(currentTagVal)) tagSelect.value = currentTagVal;
+
+  applyProductFilters();
+}
+
+function selectStatusPill(status) {
+  if (productSelectedStatus === status) {
+    productSelectedStatus = 'all';
+  } else {
+    productSelectedStatus = status;
+  }
+
+  const statusSelect = document.getElementById('productStatusFilter');
+  if (statusSelect) statusSelect.value = productSelectedStatus;
+
+  syncStatusPillsUI();
+  applyProductFilters();
+}
+
+function syncStatusPillsUI() {
+  const statusPills = document.querySelectorAll('.cat-pill.status-filter-pill');
+  statusPills.forEach(pill => {
+    if (pill.dataset.status === productSelectedStatus) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
+  });
+
+  const allPill = document.querySelector('.cat-pill[data-category="all"]');
+  if (allPill) {
+    if (productSelectedCategory === 'all' && productSelectedStatus === 'all') {
+      allPill.classList.add('active');
+    } else if (productSelectedCategory !== 'all') {
+      allPill.classList.remove('active');
+    }
+  }
+}
+
+function clearProductSearch() {
+  const input = document.getElementById('adminProductSearchInput');
+  if (input) input.value = '';
+  productSearchQuery = '';
+  const clearBtn = document.getElementById('btnClearProductSearch');
+  if (clearBtn) clearBtn.style.display = 'none';
+  applyProductFilters();
+}
+
+function resetAllProductFilters() {
+  productSelectedCategory = 'all';
+  productSelectedTag = 'all';
+  productSelectedStatus = 'all';
+  productSearchQuery = '';
+  productSortOrder = 'default';
+
+  const catSelect = document.getElementById('productCategoryFilter');
+  if (catSelect) catSelect.value = 'all';
+  const tagSelect = document.getElementById('productTagFilter');
+  if (tagSelect) tagSelect.value = 'all';
+  const statusSelect = document.getElementById('productStatusFilter');
+  if (statusSelect) statusSelect.value = 'all';
+  const sortSelect = document.getElementById('productSortFilter');
+  if (sortSelect) sortSelect.value = 'default';
+  const searchInput = document.getElementById('adminProductSearchInput');
+  if (searchInput) searchInput.value = '';
+  const clearBtn = document.getElementById('btnClearProductSearch');
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
+    if (pill.dataset.category === 'all') pill.classList.add('active');
+    else pill.classList.remove('active');
+  });
+
+  syncStatusPillsUI();
+  applyProductFilters();
 }
 
 function applyProductFilters() {
@@ -2322,7 +2456,7 @@ function renderProductsList() {
   if (showingText) {
     let filterDesc = '';
     if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
-    else if (productSelectedStatus === 'inactive') filterDesc += ' (⚪ เฉพาะที่ซ่อน)';
+    else if (productSelectedStatus === 'inactive') filterDesc += ' (🚫 เฉพาะที่ปิดการแสดงผล)';
     if (productSelectedCategory !== 'all') filterDesc += ` (หมวด: ${productSelectedCategory})`;
     if (productSelectedTag !== 'all') filterDesc += ` (แท็ก: ${productSelectedTag})`;
     if (productSearchQuery) filterDesc += ` (ค้นหา: "${productSearchQuery}")`;
@@ -2591,6 +2725,7 @@ function onProductFilterChange() {
   if (statusSelect) productSelectedStatus = statusSelect.value;
   if (sortSelect) productSortOrder = sortSelect.value;
 
+  syncStatusPillsUI();
   applyProductFilters();
 }
 
@@ -2619,10 +2754,15 @@ function updateProductStats() {
   });
 
   if (statTotal) {
-    statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | ⚪ ซ่อน ' + inactiveCount.toLocaleString() + '</span>';
+    statTotal.innerHTML = allProducts.length.toLocaleString() + ' <span style="font-size: 11px; font-weight: 600; color: #10b981; display: block; margin-top: 3px;">🟢 เปิด ' + activeCount.toLocaleString() + ' | 🚫 ปิด ' + inactiveCount.toLocaleString() + '</span>';
   }
   if (statCat) statCat.textContent = categories.size.toLocaleString();
   if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
+
+  const pillInactive = document.getElementById('pill-inactive-count');
+  if (pillInactive) pillInactive.textContent = inactiveCount.toLocaleString();
+  const pillActive = document.getElementById('pill-active-count');
+  if (pillActive) pillActive.textContent = activeCount.toLocaleString();
 
   const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
   if (statAvg) statAvg.textContent = `฿${avg.toLocaleString()}`;
@@ -2721,4 +2861,9 @@ window.copyProductSku = copyProductSku;
 window.copySkuFromModal = copySkuFromModal;
 window.toggleProductStatus = toggleProductStatus;
 window.toggleProductStatusFromModal = toggleProductStatusFromModal;
+window.selectCategoryPill = selectCategoryPill;
+window.selectStatusPill = selectStatusPill;
+window.syncStatusPillsUI = syncStatusPillsUI;
+window.clearProductSearch = clearProductSearch;
+window.resetAllProductFilters = resetAllProductFilters;
 
