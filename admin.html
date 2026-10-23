@@ -1173,15 +1173,143 @@
       position: relative;
     }
 
+    /* Products Filters Toolbar Layout */
+    .product-filters-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--card-bg, #ffffff);
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+
+    .filter-selects-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-select {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border, #e2e8f0);
+      font-size: 13.5px;
+      font-weight: 600;
+      background: var(--card-bg, #ffffff);
+      cursor: pointer;
+      color: var(--text-main, #0f172a);
+      font-family: inherit;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .filter-select:hover,
+    .filter-select:focus {
+      border-color: var(--primary, #2563eb);
+    }
+
+    /* Modern Status Segmented Control (แถบเลือกสถานะสินค้าแบบโมเดิร์น) */
+    .status-segment-group {
+      display: inline-flex;
+      background: var(--bg-color, #f1f5f9);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+      border: 1px solid var(--border, #e2e8f0);
+    }
+
+    .status-seg-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted, #64748b);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .status-seg-btn:hover {
+      color: var(--text-main, #0f172a);
+      background: rgba(125, 125, 125, 0.1);
+    }
+
+    .status-seg-btn.active {
+      background: var(--card-bg, #ffffff);
+      color: var(--primary, #2563eb);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      font-weight: 700;
+    }
+
+    .status-seg-btn.status-open.active {
+      background: #10b981 !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+    }
+
+    .status-seg-btn.status-closed.active {
+      background: #ef4444 !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 10px rgba(239, 68, 68, 0.35);
+    }
+
+    .status-seg-btn .seg-badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(125, 125, 125, 0.15);
+      color: inherit;
+      font-weight: 700;
+    }
+
+    .status-seg-btn.active .seg-badge {
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--primary, #2563eb);
+    }
+
+    .status-seg-btn.status-open.active .seg-badge,
+    .status-seg-btn.status-closed.active .seg-badge {
+      background: rgba(255, 255, 255, 0.28);
+      color: #ffffff;
+    }
+
+    /* Category Quick Tabs Bar */
+    .category-pills-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--card-bg, #ffffff);
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+
+    .category-label-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-muted, #64748b);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
     .category-pills-bar {
       display: flex;
       gap: 8px;
       overflow-x: auto;
-      padding: 12px 20px;
-      background: #ffffff;
-      border-bottom: 1px solid var(--border);
       scrollbar-width: thin;
       align-items: center;
+      flex: 1;
+      padding-bottom: 2px;
     }
 
     .category-pills-bar::-webkit-scrollbar {
@@ -1199,11 +1327,11 @@
       gap: 6px;
       padding: 6px 14px;
       border-radius: 9999px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      font-size: 13px;
+      background: var(--bg-color, #f8fafc);
+      border: 1px solid var(--border, #e2e8f0);
+      font-size: 12.5px;
       font-weight: 600;
-      color: #475569;
+      color: var(--text-muted, #475569);
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1211,16 +1339,16 @@
     }
 
     .cat-pill:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: #eff6ff;
+      border-color: var(--primary, #2563eb);
+      color: var(--primary, #2563eb);
+      background: var(--primary-light, #eff6ff);
       transform: translateY(-1px);
     }
 
     .cat-pill.active {
-      background: var(--primary);
-      color: #ffffff;
-      border-color: var(--primary);
+      background: var(--primary, #2563eb) !important;
+      color: #ffffff !important;
+      border-color: var(--primary, #2563eb) !important;
       box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
     }
 
@@ -1228,7 +1356,7 @@
       font-size: 11px;
       padding: 2px 7px;
       border-radius: 10px;
-      background: rgba(0, 0, 0, 0.06);
+      background: rgba(125, 125, 125, 0.12);
       color: inherit;
       font-weight: 700;
     }
@@ -1237,77 +1365,6 @@
       background: rgba(255, 255, 255, 0.28);
       color: #ffffff;
     }
-
-    .pills-divider {
-      width: 1px;
-      height: 22px;
-      background: #e2e8f0;
-      margin: 0 4px;
-      flex-shrink: 0;
-    }
-
-    /* Status Filter Quick Pills (ฟิลเตอร์ด่วน: ปิด/เปิด การแสดงผล) */
-    .cat-pill.status-filter-pill {
-      font-weight: 700;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .cat-pill.status-filter-pill.inactive-filter {
-      border-color: #f87171;
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.08);
-    }
-
-    .cat-pill.status-filter-pill.inactive-filter:hover {
-      background: rgba(239, 68, 68, 0.16);
-      border-color: #ef4444;
-      color: #dc2626;
-      transform: translateY(-1px);
-    }
-
-    .cat-pill.status-filter-pill.inactive-filter.active {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-      color: #ffffff !important;
-      border-color: #dc2626 !important;
-      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
-    }
-
-    .cat-pill.status-filter-pill.inactive-filter .pill-count {
-      background: rgba(239, 68, 68, 0.18);
-      color: inherit;
-    }
-
-    .cat-pill.status-filter-pill.inactive-filter.active .pill-count {
-      background: rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-    }
-
-    .cat-pill.status-filter-pill.active-filter {
-      border-color: #34d399;
-      color: #10b981;
-      background: rgba(16, 185, 129, 0.08);
-    }
-
-    .cat-pill.status-filter-pill.active-filter:hover {
-      background: rgba(16, 185, 129, 0.16);
-      border-color: #10b981;
-      color: #059669;
-      transform: translateY(-1px);
-    }
-
-    .cat-pill.status-filter-pill.active-filter.active {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-      color: #ffffff !important;
-      border-color: #059669 !important;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-    }
-
-    .cat-pill.status-filter-pill.active-filter .pill-count {
-      background: rgba(16, 185, 129, 0.18);
-      color: inherit;
-    }
-
-    .cat-pill.status-filter-pill.active-filter.active .pill-count {
       background: rgba(255, 255, 255, 0.3);
       color: #ffffff;
     }
@@ -2778,11 +2835,11 @@
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <div class="view-toggle-group">
-              <button id="btnViewTable" class="btn-sound-toggle active" title="มุมมองตาราง"
+              <button id="btnViewTable" class="btn-sound-toggle" title="มุมมองตาราง"
                 onclick="setProductViewMode('table')">
                 📋 ตาราง
               </button>
-              <button id="btnViewGrid" class="btn-sound-toggle" title="มุมมองการ์ด"
+              <button id="btnViewGrid" class="btn-sound-toggle active" title="มุมมองการ์ด"
                 onclick="setProductViewMode('grid')">
                 🔲 การ์ด
               </button>
@@ -2827,14 +2884,10 @@
 
         <!-- Products Toolbar & Filter -->
         <section class="table-card" style="overflow: hidden;">
-          <!-- Category Quick Tabs (Pill Buttons) -->
-          <div id="productCategoryPills" class="category-pills-bar">
-            <!-- Dynamically populated with pills: ทั้งหมด (count), หมวดต่างๆ (count) -->
-          </div>
-
-          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px; padding: 14px 20px;">
+          <!-- 1. Main Search & Quick Filters Bar -->
+          <div class="product-filters-toolbar">
             <!-- Search input with Instant Clear Button -->
-            <div class="search-box" style="margin: 0; min-width: 280px; flex: 1; position: relative;">
+            <div class="search-box" style="margin: 0; min-width: 260px; flex: 1; position: relative;">
               <span class="search-icon">🔍</span>
               <input type="text" id="adminProductSearchInput" oninput="onProductSearch(this.value)"
                 placeholder="ค้นหา ชื่อสินค้า, รหัส SKU, หมวดหมู่..." style="padding-right: 36px;" />
@@ -2843,24 +2896,27 @@
                 title="ล้างการค้นหา">✕</button>
             </div>
 
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <!-- Status Filter (เปิด/ปิดสินค้า) -->
-              <select id="productStatusFilter" onchange="onProductFilterChange()"
-                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
-                <option value="all">👁️ สถานะ: ทั้งหมด</option>
-                <option value="inactive">🚫 ปิดการแสดงผล (ลูกค้าไม่เห็น)</option>
-                <option value="active">🟢 เปิดการแสดงผล (ลูกค้าเห็น)</option>
-              </select>
+            <!-- Status Segmented Control (ทั้งหมด | 🟢 เปิดแสดง | 🚫 ปิดการแสดงผล) -->
+            <div class="status-segment-group">
+              <button id="segStatusAll" class="status-seg-btn active" data-status="all" onclick="selectStatusPill('all')" title="แสดงสินค้าทุกสถานะ">
+                ทั้งหมด <span id="badge-status-all" class="seg-badge">0</span>
+              </button>
+              <button id="segStatusActive" class="status-seg-btn status-open" data-status="active" onclick="selectStatusPill('active')" title="ดูเฉพาะสินค้าที่เปิดให้ลูกค้าเห็น">
+                🟢 เปิดแสดง <span id="badge-status-active" class="seg-badge">0</span>
+              </button>
+              <button id="segStatusInactive" class="status-seg-btn status-closed" data-status="inactive" onclick="selectStatusPill('inactive')" title="ดูเฉพาะสินค้าที่ถูกปิดการแสดงผล">
+                🚫 ปิดการแสดงผล <span id="badge-status-inactive" class="seg-badge">0</span>
+              </button>
+            </div>
 
+            <div class="filter-selects-group">
               <!-- Tag Filter -->
-              <select id="productTagFilter" onchange="onProductFilterChange()"
-                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+              <select id="productTagFilter" onchange="onProductFilterChange()" class="filter-select">
                 <option value="all">🏷️ แท็ก: ทั้งหมด</option>
               </select>
 
               <!-- Sort Order -->
-              <select id="productSortFilter" onchange="onProductFilterChange()"
-                style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; font-weight: 600; background: white; cursor: pointer; color: var(--text-main); font-family: inherit;">
+              <select id="productSortFilter" onchange="onProductFilterChange()" class="filter-select">
                 <option value="default">↕️ เรียงตาม: ค่าเริ่มต้น</option>
                 <option value="name_asc">🔤 ชื่อสินค้า (ก - ฮ)</option>
                 <option value="price_asc">💵 ราคา (น้อย → มาก)</option>
@@ -2868,28 +2924,41 @@
                 <option value="sku_asc">🔢 รหัสสินค้า (SKU)</option>
               </select>
 
-              <!-- Hidden/Synced Category Select for fallback -->
+              <!-- Hidden/Synced Selects for full backward-compatibility -->
+              <select id="productStatusFilter" onchange="onProductFilterChange()" style="display: none;">
+                <option value="all">all</option>
+                <option value="inactive">inactive</option>
+                <option value="active">active</option>
+              </select>
               <select id="productCategoryFilter" onchange="onProductFilterChange()" style="display: none;">
                 <option value="all">all</option>
               </select>
             </div>
           </div>
 
-          <!-- Filter Info Bar -->
-          <div
-            style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span id="productShowingCountText"
-                style="font-weight: 600; color: var(--text-main);">กำลังโหลดสินค้า...</span>
-              <button id="btnResetFilters" onclick="resetAllProductFilters()"
-                style="display: none; background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline;">✕
-                ล้างตัวกรอง</button>
+          <!-- 2. Category Quick Tabs (Pill Buttons) with Title Label -->
+          <div class="category-pills-container">
+            <span class="category-label-chip">📁 หมวดหมู่:</span>
+            <div id="productCategoryPills" class="category-pills-bar">
+              <!-- Dynamically populated with category pills: ทั้งหมด (count), หมวดต่างๆ (count) -->
             </div>
-            <span style="font-size: 12px; color: #94a3b8;">💡 สวิตช์เปิด/ปิด: ควบคุมการมองเห็นของลูกค้าแบบเรียลไทม์ | คลิกที่รหัสสินค้าเพื่อคัดลอก SKU</span>
           </div>
 
-          <!-- Table View Container -->
-          <div id="productTableViewContainer" class="table-responsive">
+          <!-- 3. Filter Info Bar -->
+          <div
+            style="padding: 10px 20px; background: var(--bg-color, #f8fafc); border-bottom: 1px solid var(--border, #e2e8f0); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span id="productShowingCountText"
+                style="font-weight: 500; color: var(--text-main);">กำลังโหลดสินค้า...</span>
+              <button id="btnResetFilters" onclick="resetAllProductFilters()"
+                style="display: none; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">✕
+                ล้างตัวกรองทั้งหมด</button>
+            </div>
+            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่การ์ดสินค้าเพื่อดูรายละเอียด | สลับเปิด/ปิด เพื่อควบคุมการแสดงผลของลูกค้าแบบเรียลไทม์</span>
+          </div>
+
+          <!-- Table View Container (Default hidden) -->
+          <div id="productTableViewContainer" class="table-responsive" style="display: none;">
             <table id="productsTable">
               <thead>
                 <tr>
@@ -2906,8 +2975,8 @@
             </table>
           </div>
 
-          <!-- Grid View Container -->
-          <div id="productGridViewContainer" style="display: none; padding: 20px;">
+          <!-- Grid View Container (Default shown) -->
+          <div id="productGridViewContainer" style="display: block; padding: 20px;">
             <div id="productCardsGrid" class="admin-products-grid">
               <!-- Product cards populated dynamically -->
             </div>
@@ -3248,7 +3317,7 @@
     let productSelectedTag = 'all';
     let productSelectedStatus = 'all';
     let productSortOrder = 'default';
-    let productViewMode = 'table';
+    let productViewMode = 'grid';
     let productVisibleLimit = 50;
     let isProductsLoading = false;
     let currentViewingProduct = null;
@@ -5600,34 +5669,9 @@
 
       // 1. Populate Category Pills Bar (Horizontal Quick Tabs)
       if (pillsContainer) {
-        let inactiveCount = 0;
-        let activeCount = 0;
-        allProducts.forEach(p => {
-          if (p.status && String(p.status).toLowerCase() === 'inactive') {
-            inactiveCount++;
-          } else {
-            activeCount++;
-          }
-        });
-
-        const isAllActive = (productSelectedCategory === 'all' && productSelectedStatus === 'all') ? ' active' : '';
-        const isInactiveActive = (productSelectedStatus === 'inactive') ? ' active' : '';
-        const isActiveActive = (productSelectedStatus === 'active') ? ' active' : '';
-
-        let pillsHtml = '<button class="cat-pill ' + isAllActive + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
-          '📂 ทั้งหมด <span class="pill-count">' + allProducts.length.toLocaleString() + '</span>' +
+        let pillsHtml = '<button class="cat-pill ' + (productSelectedCategory === 'all' ? 'active' : '') + '" data-category="all" onclick="selectCategoryPill(\'all\')">' +
+          'ทั้งหมด <span class="pill-count">' + allProducts.length.toLocaleString() + '</span>' +
           '</button>';
-
-        // ปุ่มฟิลเตอร์ด่วน: ปิดการแสดงผล (🚫) และ เปิดแสดงผล (🟢)
-        pillsHtml += '<button class="cat-pill status-filter-pill inactive-filter' + isInactiveActive + '" data-status="inactive" onclick="selectStatusPill(\'inactive\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่ถูกปิดการแสดงผล (ลูกค้าไม่เห็น)">' +
-          '🚫 ปิดการแสดงผล <span id="pill-inactive-count" class="pill-count">' + inactiveCount.toLocaleString() + '</span>' +
-          '</button>';
-
-        pillsHtml += '<button class="cat-pill status-filter-pill active-filter' + isActiveActive + '" data-status="active" onclick="selectStatusPill(\'active\')" title="คลิกเพื่อกรองดูเฉพาะสินค้าที่เปิดการแสดงผล (ลูกค้าเห็นในแอป)">' +
-          '🟢 เปิดแสดงผล <span id="pill-active-count" class="pill-count">' + activeCount.toLocaleString() + '</span>' +
-          '</button>';
-
-        pillsHtml += '<div class="pills-divider"></div>';
 
         sortedCats.forEach(c => {
           const count = allProducts.filter(p => p.category === c).length;
@@ -5666,7 +5710,7 @@
       const catSelect = document.getElementById('productCategoryFilter');
       if (catSelect) catSelect.value = cat;
 
-      document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
+      document.querySelectorAll('.cat-pill').forEach(pill => {
         if (pill.dataset.category === cat) {
           pill.classList.add('active');
         } else {
@@ -5678,12 +5722,7 @@
     }
 
     function selectStatusPill(status) {
-      if (productSelectedStatus === status) {
-        productSelectedStatus = 'all';
-      } else {
-        productSelectedStatus = status;
-      }
-
+      productSelectedStatus = status;
       const statusSelect = document.getElementById('productStatusFilter');
       if (statusSelect) statusSelect.value = productSelectedStatus;
 
@@ -5692,23 +5731,14 @@
     }
 
     function syncStatusPillsUI() {
-      const statusPills = document.querySelectorAll('.cat-pill.status-filter-pill');
-      statusPills.forEach(pill => {
-        if (pill.dataset.status === productSelectedStatus) {
-          pill.classList.add('active');
+      const segButtons = document.querySelectorAll('.status-seg-btn');
+      segButtons.forEach(btn => {
+        if (btn.dataset.status === productSelectedStatus) {
+          btn.classList.add('active');
         } else {
-          pill.classList.remove('active');
+          btn.classList.remove('active');
         }
       });
-
-      const allPill = document.querySelector('.cat-pill[data-category="all"]');
-      if (allPill) {
-        if (productSelectedCategory === 'all' && productSelectedStatus === 'all') {
-          allPill.classList.add('active');
-        } else if (productSelectedCategory !== 'all') {
-          allPill.classList.remove('active');
-        }
-      }
     }
 
     function clearProductSearch() {
@@ -5740,7 +5770,7 @@
       const clearBtn = document.getElementById('btnClearProductSearch');
       if (clearBtn) clearBtn.style.display = 'none';
 
-      document.querySelectorAll('.cat-pill:not(.status-filter-pill)').forEach(pill => {
+      document.querySelectorAll('.cat-pill').forEach(pill => {
         if (pill.dataset.category === 'all') pill.classList.add('active');
         else pill.classList.remove('active');
       });
@@ -6098,10 +6128,12 @@
       if (statCat) statCat.textContent = categories.size.toLocaleString();
       if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
-      const pillInactive = document.getElementById('pill-inactive-count');
-      if (pillInactive) pillInactive.textContent = inactiveCount.toLocaleString();
-      const pillActive = document.getElementById('pill-active-count');
-      if (pillActive) pillActive.textContent = activeCount.toLocaleString();
+      const bAll = document.getElementById('badge-status-all');
+      if (bAll) bAll.textContent = allProducts.length.toLocaleString();
+      const bActive = document.getElementById('badge-status-active');
+      if (bActive) bActive.textContent = activeCount.toLocaleString();
+      const bInactive = document.getElementById('badge-status-inactive');
+      if (bInactive) bInactive.textContent = inactiveCount.toLocaleString();
 
       const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
       if (statAvg) statAvg.textContent = '฿' + avg.toLocaleString();

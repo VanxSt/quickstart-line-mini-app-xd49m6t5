@@ -1955,16 +1955,143 @@ tr.product-row-inactive .product-table-thumb {
   border-color: #3b82f6;
 }
 
-/* Category Quick Tabs Bar & Status Filter Pills */
+/* Products Filters Toolbar Layout */
+.product-filters-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--card-bg, #ffffff);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.filter-selects-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--card-bg, #ffffff);
+  cursor: pointer;
+  color: var(--text-main, #0f172a);
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.filter-select:hover,
+.filter-select:focus {
+  border-color: var(--primary, #2563eb);
+}
+
+/* Modern Status Segmented Control (แถบเลือกสถานะสินค้าแบบโมเดิร์น) */
+.status-segment-group {
+  display: inline-flex;
+  background: var(--bg-color, #f1f5f9);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.status-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.status-seg-btn:hover {
+  color: var(--text-main, #0f172a);
+  background: rgba(125, 125, 125, 0.1);
+}
+
+.status-seg-btn.active {
+  background: var(--card-bg, #ffffff);
+  color: var(--primary, #2563eb);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+.status-seg-btn.status-open.active {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+}
+
+.status-seg-btn.status-closed.active {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.35);
+}
+
+.status-seg-btn .seg-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(125, 125, 125, 0.15);
+  color: inherit;
+  font-weight: 700;
+}
+
+.status-seg-btn.active .seg-badge {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary, #2563eb);
+}
+
+.status-seg-btn.status-open.active .seg-badge,
+.status-seg-btn.status-closed.active .seg-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+/* Category Quick Tabs Bar */
+.category-pills-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--card-bg, #ffffff);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.category-label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .category-pills-bar {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 12px 20px;
-  background: #ffffff;
-  border-bottom: 1px solid var(--border);
   scrollbar-width: thin;
   align-items: center;
+  flex: 1;
+  padding-bottom: 2px;
 }
 
 .category-pills-bar::-webkit-scrollbar {
@@ -1982,11 +2109,11 @@ tr.product-row-inactive .product-table-thumb {
   gap: 6px;
   padding: 6px 14px;
   border-radius: 9999px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  font-size: 13px;
+  background: var(--bg-color, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  font-size: 12.5px;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-muted, #475569);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1994,16 +2121,16 @@ tr.product-row-inactive .product-table-thumb {
 }
 
 .cat-pill:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: #eff6ff;
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+  background: var(--primary-light, #eff6ff);
   transform: translateY(-1px);
 }
 
 .cat-pill.active {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
+  background: var(--primary, #2563eb) !important;
+  color: #ffffff !important;
+  border-color: var(--primary, #2563eb) !important;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
 }
 
@@ -2011,86 +2138,12 @@ tr.product-row-inactive .product-table-thumb {
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(125, 125, 125, 0.12);
   color: inherit;
   font-weight: 700;
 }
 
 .cat-pill.active .pill-count {
   background: rgba(255, 255, 255, 0.28);
-  color: #ffffff;
-}
-
-.pills-divider {
-  width: 1px;
-  height: 22px;
-  background: #e2e8f0;
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-
-/* Status Filter Quick Pills (ฟิลเตอร์ด่วน: ปิด/เปิด การแสดงผล) */
-.cat-pill.status-filter-pill {
-  font-weight: 700;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cat-pill.status-filter-pill.inactive-filter {
-  border-color: #f87171;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.cat-pill.status-filter-pill.inactive-filter:hover {
-  background: rgba(239, 68, 68, 0.16);
-  border-color: #ef4444;
-  color: #dc2626;
-  transform: translateY(-1px);
-}
-
-.cat-pill.status-filter-pill.inactive-filter.active {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-  border-color: #dc2626 !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
-}
-
-.cat-pill.status-filter-pill.inactive-filter .pill-count {
-  background: rgba(239, 68, 68, 0.18);
-  color: inherit;
-}
-
-.cat-pill.status-filter-pill.inactive-filter.active .pill-count {
-  background: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-}
-
-.cat-pill.status-filter-pill.active-filter {
-  border-color: #34d399;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.08);
-}
-
-.cat-pill.status-filter-pill.active-filter:hover {
-  background: rgba(16, 185, 129, 0.16);
-  border-color: #10b981;
-  color: #059669;
-  transform: translateY(-1px);
-}
-
-.cat-pill.status-filter-pill.active-filter.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  color: #ffffff !important;
-  border-color: #059669 !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-}
-
-.cat-pill.status-filter-pill.active-filter .pill-count {
-  background: rgba(16, 185, 129, 0.18);
-  color: inherit;
-}
-
-.cat-pill.status-filter-pill.active-filter.active .pill-count {
-  background: rgba(255, 255, 255, 0.3);
   color: #ffffff;
 }
