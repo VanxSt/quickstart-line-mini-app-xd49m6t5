@@ -2655,6 +2655,39 @@ btnBack.addEventListener('click', () => {
 
 // ===== โหลดสินค้า 3 ชั้น: Cache → Static JSON → GAS =====
 // ชั้น 1: localStorage (0ms) | ชั้น 2: products.json จาก Vercel CDN (~50ms) | ชั้น 3: GAS (~3-10s)
+// ซิงค์และกรองสินค้าที่แอดมินปิดการขาย (inactive) จากเซิร์ฟเวอร์แบบ Real-time (รวดเร็วเพียง ~20-50ms)
+async function syncInactiveProductStatuses() {
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getInactiveProducts&_t=${Date.now()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.inactiveIds)) {
+        const inactiveSet = new Set(data.inactiveIds.map(String));
+        let anyChanged = false;
+        PRODUCTS.forEach(p => {
+          const isInactive = inactiveSet.has(String(p.id));
+          if (isInactive && p.status !== 'inactive') {
+            p.status = 'inactive';
+            anyChanged = true;
+          } else if (!isInactive && p.status === 'inactive') {
+            p.status = 'active';
+            anyChanged = true;
+          }
+        });
+        if (anyChanged) {
+          try {
+            localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+          } catch(e) {}
+          initCategoryFilters();
+          renderProducts();
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('syncInactiveProductStatuses error:', e.message);
+  }
+}
+
 async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
   const CACHE_TTL_MS = 5 * 60 * 1000; // 5 นาที
@@ -2678,6 +2711,7 @@ async function loadProducts() {
       }
     }
     localStorage.removeItem('cached_products'); // ล้าง cache เก่า (v1)
+    syncInactiveProductStatuses();
   } catch (e) { }
 
   // ── แสดง Loading เฉพาะเมื่อไม่มี Cache ──
@@ -2700,6 +2734,7 @@ async function loadProducts() {
         initCategoryFilters();
         renderProducts();
         hasCachedData = true;
+        syncInactiveProductStatuses();
         try {
           localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
         } catch (e) { }

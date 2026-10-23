@@ -2052,6 +2052,22 @@
           products: products,
           total: products.length
         })).setMimeType(ContentService.MimeType.JSON);
+      } else if (action === 'getInactiveProducts') {
+        var catalogSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Catalog");
+        var inactiveIds = [];
+        if (catalogSheet) {
+          var vals = catalogSheet.getDataRange().getValues();
+          for (var i = 1; i < vals.length; i++) {
+            if (vals[i][0] && String(vals[i][7] || '').toLowerCase() === 'inactive') {
+              inactiveIds.push(String(vals[i][0]).trim());
+            }
+          }
+        }
+        return ContentService.createTextOutput(JSON.stringify({
+          status: 'success',
+          inactiveIds: inactiveIds,
+          total: inactiveIds.length
+        })).setMimeType(ContentService.MimeType.JSON);
       } else if (action === 'updateProductStatus') {
         var productId = e.parameter.id || e.parameter.productId;
         var newStatus = e.parameter.status;

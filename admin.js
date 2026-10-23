@@ -2212,6 +2212,26 @@ function processIncomingProducts(products) {
   applyProductFilters();
   updateProductStats();
   renderOverviewDashboard();
+
+  // ซิงค์สถานะสินค้าที่ถูกปิด (Inactive) จากเซิร์ฟเวอร์
+  fetch(GOOGLE_SCRIPT_URL + '?action=getInactiveProducts&_t=' + Date.now())
+    .then(res => res.json())
+    .then(data => {
+      if (data && Array.isArray(data.inactiveIds) && data.inactiveIds.length > 0) {
+        const set = new Set(data.inactiveIds.map(String));
+        let changed = false;
+        allProducts.forEach(p => {
+          if (set.has(String(p.id)) && p.status !== 'inactive') {
+            p.status = 'inactive';
+            changed = true;
+          }
+        });
+        if (changed) {
+          applyProductFilters();
+          updateProductStats();
+        }
+      }
+    }).catch(err => {});
 }
 
 function populateCategoryAndTagFilters() {

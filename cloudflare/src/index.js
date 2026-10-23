@@ -555,15 +555,60 @@ export default {
           return jsonResponse({ status: 'success', message: 'ล้าง Cache เรียบร้อย' });
         }
 
+        // Action: getInactiveProducts OR GET /api/products/inactive (ดึงเฉพาะรหัสสินค้าที่ถูกปิด เพื่อซ่อนจากลูกค้าทันที)
+        if (action === 'getInactiveProducts' || url.pathname === '/api/products/inactive') {
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS product_statuses (
+              id TEXT PRIMARY KEY,
+              status TEXT DEFAULT 'active',
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          const { results: fromStatuses } = await db.prepare("SELECT id FROM product_statuses WHERE status = 'inactive'").all();
+          let inactiveIds = (fromStatuses || []).map(r => String(r.id));
+
+          try {
+            const { results: fromProducts } = await db.prepare("SELECT id FROM products WHERE status = 'inactive'").all();
+            if (fromProducts && fromProducts.length > 0) {
+              const set = new Set(inactiveIds);
+              fromProducts.forEach(r => set.add(String(r.id)));
+              inactiveIds = Array.from(set);
+            }
+          } catch(e) {}
+
+          return jsonResponse({
+            status: 'success',
+            inactiveIds: inactiveIds,
+            total: inactiveIds.length
+          });
+        }
+
         // Action: updateProductStatus (GET fallback)
         if (action === 'updateProductStatus') {
           const targetId = url.searchParams.get('id') || url.searchParams.get('productId');
           const rawStatus = url.searchParams.get('status');
           const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
           if (targetId) {
-            await db.prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-              .bind(newStatus, String(targetId))
-              .run();
+            await db.prepare(`
+              CREATE TABLE IF NOT EXISTS product_statuses (
+                id TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'active',
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              )
+            `).run();
+
+            await db.prepare(`
+              INSERT INTO product_statuses (id, status, updated_at)
+              VALUES (?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP
+            `).bind(String(targetId), newStatus).run();
+
+            try {
+              await db.prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(newStatus, String(targetId))
+                .run();
+            } catch(e) {}
           }
           return jsonResponse({ status: 'success', id: targetId, productStatus: newStatus });
         }
@@ -1177,10 +1222,26 @@ export default {
             return jsonResponse({ status: 'error', message: 'Missing product id' }, 400);
           }
 
-          await db
-            .prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            .bind(newStatus, String(targetId))
-            .run();
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS product_statuses (
+              id TEXT PRIMARY KEY,
+              status TEXT DEFAULT 'active',
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          await db.prepare(`
+            INSERT INTO product_statuses (id, status, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP
+          `).bind(String(targetId), newStatus).run();
+
+          try {
+            await db
+              .prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+              .bind(newStatus, String(targetId))
+              .run();
+          } catch(e) {}
 
           return jsonResponse({
             status: 'success',
