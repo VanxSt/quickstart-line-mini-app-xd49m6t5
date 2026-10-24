@@ -15,13 +15,13 @@ function getOptimizedImageUrl(url) {
     let driveId = '';
     const match1 = optimizedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
     const match2 = optimizedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    
+
     if (match1) {
       driveId = match1[1];
     } else if (match2) {
       driveId = match2[1];
     }
-    
+
     if (driveId) {
       optimizedUrl = `https://lh3.googleusercontent.com/d/${driveId}`;
     }
@@ -645,7 +645,7 @@ function updateCartBadge() {
   }
   const qtySpan = floatingCartContainer.querySelector('#floatCartQty');
   const priceSpan = floatingCartContainer.querySelector('#floatCartPrice');
-  
+
   if (qtySpan && priceSpan) {
     qtySpan.textContent = totalQty;
     priceSpan.textContent = totalPrice.toLocaleString();
@@ -875,11 +875,11 @@ function renderSavedAddresses() {
     if (deleteBtn) {
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        
+
         if (!confirm('คุณต้องการลบที่อยู่นี้ใช่หรือไม่?')) {
           return; // ถ้ายกเลิก ไม่ต้องทำอะไรต่อ
         }
-        
+
         console.log(`[SavedAddress] Delete clicked for index: ${idx}`);
         deleteSavedAddress(idx);
         if (selectedSavedAddressIndex === idx) {
@@ -1090,7 +1090,7 @@ function toggleShippingFields() {
     if (savedSection) savedSection.style.display = 'none';
     if (newSection) newSection.style.display = 'none';
     if (distanceSection) distanceSection.style.display = 'none';
-    
+
     if (conditionsBox) {
       conditionsBox.innerHTML = `
         <div style="font-size: 14px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 6px;">
@@ -1108,7 +1108,7 @@ function toggleShippingFields() {
       if (savedSection) savedSection.style.display = savedAddresses.length > 0 ? 'block' : 'none';
       if (newSection) newSection.style.display = 'block';
     }
-    
+
     if (conditionsBox) {
       conditionsBox.innerHTML = `
         <div style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
@@ -1273,7 +1273,7 @@ function openCheckoutModal() {
   // โหลดที่อยู่ที่บันทึกไว้
   const savedAddresses = getSavedAddresses();
   renderSavedAddresses(); // Render always so it shows up in the DOM
-  
+
   if (savedAddresses.length > 0) {
     selectedSavedAddressIndex = 0; // Default to first saved address
     setTimeout(() => { selectSavedAddress(0); }, 50);
@@ -1672,7 +1672,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
       return `• ${item.name}\n  จำนวน: ${q} ชิ้น (฿${(p * q).toLocaleString()})`;
     }).join('\n');
 
-    const formattedText = 
+    const formattedText =
       `━━━━━━━━━━━━━━━━━━━\n` +
       `🛒  คำสั่งซื้อใหม่ (รอตรวจสอบ)\n` +
       `━━━━━━━━━━━━━━━━━━━\n` +
@@ -1764,7 +1764,7 @@ async function loadMyOrders() {
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
         const isFav = favoriteOrderIds.some(fav => String(fav) === String(order.orderId));
-        
+
         let itemsHtml = '';
         if (order.items && order.items.length > 0) {
           itemsHtml = order.items.map(item => `
@@ -1877,7 +1877,7 @@ async function loadMyOrders() {
 // ========================
 // REORDER & FAVORITES LOGIC
 // ========================
-window.toggleFavoriteOrder = function(orderId) {
+window.toggleFavoriteOrder = function (orderId) {
   const strOrderId = String(orderId);
   if (favoriteOrderIds.some(fav => String(fav) === strOrderId)) {
     favoriteOrderIds = favoriteOrderIds.filter(id => String(id) !== strOrderId);
@@ -1892,16 +1892,16 @@ window.toggleFavoriteOrder = function(orderId) {
       const cachedOrders = JSON.parse(cachedStr);
       // Since renderOrdersUI is inside loadMyOrders and might not be globally accessible, 
       // we can just call loadMyOrders() again to refresh, which will hit the cache instantly.
-      loadMyOrders(); 
-    } catch(e) {}
+      loadMyOrders();
+    } catch (e) { }
   }
 };
 
-window.reorderItems = function(itemsJsonStr) {
+window.reorderItems = function (itemsJsonStr) {
   try {
     const items = JSON.parse(decodeURIComponent(itemsJsonStr));
     if (!items || items.length === 0) return;
-    
+
     // เคลียร์ตะกร้าเดิม แล้วนำของใหม่ใส่
     cart = [];
     items.forEach(item => {
@@ -1913,7 +1913,7 @@ window.reorderItems = function(itemsJsonStr) {
         img: item.img || ''
       });
     });
-    
+
     // ปิด Modal ประวัติ แล้วอัปเดต Badge และเปิด Cart Modal
     closeOrdersModal();
     if (typeof updateCartBadge === 'function') {
@@ -1941,7 +1941,7 @@ if (tabAllOrders && tabFavOrders) {
     tabFavOrders.style.borderBottom = '2px solid transparent';
     loadMyOrders();
   });
-  
+
   tabFavOrders.addEventListener('click', () => {
     currentOrderTab = 'fav';
     tabFavOrders.style.color = 'var(--primary-color)';
@@ -2428,7 +2428,7 @@ if (document.getElementById('btnSearchNav') && navSearchContainer && navSearchIn
     navSearchContainer.style.display = 'block';
     navSearchInput.focus();
   });
-  
+
   if (btnCloseNavSearch) {
     btnCloseNavSearch.addEventListener('click', () => {
       navSearchContainer.style.display = 'none';
@@ -2605,7 +2605,7 @@ function renderSubCategoriesUI(categoryTree) {
     option.selected = currentSubCategory === sub;
     subSelect.appendChild(option);
   });
-  
+
   subNav.appendChild(subSelect);
 }
 
@@ -2681,7 +2681,7 @@ async function syncInactiveProductStatuses() {
         if (anyChanged) {
           try {
             localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-          } catch(e) {}
+          } catch (e) { }
           initCategoryFilters();
           renderProducts();
 
@@ -2697,7 +2697,7 @@ async function syncInactiveProductStatuses() {
         }
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('syncInactiveProductStatuses error:', e.message);
   }
 }
@@ -2719,98 +2719,63 @@ window.addEventListener('focus', () => {
   syncInactiveProductStatuses();
 });
 
+let catalogRefreshInFlight = null;
+let catalogLoaded = false;
+
 async function loadProducts() {
+  if (catalogRefreshInFlight) return catalogRefreshInFlight;
+  catalogRefreshInFlight = refreshCatalogProducts();
+  try { return await catalogRefreshInFlight; }
+  finally { catalogRefreshInFlight = null; }
+}
+
+async function refreshCatalogProducts() {
   const productsGrid = document.getElementById('productsGrid');
-  const CACHE_TTL_MS = 0; // ไม่ดักแคช ดึงข้อมูลสดเสมอ
-
-  // ── ชั้น 1: localStorage Cache ──
-  let hasCachedData = false;
+  // Never display persisted or bundled prices/images before the live response.
   try {
-    const cachedRaw = localStorage.getItem('cached_products_v2');
-    if (cachedRaw) {
-      const cachedObj = JSON.parse(cachedRaw);
-      const products = cachedObj.products;
-      const cachedAt = cachedObj.cachedAt || 0;
-      const isExpired = (Date.now() - cachedAt) > CACHE_TTL_MS;
-      const isMockData = Array.isArray(products) && products.length > 0 &&
-        products[0].img && products[0].img.includes('unsplash.com');
-      if (!isMockData && !isExpired && Array.isArray(products) && products.length > 0) {
-        PRODUCTS = products;
-        initCategoryFilters();
-        renderProducts();
-        hasCachedData = true;
-      }
-    }
-    localStorage.removeItem('cached_products'); // ล้าง cache เก่า (v1)
-    syncInactiveProductStatuses();
+    localStorage.removeItem('cached_products');
+    localStorage.removeItem('cached_products_v2');
   } catch (e) { }
-
-  // ── แสดง Loading เฉพาะเมื่อไม่มี Cache ──
-  if (!hasCachedData && productsGrid) {
-    productsGrid.innerHTML = `
-      <div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)">
-        <div style="width:40px;height:40px;border:3px solid var(--primary-color,#388BC2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px"></div>
-        <p style="font-size:15px">กำลังโหลดสินค้า...</p>
-      </div>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+  if (!catalogLoaded && productsGrid) {
+    productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px"><p>กำลังโหลดสินค้าล่าสุด...</p></div>';
   }
-
-  // ── ชั้น 2: Static products.json จาก Vercel CDN (เร็วมาก ~50ms บนเน็ตมือถือ) ──
-  if (!hasCachedData) {
-    try {
-      const staticRes = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
-      const staticData = await staticRes.json();
-      if (staticData.status === 'success' && Array.isArray(staticData.products) && staticData.products.length > 0) {
-        PRODUCTS = staticData.products;
-        initCategoryFilters();
-        renderProducts();
-        hasCachedData = true;
-        syncInactiveProductStatuses();
-        try {
-          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-        } catch (e) { }
-      }
-    } catch (e) { }
-  }
-
-  // ── ชั้น 2.5: Instant Embedded Fallback (0ms — การันตีว่าเน็ตมือถือหรือหลุดแค่ไหนก็ต้องเห็นสินค้า) ──
-  if (!hasCachedData) {
-    const mockProducts = getMockProducts();
-    if (Array.isArray(mockProducts) && mockProducts.length > 0) {
-      PRODUCTS = mockProducts;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    if (!response.ok) throw new Error('Product request failed');
+    const data = await response.json();
+    if (data.status !== 'success' || !Array.isArray(data.products)) {
+      throw new Error('Invalid product response');
+    }
+    const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
+    PRODUCTS = data.products;
+    catalogLoaded = true;
+    if (changed) {
       initCategoryFilters();
       renderProducts();
-      hasCachedData = true;
-    }
-  }
-
-  // ── ชั้น 3: Background Refresh จาก GAS (อัปเดตเบื้องหลัง ปรับราคาใหม่ถ้ามี) ──
-  // ทำงานเงียบๆ ใน background ถ้าล้มเหลวจะไม่ส่งผลกระทบต่อลูกค้าที่ดูสินค้าอยู่
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 วินาที timeout เผื่อเน็ตมือถือดาวน์โหลดข้อมูลสด
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    const data = await response.json();
-
-    if (data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-      const changed = JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
-      PRODUCTS = data.products;
-      try {
-        localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-      } catch (e) { }
-      if (true) {
-        initCategoryFilters();
-        renderProducts();
-      }
     }
   } catch (error) {
-    console.log('Background GAS sync skipped or timed out on mobile network:', error.message);
-    // ไม่ต้องแสดง Error ใดๆ ให้ลูกค้า เพราะมีสินค้าแสดงบนหน้าจอเรียบร้อยแล้ว
+    console.warn('Live catalog refresh failed:', error.message);
+    if (!catalogLoaded) {
+      showProductsError(productsGrid, '⚠️', 'โหลดสินค้าล่าสุดไม่สำเร็จ', 'ตรวจสอบอินเทอร์เน็ตแล้วกดลองใหม่');
+    }
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
+
+// Refresh live prices and images without requiring a redeployment or page reload.
+setInterval(() => {
+  if (document.visibilityState === 'visible') loadProducts();
+}, 60000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') loadProducts();
+});
+window.addEventListener('focus', () => loadProducts());
 
 function showProductsError(grid, icon, title, subtitle) {
   if (!grid) return;
@@ -2838,7 +2803,7 @@ async function start() {
   // Check if URL has an auto-process action (Cancel or Confirm Order)
   const urlParams = new URLSearchParams(window.location.search);
   const actionParam = urlParams.get('action');
-  
+
   if (actionParam === 'cancelOrder' || actionParam === 'confirmOrder') {
     const orderId = urlParams.get('orderId');
     if (orderId) {
@@ -2849,7 +2814,7 @@ async function start() {
         </div>
       `;
       const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
-      
+
       try {
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
@@ -2873,7 +2838,7 @@ async function start() {
   if (productId) {
     openProductDetail(parseInt(productId, 10));
   }
-  
+
   const openParam = urlParams.get('open');
   if (openParam === 'favorites') {
     openOrdersModal();
@@ -2916,3 +2881,4 @@ if (btnScrollToTop) {
     });
   });
 }
+
