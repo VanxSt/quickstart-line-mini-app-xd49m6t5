@@ -8,8 +8,135 @@
   const SHOP_PROMPTPAY_ID = '0957579454';
   // ==========================================
 
+  // ==========================================
+  // เมนูคำสั่งลัดบน Google Sheets
+  // ==========================================
+  function onOpen() {
+    try {
+      SpreadsheetApp.getUi()
+        .createMenu('⚡ ร้านเกื้อกูลกัน')
+        .addItem('🚀 ซิงค์สินค้าทั้งหมดไป Cloudflare ทันที', 'syncProductsToCloudflare')
+        .addItem('🔄 ซิงค์แถวที่เลือกไป Cloudflare ทันที', 'syncSelectedProductToCloudflare')
+        .addSeparator()
+        .addItem('🛠️ ติดตั้งระบบ Auto-Sync (แก้ปุ๊บส่งปั๊บ)', 'setupAutoSyncTrigger')
+        .addToUi();
+    } catch(e) {}
+  }
+
+  // ซิงค์เฉพาะสินค้าแถวที่กำลังคลิกเลือกอยู่ในชีต Catalog ไปยัง Cloudflare D1 ทันที
+  function syncSelectedProductToCloudflare() {
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch(e) {}
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    if (sheet.getName() !== 'Catalog') {
+      if (ui) ui.alert('แจ้งเตือน', 'กรุณาเปิดชีต "Catalog" ก่อนทำการซิงค์ครับ', ui.ButtonSet.OK);
+      return;
+    }
+    var row = sheet.getActiveCell().getRow();
+    if (row <= 1) {
+      if (ui) ui.alert('แจ้งเตือน', 'กรุณาคลิกเลือกแถวสินค้าที่ต้องการซิงค์ (ไม่ใช่แถวหัวตาราง)', ui.ButtonSet.OK);
+      return;
+    }
+    var rowData = sheet.getRange(row, 1, 1, 8).getValues()[0];
+    var productId = String(rowData[0] || '').trim();
+    if (!productId) {
+      if (ui) ui.alert('แจ้งเตือน', 'แถวนี้ไม่มีรหัสสินค้า (ID)', ui.ButtonSet.OK);
+      return;
+    }
+
+    var product = {
+      id: productId,
+      name: String(rowData[1] || ''),
+      category: String(rowData[2] || ''),
+      price: Number(rowData[3] || 0),
+      desc: String(rowData[4] || ''),
+      img: String(rowData[5] || ''),
+      tag: String(rowData[6] || ''),
+      status: String(rowData[7] || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active'
+    };
+
+    var cfApiUrl = 'https://kuekoonkan-api.noperfecf.workers.dev';
+    try {
+      var res = UrlFetchApp.fetch(cfApiUrl, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          action: 'syncProductsBatch',
+          products: [product]
+        }),
+        muteHttpExceptions: true
+      });
+      if (res.getResponseCode() >= 200 && res.getResponseCode() < 300) {
+        if (ui) ui.alert('สำเร็จ', '✅ อัปเดตสินค้า ' + product.name + ' (ID: ' + product.id + ') ขึ้น Cloudflare เรียบร้อยแล้ว! เข้าแอปจะเห็นข้อมูล/รูปใหม่ทันที', ui.ButtonSet.OK);
+      } else {
+        if (ui) ui.alert('ผิดพลาด', 'ไม่สามารถเชื่อมต่อ Cloudflare ได้: ' + res.getContentText(), ui.ButtonSet.OK);
+      }
+    } catch(e) {
+      if (ui) ui.alert('ผิดพลาด', 'เกิดข้อผิดพลาด: ' + e.message, ui.ButtonSet.OK);
+    }
+  }
+
+  // ติดตั้ง Installable Trigger สำหรับระบบ Auto-Sync (แก้ปุ๊บส่งปั๊บ)
+  function setupAutoSyncTrigger() {
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch(e) {}
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var triggers = ScriptApp.getUserTriggers(ss);
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'autoSyncOnEdit') {
+        ScriptApp.deleteTrigger(triggers[i]);
+      }
+    }
+    ScriptApp.newTrigger('autoSyncOnEdit')
+      .forSpreadsheet(ss)
+      .onEdit()
+      .create();
+
+    if (ui) {
+      ui.alert('ติดตั้งสำเร็จ', '✅ เปิดระบบ Auto-Sync เรียบร้อยแล้ว!\nต่อไปนี้เมื่อคุณแก้ไขรูปภาพ ราคา หรือข้อมูลสินค้าในชีต Catalog ระบบจะส่งไป Cloudflare ให้ทันทีอัตโนมัติภายใน 1 วินาทีครับ', ui.ButtonSet.OK);
+    }
+  }
+
+  // ทำงานอัตโนมัติทุกครั้งที่มีการแก้ข้อมูลในชีต Catalog (ต้องติดตั้งผ่าน setupAutoSyncTrigger 1 ครั้ง)
+  function autoSyncOnEdit(e) {
+    try {
+      if (!e || !e.range) return;
+      var sheet = e.range.getSheet();
+      if (sheet.getName() !== 'Catalog') return;
+      var row = e.range.getRow();
+      if (row <= 1) return; // ข้ามแถวหัวตาราง
+
+      var rowData = sheet.getRange(row, 1, 1, 8).getValues()[0];
+      var productId = String(rowData[0] || '').trim();
+      if (!productId) return;
+
+      var product = {
+        id: productId,
+        name: String(rowData[1] || ''),
+        category: String(rowData[2] || ''),
+        price: Number(rowData[3] || 0),
+        desc: String(rowData[4] || ''),
+        img: String(rowData[5] || ''),
+        tag: String(rowData[6] || ''),
+        status: String(rowData[7] || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active'
+      };
+
+      var cfApiUrl = 'https://kuekoonkan-api.noperfecf.workers.dev';
+      UrlFetchApp.fetch(cfApiUrl, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          action: 'syncProductsBatch',
+          products: [product]
+        }),
+        muteHttpExceptions: true
+      });
+    } catch(err) {
+      Logger.log('autoSyncOnEdit error: ' + err.message);
+    }
+  }
+
   // ล้าง Cache สินค้าอัตโนมัติเมื่อมีการแก้ไขชีต Catalog ใน Google Sheets
-  // (ต้องตั้ง Trigger: Edit > Current project's triggers > Add Trigger > onEdit)
   function onEdit(e) {
     try {
       var sheetName = e.source.getActiveSheet().getName();

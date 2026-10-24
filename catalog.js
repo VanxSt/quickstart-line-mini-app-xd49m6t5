@@ -2721,7 +2721,7 @@ window.addEventListener('focus', () => {
 
 async function loadProducts() {
   const productsGrid = document.getElementById('productsGrid');
-  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 นาที
+  const CACHE_TTL_MS = 0; // ไม่ดักแคช ดึงข้อมูลสดเสมอ
 
   // ── ชั้น 1: localStorage Cache ──
   let hasCachedData = false;
@@ -2788,7 +2788,7 @@ async function loadProducts() {
   // ทำงานเงียบๆ ใน background ถ้าล้มเหลวจะไม่ส่งผลกระทบต่อลูกค้าที่ดูสินค้าอยู่
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 วินาที timeout
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 วินาที timeout เผื่อเน็ตมือถือดาวน์โหลดข้อมูลสด
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
       signal: controller.signal
     });
@@ -2801,7 +2801,7 @@ async function loadProducts() {
       try {
         localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
       } catch (e) { }
-      if (changed) {
+      if (true) {
         initCategoryFilters();
         renderProducts();
       }
