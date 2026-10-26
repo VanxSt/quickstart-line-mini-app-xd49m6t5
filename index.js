@@ -110,7 +110,6 @@ function restoreCachedProfile() {
         if (data.phone && phone && isValidThaiPhone(data.phone)) {
           phone.value = formatThaiPhoneNumber(data.phone);
           setPhoneInputState(true);
-          restoreCachedMemberPoints(data.phone);
         } else if (phone) {
           phone.value = '';
           setPhoneInputState(false);
@@ -286,8 +285,6 @@ async function getUserProfile() {
       phone.value = initialPhone ? formatThaiPhoneNumber(initialPhone) : '';
       if (initialPhone) {
         setPhoneInputState(true);
-        restoreCachedMemberPoints(initialPhone);
-        checkPosposMemberPoints(initialPhone, { silent: true });
       } else {
         setPhoneInputState(false);
       }
@@ -474,7 +471,6 @@ if (btnSaveData) {
           localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
           localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
           setPhoneInputState(true);
-          checkPosposMemberPoints(userProfileData.phone, { silent: false });
         }
       } else {
         showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', false);
@@ -601,8 +597,6 @@ if (btnSavePhoneInline) {
         localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
         localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
         setPhoneInputState(true);
-        // ตรวจสอบแต้มสะสมจาก POSPOS ทันที
-        checkPosposMemberPoints(clean, { silent: false });
       } else {
         showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (result.message || ''), false);
       }
@@ -781,18 +775,6 @@ setTimeout(updateTrackOrdersBadge, 100);
 // 7. ระบบบัตรสมาชิกดิจิทัล & เช็คแต้มสะสม POSPOS (ร้านเกื้อกูลกัน)
 // ========================================================
 
-// DOM Selectors สำหรับระบบแต้ม POSPOS บนบัตรสมาชิก
-const memberPointsSection = document.querySelector('#memberPointsSection');
-const pointsLoadedBox = document.querySelector('#pointsLoadedBox');
-const pointsLoadingBox = document.querySelector('#pointsLoadingBox');
-const pointsPromptBox = document.querySelector('#pointsPromptBox');
-const pointsPromptText = document.querySelector('#pointsPromptText');
-const btnCheckPointsNow = document.querySelector('#btnCheckPointsNow');
-const btnRefreshPoints = document.querySelector('#btnRefreshPoints');
-const posposPointVal = document.querySelector('#posposPointVal');
-const posposMemberName = document.querySelector('#posposMemberName');
-const posposMemberGroup = document.querySelector('#posposMemberGroup');
-
 // DOM Selectors สำหรับปุ่มเปิด Modal และเมนูนำทาง
 const btnCheckMemberPoints = document.querySelector('#btnCheckMemberPoints');
 const btnPointsNav = document.querySelector('#btnPointsNav');
@@ -815,57 +797,70 @@ const modalMemberCode = document.querySelector('#modalMemberCode');
 const modalMemberCodeRow = document.querySelector('#modalMemberCodeRow');
 const modalMemberGroup = document.querySelector('#modalMemberGroup');
 
-// โหลดแต้มที่เคยแคชไว้ขึ้นแสดงผลทันที (0ms)
+// โหลดแต้มที่เคยแคชไว้ขึ้นแสดงผลทันทีใน Modal (0ms ไม่ต้องรอ Network)
 function restoreCachedMemberPoints(currentPhone) {
   try {
     const raw = localStorage.getItem('kuekoonkan_pospos_member_cache');
-    if (!raw) return;
+    if (!raw) return false;
     const cached = JSON.parse(raw);
-    const cleanCurrent = cleanPhoneNumber(currentPhone || (phone ? phone.value : ''));
+    const cleanCurrent = cleanPhoneNumber(currentPhone || (modalPhoneInput && modalPhoneInput.value) || (phone ? phone.value : ''));
     if (cached && cached.phone && (!cleanCurrent || cached.phone === cleanCurrent)) {
       renderMemberPointsUI(cached);
+      return true;
     }
   } catch (e) {
     console.warn('Cannot read cached POSPOS member:', e);
   }
+  return false;
 }
 
-// อัปเดต UI หน้าบัตรและ Navbar ด้วยข้อมูลแต้ม
+// อัปเดต UI ใน Modal บัตรสมาชิกดิจิทัล และ Navbar
 function renderMemberPointsUI(member) {
   if (!member) return;
   const pointFormatted = Number(member.point || 0).toLocaleString();
   const groupName = member.group || 'สมาชิกทั่วไป';
   const nameText = member.name || 'ลูกค้าสมาชิก';
+  const phoneFormatted = formatThaiPhoneNumber(member.phone || (modalPhoneInput ? modalPhoneInput.value : ''));
 
-  // 1. บนบัตรสมาชิกหน้าแรก (Member Card)
-  if (posposPointVal) posposPointVal.textContent = pointFormatted;
-  if (posposMemberName) posposMemberName.textContent = nameText;
-  if (posposMemberGroup) posposMemberGroup.textContent = groupName;
+  // 1. อัปเดตข้อมูลบนบัตรใน Modal
+  if (modalPointVal) modalPointVal.textContent = pointFormatted;
+  if (modalMemberName) modalMemberName.textContent = nameText;
+  if (modalMemberPhone) modalMemberPhone.textContent = phoneFormatted;
+  if (modalMemberGroup) modalMemberGroup.textContent = groupName;
 
-  if (pointsLoadedBox) pointsLoadedBox.style.display = 'block';
-  if (pointsLoadingBox) pointsLoadingBox.style.display = 'none';
-  if (pointsPromptBox) pointsPromptBox.style.display = 'none';
+  if (modalMemberCode && modalMemberCodeRow) {
+    if (member.code) {
+      modalMemberCode.textContent = member.code;
+      modalMemberCodeRow.style.display = 'flex';
+    } else {
+      modalMemberCodeRow.style.display = 'none';
+    }
+  }
 
-  // 2. บนปุ่มแถบเมนูในหน้าแค็ตตาล็อก (Catalog Navbar)
+  if (modalCardLoaded) modalCardLoaded.style.display = 'flex';
+  if (modalCardLoading) modalCardLoading.style.display = 'none';
+  if (modalCardNotFound) modalCardNotFound.style.display = 'none';
+
+  // 2. บนปุ่มแถบเมนูในหน้าแค็ตตาล็อก (ถ้ามี)
   if (navPointsText) {
     navPointsText.textContent = `${pointFormatted} แต้ม`;
   }
 }
 
-// ฟังก์ชันตรวจสอบแต้มสะสมจาก POSPOS
+// ฟังก์ชันตรวจสอบแต้มสะสมจาก POSPOS พร้อม Timeout ป้องกันค้าง 100%
 async function checkPosposMemberPoints(targetPhone, options = {}) {
-  const { silent = false, updateModal = false } = options;
-  const clean = cleanPhoneNumber(targetPhone || (phone ? phone.value : ''));
+  const { silent = false } = options;
+  const clean = cleanPhoneNumber(targetPhone || (modalPhoneInput && modalPhoneInput.value) || (phone ? phone.value : ''));
 
   if (!clean || !isValidThaiPhone(clean)) {
-    if (updateModal && modalPhoneError) {
+    if (modalPhoneError) {
       modalPhoneError.style.display = 'block';
       modalPhoneError.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (เช่น 08X-XXX-XXXX)';
       if (modalPhoneInput) modalPhoneInput.style.borderColor = '#ef4444';
     }
     if (!silent) {
       showToast('⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง', false);
-      if (phone) phone.focus();
+      if (modalPhoneInput) modalPhoneInput.focus();
     }
     return null;
   }
@@ -873,60 +868,44 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
   if (modalPhoneError) modalPhoneError.style.display = 'none';
   if (modalPhoneInput) modalPhoneInput.style.borderColor = '#cbd5e1';
 
-  // แสดงสถานะกำลังโหลด
-  if (pointsLoadingBox && !updateModal) {
-    pointsLoadingBox.style.display = 'flex';
-    if (pointsLoadedBox) pointsLoadedBox.style.display = 'none';
-    if (pointsPromptBox) pointsPromptBox.style.display = 'none';
+  // แสดงสถานะกำลังตรวจสอบใน Modal
+  if (modalCardLoading) modalCardLoading.style.display = 'block';
+  if (modalCardLoaded) modalCardLoaded.style.display = 'none';
+  if (modalCardNotFound) modalCardNotFound.style.display = 'none';
+
+  if (btnModalCheckPoints) {
+    btnModalCheckPoints.disabled = true;
+    btnModalCheckPoints.textContent = 'กำลังเช็ค...';
   }
 
-  if (updateModal) {
-    if (modalCardLoading) modalCardLoading.style.display = 'block';
-    if (modalCardLoaded) modalCardLoaded.style.display = 'none';
-    if (modalCardNotFound) modalCardNotFound.style.display = 'none';
-  }
+  // ป้องกันค้างด้วย AbortController Timeout (7 วินาที)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000);
 
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPosposMember&phone=${clean}&_t=${Date.now()}`);
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPosposMember&phone=${clean}&_t=${Date.now()}`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
     if (!res.ok) {
-      throw new Error(`Server returned ${res.status}`);
+      throw new Error(`Server status ${res.status}`);
     }
 
     const data = await res.json();
 
     if (data.status === 'success' && data.found && data.member) {
-      const member = data.member;
-      // บันทึกแคช
-      localStorage.setItem('kuekoonkan_pospos_member_cache', JSON.stringify({
-        ...member,
+      const member = {
+        ...data.member,
         phone: clean,
         cachedAt: Date.now()
-      }));
+      };
 
-      // อัปเดตบัตรสมาชิกหน้าแรก
+      // บันทึกแคช
+      localStorage.setItem('kuekoonkan_pospos_member_cache', JSON.stringify(member));
+
+      // แสดงผลข้อมูลสมาชิกบนบัตรทันที
       renderMemberPointsUI(member);
-
-      // อัปเดตหน้า Modal ถ้ากำลังเปิดอยู่
-      if (updateModal || (memberPointsModal && memberPointsModal.classList.contains('show'))) {
-        const pointFormatted = Number(member.point || 0).toLocaleString();
-        if (modalPointVal) modalPointVal.textContent = pointFormatted;
-        if (modalMemberName) modalMemberName.textContent = member.name || '-';
-        if (modalMemberPhone) modalMemberPhone.textContent = formatThaiPhoneNumber(clean);
-        if (modalMemberGroup) modalMemberGroup.textContent = member.group || 'สมาชิกทั่วไป';
-
-        if (modalMemberCode && modalMemberCodeRow) {
-          if (member.code) {
-            modalMemberCode.textContent = member.code;
-            modalMemberCodeRow.style.display = 'flex';
-          } else {
-            modalMemberCodeRow.style.display = 'none';
-          }
-        }
-
-        if (modalCardLoaded) modalCardLoaded.style.display = 'flex';
-        if (modalCardLoading) modalCardLoading.style.display = 'none';
-        if (modalCardNotFound) modalCardNotFound.style.display = 'none';
-      }
 
       if (!silent) {
         showToast(`⭐ คุณ ${member.name}: ${Number(member.point || 0).toLocaleString()} แต้ม`, true);
@@ -936,25 +915,14 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
       // ไม่พบสมาชิกในระบบ POSPOS
       localStorage.removeItem('kuekoonkan_pospos_member_cache');
 
-      if (pointsLoadedBox) pointsLoadedBox.style.display = 'none';
-      if (pointsLoadingBox) pointsLoadingBox.style.display = 'none';
-      if (pointsPromptBox) {
-        pointsPromptBox.style.display = 'flex';
-        if (pointsPromptText) {
-          pointsPromptText.textContent = `เบอร์ ${formatThaiPhoneNumber(clean)} ยังไม่ได้เป็นสมาชิกหน้าร้าน`;
-        }
+      if (modalNotFoundPhoneText) {
+        modalNotFoundPhoneText.textContent = `เบอร์โทรศัพท์ ${formatThaiPhoneNumber(clean)} ยังไม่ได้ลงทะเบียนในระบบ POSPOS`;
       }
+      if (modalCardNotFound) modalCardNotFound.style.display = 'block';
+      if (modalCardLoading) modalCardLoading.style.display = 'none';
+      if (modalCardLoaded) modalCardLoaded.style.display = 'none';
 
       if (navPointsText) navPointsText.textContent = 'เช็คแต้ม';
-
-      if (updateModal || (memberPointsModal && memberPointsModal.classList.contains('show'))) {
-        if (modalNotFoundPhoneText) {
-          modalNotFoundPhoneText.textContent = `เบอร์โทรศัพท์ ${formatThaiPhoneNumber(clean)} ยังไม่ได้ลงทะเบียนในระบบ POSPOS`;
-        }
-        if (modalCardNotFound) modalCardNotFound.style.display = 'block';
-        if (modalCardLoading) modalCardLoading.style.display = 'none';
-        if (modalCardLoaded) modalCardLoaded.style.display = 'none';
-      }
 
       if (!silent) {
         showToast('ไม่พบข้อมูลสมาชิกเบอร์นี้ในระบบ POSPOS หน้าร้าน', false);
@@ -962,17 +930,14 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
       return null;
     }
   } catch (err) {
-    console.warn('POSPOS member fetch error:', err);
-    if (pointsLoadingBox) pointsLoadingBox.style.display = 'none';
-    if (pointsPromptBox) pointsPromptBox.style.display = 'flex';
+    clearTimeout(timeoutId);
+    console.warn('POSPOS member check error:', err);
 
-    if (updateModal) {
-      if (modalCardLoading) modalCardLoading.style.display = 'none';
-      if (modalCardNotFound) {
-        modalCardNotFound.style.display = 'block';
-        if (modalNotFoundPhoneText) {
-          modalNotFoundPhoneText.textContent = 'ไม่สามารถเชื่อมต่อกับระบบ POSPOS ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง';
-        }
+    if (modalCardLoading) modalCardLoading.style.display = 'none';
+    if (modalCardNotFound) {
+      modalCardNotFound.style.display = 'block';
+      if (modalNotFoundPhoneText) {
+        modalNotFoundPhoneText.textContent = 'ไม่สามารถเชื่อมต่อกับระบบ POSPOS ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง';
       }
     }
 
@@ -980,6 +945,11 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
       showToast('ไม่สามารถเชื่อมต่อระบบ POSPOS ได้ชั่วคราว', false);
     }
     return null;
+  } finally {
+    if (btnModalCheckPoints) {
+      btnModalCheckPoints.disabled = false;
+      btnModalCheckPoints.textContent = 'ตรวจสอบ';
+    }
   }
 }
 
@@ -987,24 +957,31 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
 function openMemberPointsModal(overridePhone) {
   if (!memberPointsModal) return;
 
-  const currentPhone = cleanPhoneNumber(overridePhone || (modalPhoneInput && modalPhoneInput.value) || (phone ? phone.value : ''));
-  if (modalPhoneInput && currentPhone) {
-    modalPhoneInput.value = formatThaiPhoneNumber(currentPhone);
+  const currentPhone = cleanPhoneNumber(overridePhone || (phone ? phone.value : '') || (modalPhoneInput ? modalPhoneInput.value : ''));
+  if (modalPhoneInput) {
+    modalPhoneInput.value = currentPhone ? formatThaiPhoneNumber(currentPhone) : '';
   }
 
+  if (modalPhoneError) modalPhoneError.style.display = 'none';
+  if (modalPhoneInput) modalPhoneInput.style.borderColor = '#cbd5e1';
+
+  // แสดง Modal และล็อก Body Scroll
   memberPointsModal.classList.add('show');
   document.body.style.overflow = 'hidden';
 
   if (currentPhone && isValidThaiPhone(currentPhone)) {
-    // ดึงแคชเดิมขึ้นมาก่อนถ้ามี
-    restoreCachedMemberPoints(currentPhone);
-    // ตรวจสอบข้อมูลล่าสุดจาก POSPOS
-    checkPosposMemberPoints(currentPhone, { silent: true, updateModal: true });
+    // 1. นำแคชเดิมขึ้นแสดงผลทันที (0ms) เพื่อไม่ให้ลูกค้ารู้สึกว่าค้าง
+    const hasCache = restoreCachedMemberPoints(currentPhone);
+    // 2. ซิงค์ดึงแต้มล่าสุดจาก POSPOS แบบเบื้องหลัง
+    checkPosposMemberPoints(currentPhone, { silent: !hasCache });
   } else {
+    // ยังไม่มีเบอร์ ให้เปิดหน้าจอปกติเพื่อให้กรอกเบอร์
     if (modalCardLoaded) modalCardLoaded.style.display = 'none';
     if (modalCardLoading) modalCardLoading.style.display = 'none';
     if (modalCardNotFound) modalCardNotFound.style.display = 'none';
-    if (modalPhoneInput) modalPhoneInput.focus();
+    setTimeout(() => {
+      if (modalPhoneInput) modalPhoneInput.focus();
+    }, 150);
   }
 }
 
@@ -1015,9 +992,11 @@ function closeMemberPointsModal() {
   document.body.style.overflow = '';
 }
 
-// ปลูก Event Listeners สำหรับระบบแต้ม
+// ผูก Event Listeners สำหรับระบบแต้ม
 if (btnCheckMemberPoints) {
-  btnCheckMemberPoints.addEventListener('click', () => {
+  btnCheckMemberPoints.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     openMemberPointsModal();
   });
 }
@@ -1027,30 +1006,6 @@ if (btnPointsNav) {
     e.preventDefault();
     e.stopPropagation();
     openMemberPointsModal();
-  });
-}
-
-if (btnCheckPointsNow) {
-  btnCheckPointsNow.addEventListener('click', () => {
-    const p = phone ? phone.value : '';
-    if (!p) {
-      if (phone) phone.focus();
-      showToast('กรุณากรอกเบอร์โทรศัพท์ก่อนเช็คแต้ม', false);
-      return;
-    }
-    checkPosposMemberPoints(p, { silent: false });
-  });
-}
-
-if (btnRefreshPoints) {
-  btnRefreshPoints.addEventListener('click', () => {
-    const p = phone ? phone.value : '';
-    if (!p) {
-      if (phone) phone.focus();
-      showToast('กรุณากรอกเบอร์โทรศัพท์ก่อนเช็คแต้ม', false);
-      return;
-    }
-    checkPosposMemberPoints(p, { silent: false });
   });
 }
 
@@ -1072,7 +1027,7 @@ if (btnModalCheckPoints) {
       }
       return;
     }
-    checkPosposMemberPoints(p, { silent: false, updateModal: true });
+    checkPosposMemberPoints(p, { silent: false });
   });
 }
 
@@ -1096,11 +1051,6 @@ if (memberPointsModal) {
       closeMemberPointsModal();
     }
   });
-}
-
-// โหลดแต้มแคชเริ่มต้นทันที
-if (phone && phone.value) {
-  restoreCachedMemberPoints(phone.value);
 }
 
 // Expose functions to window

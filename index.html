@@ -138,52 +138,6 @@
           </div>
         </div>
 
-        <!-- POSPOS Points Box inside Member Card -->
-        <div id="memberPointsSection" class="card-points-section">
-          <div class="points-header">
-            <span class="points-title">
-              <span class="star-icon">⭐</span> แต้มสะสม POSPOS
-            </span>
-            <button id="btnRefreshPoints" class="btn-refresh-points" type="button" title="แตะเพื่ออัปเดตแต้มล่าสุด">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>อัปเดต</span>
-            </button>
-          </div>
-
-          <!-- เมื่อตรวจพบสมาชิกใน POSPOS -->
-          <div id="pointsLoadedBox" style="display: none;">
-            <div class="points-display-row">
-              <div class="points-number-wrap">
-                <span id="posposPointVal" class="points-number">0</span>
-                <span class="points-unit">แต้ม</span>
-              </div>
-              <div class="points-badge-group">
-                <span id="posposMemberGroup" class="member-group-badge">สมาชิกทั่วไป</span>
-              </div>
-            </div>
-            <div class="points-member-name">
-              👤 ชื่อสมาชิก: <strong id="posposMemberName" style="color: #ffffff;">-</strong>
-            </div>
-            <div class="points-notice">
-              💡 สะสมและใช้เป็นส่วนลดได้ที่เคาน์เตอร์หน้าร้านเกื้อกูลกัน
-            </div>
-          </div>
-
-          <!-- เมื่อกำลังตรวจสอบ -->
-          <div id="pointsLoadingBox" style="display: none;" class="points-status-box">
-            <div class="spinner-sm"></div>
-            <span>กำลังตรวจสอบข้อมูลสมาชิกจาก POSPOS...</span>
-          </div>
-
-          <!-- เมื่อยังไม่ได้ตรวจสอบ หรือไม่พบสมาชิก -->
-          <div id="pointsPromptBox" class="points-status-box">
-            <span id="pointsPromptText">📱 กรอกเบอร์โทรศัพท์เพื่อตรวจสอบแต้มสะสมจากหน้าร้าน</span>
-            <button id="btnCheckPointsNow" class="btn-check-points-inline" type="button">🔍 เช็คแต้ม</button>
-          </div>
-        </div>
-
         <div class="card-footer">
           <span class="card-id-label">MEMBER ID</span>
           <span id="userId" class="card-id-val">MEMBER-LINE</span>
@@ -456,104 +410,6 @@
           <!-- Orders List will be injected here -->
           <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
             กำลังโหลดประวัติการสั่งซื้อ...
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Member Points Modal (บัตรสมาชิก & แต้มสะสม POSPOS) -->
-    <div class="modal" id="memberPointsModal">
-      <div class="modal-content" style="max-width: 440px;">
-        <div class="modal-header">
-          <span style="font-weight: 700; color: var(--text-main); font-size: 15px; display: flex; align-items: center; gap: 6px;">
-            <span>⭐</span> บัตรสมาชิก & แต้มสะสม (POSPOS)
-          </span>
-          <button class="btn-close" id="btnClosePointsModal" aria-label="ปิด" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <div id="pointsModalContent" class="modal-body-scroll" style="padding: 16px;">
-          <!-- กล่องกรอก/เปลี่ยนเบอร์โทร -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;">
-            <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">
-              📱 เบอร์โทรศัพท์สมาชิกที่ลงทะเบียนไว้กับหน้าร้าน:
-            </label>
-            <div style="display: flex; gap: 8px;">
-              <input type="tel" id="modalPhoneInput" placeholder="08X-XXX-XXXX" maxlength="12" inputmode="numeric"
-                style="flex: 1; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-weight: 600; color: #1e293b; outline: none;" />
-              <button id="btnModalCheckPoints" type="button"
-                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);">
-                ตรวจสอบ
-              </button>
-            </div>
-            <div id="modalPhoneError" style="display: none; color: #ef4444; font-size: 11.5px; margin-top: 4px; font-weight: 500;">
-              * กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง
-            </div>
-          </div>
-
-          <!-- บัตรสมาชิกจำลอง Digital Member Card -->
-          <div id="modalCardLoaded" style="display: none;" class="points-modal-card">
-            <div class="points-modal-gold-bar"></div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <img src="kuekoonkan-logo.jpg" alt="Logo" style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #fbbf24;">
-                <div>
-                  <div style="font-size: 13px; font-weight: 700; color: #f8fafc; line-height: 1.2;">ร้านเกื้อกูลกัน</div>
-                  <div style="font-size: 10.5px; color: #94a3b8;">บัตรสมาชิกดิจิทัล (POSPOS)</div>
-                </div>
-              </div>
-              <span id="modalMemberGroup" class="member-group-badge">สมาชิกทั่วไป</span>
-            </div>
-
-            <div style="text-align: center; padding: 12px 0; background: rgba(0,0,0,0.25); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-              <div style="font-size: 11.5px; color: #cbd5e1; margin-bottom: 2px;">แต้มสะสมคงเหลือล่าสุด</div>
-              <div style="display: flex; align-items: baseline; justify-content: center; gap: 6px;">
-                <span id="modalPointVal" class="points-number">0</span>
-                <span class="points-unit">แต้ม</span>
-              </div>
-              <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">(ข้อมูลซิงค์ตรงจากระบบ POSPOS หน้าร้าน)</div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #e2e8f0; background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px;">
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">ชื่อสมาชิก:</span>
-                <strong id="modalMemberName" style="color: #ffffff;">-</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">เบอร์โทรศัพท์:</span>
-                <span id="modalMemberPhone" style="font-weight: 600;">-</span>
-              </div>
-              <div id="modalMemberCodeRow" style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">รหัสสมาชิก:</span>
-                <code id="modalMemberCode" style="color: #fbbf24;">-</code>
-              </div>
-            </div>
-
-            <div class="points-notice" style="text-align: center;">
-              💡 แต้มสะสมสามารถนำไปใช้เป็นส่วนลดได้ที่เคาน์เตอร์แคชเชียร์หน้าร้านเกื้อกูลกัน
-            </div>
-          </div>
-
-          <!-- สถานะกำลังโหลด -->
-          <div id="modalCardLoading" style="display: none; text-align: center; padding: 30px 10px; color: #64748b;">
-            <div class="spinner-sm" style="margin: 0 auto 10px auto; width: 22px; height: 22px; border-width: 3px;"></div>
-            <p style="font-size: 13px; font-weight: 600;">กำลังตรวจสอบข้อมูลสมาชิกจาก POSPOS...</p>
-          </div>
-
-          <!-- สถานะไม่พบสมาชิก -->
-          <div id="modalCardNotFound" style="display: none; text-align: center; padding: 24px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 14px; color: #991b1b;">
-            <div style="font-size: 28px; margin-bottom: 6px;">🔍</div>
-            <p style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">ไม่พบข้อมูลสมาชิกในระบบ POSPOS</p>
-            <p id="modalNotFoundPhoneText" style="font-size: 12.5px; color: #b91c1c; margin-bottom: 8px;">เบอร์โทรศัพท์นี้ยังไม่ได้ลงทะเบียนสมาชิก</p>
-            <p style="font-size: 12px; color: #7f1d1d; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px dashed #fca5a5;">
-              🏪 สามารถแจ้งเบอร์โทรศัพท์เพื่อสมัครสมาชิกและสะสมแต้มได้ฟรีทันที ที่เคาน์เตอร์หน้าร้านเกื้อกูลกันนะคะ
-            </p>
           </div>
         </div>
       </div>
@@ -889,6 +745,107 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-weight: 700; font-size: 16px;">฿<span id="floatCartPrice">0</span></span>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- Member Points Modal (บัตรสมาชิก & แต้มสะสม POSPOS)       -->
+  <!-- วางอยู่นอก viewProfile และ viewCatalog เพื่อให้เปิดได้เสมอ -->
+  <!-- ======================================================== -->
+  <div class="modal" id="memberPointsModal">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <span style="font-weight: 700; color: var(--text-main); font-size: 15px; display: flex; align-items: center; gap: 6px;">
+          <span>⭐</span> บัตรสมาชิก & แต้มสะสม (POSPOS)
+        </span>
+        <button class="btn-close" id="btnClosePointsModal" aria-label="ปิด" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div id="pointsModalContent" class="modal-body-scroll" style="padding: 16px;">
+        <!-- กล่องกรอก/เปลี่ยนเบอร์โทร -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">
+            📱 เบอร์โทรศัพท์สมาชิกที่ลงทะเบียนไว้กับหน้าร้าน:
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="tel" id="modalPhoneInput" placeholder="08X-XXX-XXXX" maxlength="12" inputmode="numeric"
+              style="flex: 1; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-weight: 600; color: #1e293b; outline: none;" />
+            <button id="btnModalCheckPoints" type="button"
+              style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);">
+              ตรวจสอบ
+            </button>
+          </div>
+          <div id="modalPhoneError" style="display: none; color: #ef4444; font-size: 11.5px; margin-top: 4px; font-weight: 500;">
+            * กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง
+          </div>
+        </div>
+
+        <!-- บัตรสมาชิกจำลอง Digital Member Card -->
+        <div id="modalCardLoaded" style="display: none;" class="points-modal-card">
+          <div class="points-modal-gold-bar"></div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="kuekoonkan-logo.jpg" alt="Logo" style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #fbbf24;">
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc; line-height: 1.2;">ร้านเกื้อกูลกัน</div>
+                <div style="font-size: 10.5px; color: #94a3b8;">บัตรสมาชิกดิจิทัล (POSPOS)</div>
+              </div>
+            </div>
+            <span id="modalMemberGroup" class="member-group-badge">สมาชิกทั่วไป</span>
+          </div>
+
+          <div style="text-align: center; padding: 12px 0; background: rgba(0,0,0,0.25); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11.5px; color: #cbd5e1; margin-bottom: 2px;">แต้มสะสมคงเหลือล่าสุด</div>
+            <div style="display: flex; align-items: baseline; justify-content: center; gap: 6px;">
+              <span id="modalPointVal" class="points-number">0</span>
+              <span class="points-unit">แต้ม</span>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">(ข้อมูลซิงค์ตรงจากระบบ POSPOS หน้าร้าน)</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #e2e8f0; background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">ชื่อสมาชิก:</span>
+              <strong id="modalMemberName" style="color: #ffffff;">-</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">เบอร์โทรศัพท์:</span>
+              <span id="modalMemberPhone" style="font-weight: 600;">-</span>
+            </div>
+            <div id="modalMemberCodeRow" style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">รหัสสมาชิก:</span>
+              <code id="modalMemberCode" style="color: #fbbf24;">-</code>
+            </div>
+          </div>
+
+          <div class="points-notice" style="text-align: center;">
+            💡 แต้มสะสมสามารถนำไปใช้เป็นส่วนลดได้ที่เคาน์เตอร์แคชเชียร์หน้าร้านเกื้อกูลกัน
+          </div>
+        </div>
+
+        <!-- สถานะกำลังโหลด -->
+        <div id="modalCardLoading" style="display: none; text-align: center; padding: 30px 10px; color: #64748b;">
+          <div class="spinner-sm" style="margin: 0 auto 10px auto; width: 22px; height: 22px; border-width: 3px;"></div>
+          <p style="font-size: 13px; font-weight: 600;">กำลังตรวจสอบข้อมูลสมาชิกจาก POSPOS...</p>
+        </div>
+
+        <!-- สถานะไม่พบสมาชิก -->
+        <div id="modalCardNotFound" style="display: none; text-align: center; padding: 24px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 14px; color: #991b1b;">
+          <div style="font-size: 28px; margin-bottom: 6px;">🔍</div>
+          <p style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">ไม่พบข้อมูลสมาชิกในระบบ POSPOS</p>
+          <p id="modalNotFoundPhoneText" style="font-size: 12.5px; color: #b91c1c; margin-bottom: 8px;">เบอร์โทรศัพท์นี้ยังไม่ได้ลงทะเบียนสมาชิก</p>
+          <p style="font-size: 12px; color: #7f1d1d; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px dashed #fca5a5;">
+            🏪 สามารถแจ้งเบอร์โทรศัพท์เพื่อสมัครสมาชิกและสะสมแต้มได้ฟรีทันที ที่เคาน์เตอร์หน้าร้านเกื้อกูลกันนะคะ
+          </p>
         </div>
       </div>
     </div>
