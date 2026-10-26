@@ -664,25 +664,32 @@ function renderProducts() {
 
   toRender.forEach(product => {
     const productImg = getOptimizedImageUrl(product.img);
+    const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
+    const isLowStock = !isOutOfStock && product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5;
 
     const card = document.createElement('div');
-    card.className = 'product-card animate-fade-in';
+    card.className = `product-card animate-fade-in ${isOutOfStock ? 'is-out-of-stock' : ''}`;
     card.innerHTML = `
       <div class="product-img-wrapper">
         <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
-        ${product.tag ? `<span class="product-tag">${product.tag}</span>` : ''}
+        ${isOutOfStock ? `<span class="product-tag tag-out-of-stock" style="background:#ef4444; color:#fff; font-weight:700;">สินค้าหมด</span>` : (product.tag ? `<span class="product-tag">${product.tag}</span>` : '')}
+        ${isLowStock ? `<span class="product-tag tag-low-stock" style="background:#f59e0b; color:#fff; font-weight:700; top:auto; bottom:8px;">เหลือ ${product.stock} ชิ้น</span>` : ''}
       </div>
       <div class="product-info">
         <h3 class="product-title">${product.name}</h3>
         <p class="product-desc" style="display: none;">${product.desc}</p>
         <div class="product-footer">
           <span class="product-price">฿${product.price}</span>
-          <button class="btn-action-sm btn-view-detail" data-id="${product.id}" title="ดูรายละเอียด">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
+          ${isOutOfStock ? `
+            <span class="badge-out-of-stock-label" style="font-size:11px; color:#ef4444; font-weight:700; background:#fee2e2; padding:3px 8px; border-radius:8px;">หมด</span>
+          ` : `
+            <button class="btn-action-sm btn-view-detail" data-id="${product.id}" title="ดูรายละเอียด">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          `}
         </div>
       </div>
     `;
@@ -744,20 +751,31 @@ function openProductDetail(productOrId) {
   }
 
   activeProduct = product;
-
+  const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
+  const isLowStock = !isOutOfStock && product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5;
   const productImg = getOptimizedImageUrl(product.img);
+
+  let stockNoticeHtml = '';
+  if (isOutOfStock) {
+    stockNoticeHtml = `<span class="modal-tag" style="background:#ef4444; color:#fff; font-weight:700;">❌ สินค้าหมดชั่วคราว</span>`;
+  } else if (isLowStock) {
+    stockNoticeHtml = `<span class="modal-tag" style="background:#f59e0b; color:#fff; font-weight:700;">⚡ เหลือเพียง ${product.stock} ชิ้น</span>`;
+  }
 
   modalContent.innerHTML = `
     <img class="modal-img" src="${productImg}" alt="${product.name}" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
     <h2 class="modal-title">${product.name}</h2>
-    <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin: 4px 0 10px 0;">
+      <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
+      ${stockNoticeHtml}
+    </div>
     <div class="modal-footer">
       <div>
         <p class="modal-price-label">ราคา</p>
         <span class="modal-price">฿${product.price}</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f5f5f5); border-radius: 12px; padding: 4px 8px;">
+        <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f5f5f5); border-radius: 12px; padding: 4px 8px; ${isOutOfStock ? 'opacity:0.4; pointer-events:none;' : ''}">
           <button id="btnQtyMinus" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--primary, #388BC2); color: white; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">−</button>
           <span id="modalQty" style="font-size: 18px; font-weight: bold; min-width: 28px; text-align: center;">1</span>
           <button id="btnQtyPlus" style="width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--primary, #388BC2); color: white; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">+</button>
@@ -775,9 +793,15 @@ function openProductDetail(productOrId) {
           <button class="btn-outline" id="btnOrderProduct">
             สอบถาม
           </button>
-          <button class="btn-primary" id="btnAddToCart">
-            🛒 ใส่ตะกร้า
-          </button>
+          ${isOutOfStock ? `
+            <button class="btn-primary" id="btnAddToCart" disabled style="background:#94a3b8; cursor:not-allowed; opacity:0.8;">
+              สินค้าหมด
+            </button>
+          ` : `
+            <button class="btn-primary" id="btnAddToCart">
+              🛒 ใส่ตะกร้า
+            </button>
+          `}
         </div>
       </div>
     </div>
@@ -803,14 +827,20 @@ function openProductDetail(productOrId) {
   });
   document.getElementById('btnQtyPlus').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (product.stock !== undefined && Number(product.stock) > 0 && modalQtyVal >= Number(product.stock)) {
+      alert(`สินค้านี้มีสต็อกคงเหลือ ${product.stock} ชิ้นครับ`);
+      return;
+    }
     modalQtyVal++; modalQtyEl.textContent = modalQtyVal;
   });
 
-  document.getElementById('btnAddToCart').addEventListener('click', (e) => {
-    e.stopPropagation();
-    addToCart(product, modalQtyVal);
-    closeModal();
-  });
+  if (!isOutOfStock) {
+    document.getElementById('btnAddToCart').addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToCart(product, modalQtyVal);
+      closeModal();
+    });
+  }
 
   // Click on the modal image to view in fullscreen lightbox
   const modalImg = modalContent.querySelector('.modal-img');
@@ -1080,7 +1110,19 @@ function addToCart(product, quantity = 1) {
     alert('ขออภัยครับ สินค้านี้ปิดการขายชั่วคราว');
     return;
   }
+  const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
+  if (isOutOfStock) {
+    alert('ขออภัยครับ สินค้านี้หมดชั่วคราว ไม่สามารถสั่งซื้อได้ในขณะนี้');
+    return;
+  }
+
   const existingItem = cart.find(item => item.id === product.id);
+  const currentQty = existingItem ? existingItem.qty : 0;
+  if (product.stock !== undefined && Number(product.stock) > 0 && (currentQty + quantity) > Number(product.stock)) {
+    alert(`ขออภัยครับ สินค้านี้มีสต็อกคงเหลือ ${product.stock} ชิ้น (ในตะกร้ามีแล้ว ${currentQty} ชิ้น)`);
+    return;
+  }
+
   if (existingItem) {
     existingItem.qty += quantity;
   } else {

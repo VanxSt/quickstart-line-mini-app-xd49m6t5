@@ -408,7 +408,7 @@ export default {
           const bindings = [];
 
           if (!includeAll) {
-            conditions.push("status = 'active'");
+            conditions.push("status != 'inactive'");
           }
           if (category && category !== 'ทั้งหมด') {
             conditions.push('category = ?');
@@ -434,6 +434,124 @@ export default {
             total: results ? results.length : 0,
             cachedAt: Date.now(),
           });
+        }
+
+        // ==========================================
+        // POSPOS DEVELOPER API (v0.3) INTEGRATION
+        // ==========================================
+        // Action: syncPospos OR GET/POST /api/pospos/sync
+        if (action === 'syncPospos' || url.pathname === '/api/pospos/sync') {
+          const apiKey = env.POSPOS_API_KEY;
+          if (!apiKey) {
+            return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY ยังไม่ได้ตั้งค่าใน Cloudflare Worker vars' }, 500);
+          }
+
+          try {
+            // ตรวจสอบและเพิ่มคอลัมน์ stock ในตาราง products อัตโนมัติ (Self-healing Schema)
+            try {
+              await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
+            } catch (e) {}
+
+            const posRes = await fetch('https://go.pospos.co/developer/api/stock', {
+              headers: {
+                'apikey': apiKey,
+                'Accept': 'application/json',
+                'User-Agent': 'Kuekoonkan-Worker/1.0'
+              }
+            });
+
+            if (!posRes.ok) {
+              const errText = await posRes.text();
+              return jsonResponse({ status: 'error', message: `POSPOS API ตอบกลับสถานะ ${posRes.status}: ${errText}` }, posRes.status);
+            }
+
+            const rawData = await posRes.json();
+            const items = Array.isArray(rawData) ? rawData : (rawData.data || rawData.stock || rawData.items || []);
+
+            if (!Array.isArray(items) || items.length === 0) {
+              return jsonResponse({ status: 'warning', message: 'POSPOS ตอบกลับข้อมูลสินค้าว่างเปล่า', count: 0 });
+            }
+
+            const updateStmt = db.prepare(`
+              UPDATE products
+              SET price = CASE WHEN ? > 0 THEN ? ELSE price END,
+                  stock = ?,
+                  status = CASE WHEN ? <= 0 THEN 'out_of_stock' ELSE 'active' END,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? OR name = ?
+            `);
+
+            let updatedCount = 0;
+            const batch = [];
+            const BATCH_SIZE = 50;
+
+            for (const item of items) {
+              const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
+              const name = String(item.name || item.product_name || '').trim();
+              const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
+              const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+
+              if (!barcode && !name) continue;
+
+              batch.push(updateStmt.bind(price, price, stock, stock, barcode, name));
+
+              if (batch.length >= BATCH_SIZE) {
+                await db.batch(batch.splice(0, batch.length));
+                updatedCount += BATCH_SIZE;
+              }
+            }
+
+            if (batch.length > 0) {
+              await db.batch(batch);
+              updatedCount += batch.length;
+            }
+
+            return jsonResponse({
+              status: 'success',
+              message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS เข้าสู่ระบบร้านเกื้อกูลกันสำเร็จ',
+              totalFromPospos: items.length,
+              processed: updatedCount,
+              syncedAt: new Date().toISOString()
+            });
+          } catch (syncErr) {
+            return jsonResponse({ status: 'error', message: 'Sync POSPOS error: ' + syncErr.message }, 500);
+          }
+        }
+
+        // Action: getPosposStockById OR GET /api/pospos/stock/:id
+        if (action === 'getPosposStockById' || url.pathname.startsWith('/api/pospos/stock/')) {
+          const apiKey = env.POSPOS_API_KEY;
+          if (!apiKey) return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY missing' }, 500);
+          const posId = url.pathname.startsWith('/api/pospos/stock/') ? url.pathname.split('/')[4] : url.searchParams.get('id');
+          if (!posId) return jsonResponse({ status: 'error', message: 'Missing product ID' }, 400);
+
+          try {
+            const res = await fetch(`https://go.pospos.co/developer/api/stock/${encodeURIComponent(posId)}`, {
+              headers: { 'apikey': apiKey }
+            });
+            const data = await res.json();
+            return jsonResponse({ status: 'success', data });
+          } catch (e) {
+            return jsonResponse({ status: 'error', message: e.message }, 500);
+          }
+        }
+
+        // Action: getPosposMember OR GET /api/pospos/member/:phone
+        if (action === 'getPosposMember' || url.pathname.startsWith('/api/pospos/member/')) {
+          const apiKey = env.POSPOS_API_KEY;
+          if (!apiKey) return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY missing' }, 500);
+          const rawPhone = url.pathname.startsWith('/api/pospos/member/') ? url.pathname.split('/')[4] : url.searchParams.get('phone');
+          const clean = cleanPhoneNumber(rawPhone);
+
+          try {
+            const res = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${clean}`, {
+              headers: { 'apikey': apiKey }
+            });
+            const data = await res.json();
+            return jsonResponse({ status: 'success', member: data });
+          } catch (e) {
+            return jsonResponse({ status: 'error', message: e.message }, 500);
+          }
         }
 
         // Action: getAllOrders OR GET /api/orders (Admin)
@@ -1344,16 +1462,20 @@ export default {
           });
         }
 
-        // 4.3 Action: syncProductsBatch OR POST /api/products/batch (Migrate/Sync Products from Sheets)
+        // 4.3 Action: syncProductsBatch OR POST /api/products/batch (Migrate/Sync Products from POSPOS/Sheets)
         if (postAction === 'syncProductsBatch' || url.pathname === '/api/products/batch') {
           const products = postData.products || [];
           if (!Array.isArray(products) || products.length === 0) {
             return jsonResponse({ status: 'success', imported: 0, message: 'No products provided' });
           }
 
+          try {
+            await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
+          } catch (e) {}
+
           const insertStmt = db.prepare(`
-            INSERT INTO products (id, name, category, price, desc, img, tag, status, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO products (id, name, category, price, desc, img, tag, status, stock, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET
               name = COALESCE(NULLIF(excluded.name, ''), products.name),
               category = COALESCE(NULLIF(excluded.category, ''), products.category),
@@ -1362,6 +1484,7 @@ export default {
               img = excluded.img,
               tag = COALESCE(NULLIF(excluded.tag, ''), products.tag),
               status = COALESCE(NULLIF(excluded.status, ''), products.status),
+              stock = COALESCE(excluded.stock, products.stock),
               updated_at = CURRENT_TIMESTAMP
           `);
 
@@ -1377,7 +1500,8 @@ export default {
                 p.desc || '',
                 p.img || '',
                 p.tag || '',
-                p.status || 'active'
+                p.status || 'active',
+                Number(p.stock ?? 0)
               )
             );
           }

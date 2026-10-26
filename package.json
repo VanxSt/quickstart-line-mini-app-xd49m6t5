@@ -8,7 +8,8 @@
     "build": "echo done",
     "cf:login": "npx wrangler login",
     "cf:deploy": "cd cloudflare && npx wrangler deploy",
-    "cf:seed": "node cloudflare/scripts/generate-seed.js"
+    "cf:seed": "node cloudflare/scripts/generate-seed.js",
+    "sync:pospos": "node sync-pospos.js"
   },
   "dependencies": {},
   "devDependencies": {

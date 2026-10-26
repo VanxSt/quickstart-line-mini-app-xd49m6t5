@@ -3268,4 +3268,38 @@ async function deletePromoCode(code) {
 }
 window.deletePromoCode = deletePromoCode;
 
+// ==========================================
+// POSPOS STOCK SYNC (Admin Action)
+// ==========================================
+async function syncPosposFromAdmin() {
+  const btn = document.getElementById('btnSyncPospos');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> กำลังซิงค์ POSPOS...';
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=syncPospos&_t=${Date.now()}`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      alert(`✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- จำนวนสินค้าจาก POSPOS: ${data.totalFromPospos || 0} รายการ\n- อัปเดตราคาและสต็อกลงระบบ: ${data.processed || 0} รายการ\n\nLINE Mini App จะแสดงข้อมูลล่าสุดทันทีครับ`);
+      if (typeof fetchProducts === 'function') {
+        fetchProducts(true);
+      }
+    } else {
+      alert(`⚠️ การซิงค์ไม่สำเร็จ: ${data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์'}`);
+    }
+  } catch (err) {
+    alert(`❌ เกิดข้อผิดพลาดในการเชื่อมต่อกับ POSPOS: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+}
+window.syncPosposFromAdmin = syncPosposFromAdmin;
+
+
 
