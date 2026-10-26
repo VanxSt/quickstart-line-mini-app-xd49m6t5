@@ -3333,9 +3333,6 @@ async function syncInactiveProductStatuses() {
           }
         });
         if (anyChanged) {
-          try {
-            localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-          } catch (e) { }
           initCategoryFilters();
           renderProducts();
 
@@ -3397,62 +3394,28 @@ function sanitizeProductList(items) {
 async function doLoadProducts() {
   const grid = document.getElementById('productsGrid');
 
-  // ล้างแคชเก่า v1 และ v2 ที่อาจเคยบันทึกรูปเทป B.K. ค้างอยู่ในเบราว์เซอร์ของลูกค้า
+  // ล้างแคชในเครื่องทั้งหมดออกอย่างสมบูรณ์
   try {
     localStorage.removeItem('cached_products');
     localStorage.removeItem('cached_products_v2');
+    localStorage.removeItem('cached_products_v3');
+    localStorage.removeItem('cached_admin_products');
   } catch (e) {}
 
-  // 1. ระดับที่ 1: ดึงจาก Cache ทันที (0ms) เพื่อให้สินค้าขึ้นทันทีตั้งแต่เปิดหน้า
-  if (!catalogLoaded) {
-    try {
-      const cached = localStorage.getItem('cached_products_v3');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        const cachedProducts = Array.isArray(parsed) ? parsed : (parsed.products || []);
-        if (cachedProducts && cachedProducts.length > 0) {
-          PRODUCTS = sanitizeProductList(cachedProducts);
-          catalogLoaded = true;
-          initCategoryFilters();
-          renderProducts();
-          console.log(`Loaded ${PRODUCTS.length} products from local cache v3 (0ms)`);
-        }
-      }
-    } catch (e) {
-      console.warn('Cache product parse error:', e);
-    }
+  // แสดงสถานะกำลังโหลดจากฐานข้อมูลสด
+  if (!catalogLoaded && grid) {
+    grid.innerHTML = `
+      <div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)">
+        <div class="loading-spinner" style="margin: 0 auto 12px auto; width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: var(--primary, #388BC2); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <p style="font-size:15px;font-weight:600;">กำลังดึงข้อมูลสินค้าล่าสุดจากฐานข้อมูล...</p>
+      </div>
+    `;
   }
 
-  // 2. ระดับที่ 2: ถ้าในแคชยังไม่มี ให้โหลดจาก products.json (Static CDN โหลดเร็ว ~50ms ไม่ล่มแน่นอน)
-  if (!catalogLoaded) {
-    if (grid) {
-      grid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><p style="font-size:15px;font-weight:600;">กำลังโหลดรายการสินค้า...</p></div>';
-    }
-    try {
-      const staticRes = await fetch('products.json?v=' + Date.now(), { cache: 'default' });
-      if (staticRes.ok) {
-        const staticData = await staticRes.json();
-        const staticProducts = Array.isArray(staticData) ? staticData : (staticData.products || []);
-        if (staticProducts && staticProducts.length > 0) {
-          PRODUCTS = sanitizeProductList(staticProducts);
-          catalogLoaded = true;
-          initCategoryFilters();
-          renderProducts();
-          try {
-            localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-          } catch (e) {}
-          console.log(`Loaded ${PRODUCTS.length} products from products.json`);
-        }
-      }
-    } catch (err) {
-      console.warn('products.json fetch error:', err);
-    }
-  }
-
-  // 3. ระดับที่ 3: ซิงค์ข้อมูลล่าสุดจาก Cloudflare Worker API (แบบ Background ไม่บล็อก UI)
+  // ดึงข้อมูลสดจาก Cloudflare D1 Database โดยตรงทุกครั้ง (ไม่ผ่าน LocalStorage และไม่ผ่าน products.json)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
       signal: controller.signal,
       cache: 'no-store'
@@ -3462,32 +3425,28 @@ async function doLoadProducts() {
     if (response.ok) {
       const data = await response.json();
       if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-        const cleaned = sanitizeProductList(data.products);
-        const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(cleaned);
-        PRODUCTS = cleaned;
+        PRODUCTS = sanitizeProductList(data.products);
         catalogLoaded = true;
-        try {
-          localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
-        } catch (e) {}
-        if (changed) {
-          initCategoryFilters();
-          renderProducts();
-        }
-        console.log(`Live product sync completed: ${PRODUCTS.length} items`);
+        initCategoryFilters();
+        renderProducts();
+        console.log(`Live product sync from Database completed: ${PRODUCTS.length} items`);
         return;
       }
     }
+    throw new Error('ไม่พบข้อมูลสินค้าจากฐานข้อมูล');
   } catch (error) {
-    console.warn('Live catalog refresh background sync:', error.message);
-  }
-
-  // 4. Fallback ระดับสุดท้าย: หากไม่มีข้อมูลจากทั้ง 3 ช่องทาง ให้ใช้ Mock Products
-  if (!catalogLoaded || !PRODUCTS || PRODUCTS.length === 0) {
-    console.warn('Falling back to mock products');
-    PRODUCTS = getMockProducts();
-    catalogLoaded = true;
-    initCategoryFilters();
-    renderProducts();
+    console.error('Database fetch error:', error.message);
+    if (!catalogLoaded) {
+      if (grid) {
+        grid.innerHTML = `
+          <div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light);">
+            <p style="font-size:15px;font-weight:600;color:#ef4444;">⚠️ ไม่สามารถดึงข้อมูลสินค้าจากฐานข้อมูลได้</p>
+            <p style="font-size:13px;color:#64748b;margin-top:4px;">${error.message || 'กรุณาลองใหม่อีกครั้ง'}</p>
+            <button onclick="loadProducts()" class="btn-primary" style="margin-top:14px;padding:8px 18px;border-radius:10px;cursor:pointer;">🔄 ลองโหลดใหม่อีกครั้ง</button>
+          </div>
+        `;
+      }
+    }
   }
 }
 

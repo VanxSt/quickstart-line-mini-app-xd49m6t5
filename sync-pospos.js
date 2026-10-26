@@ -230,8 +230,8 @@ async function runSync() {
     const pId = String(product.id || '').trim();
     const pName = String(product.name || '').trim().toLowerCase();
 
-    // ค้นหาใน POSPOS ด้วย Barcode ก่อน แล้วค่อยหาด้วยชื่อ
-    const posMatch = posposByBarcode.get(pId) || posposByName.get(pName);
+    // ค้นหาใน POSPOS ด้วยรหัสสินค้า (Barcode/ID) เท่านั้น
+    const posMatch = posposByBarcode.get(pId);
 
     if (posMatch) {
       matchedCount++;

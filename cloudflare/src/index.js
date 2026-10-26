@@ -479,44 +479,56 @@ export default {
               return jsonResponse({ status: 'warning', message: 'POSPOS ตอบกลับข้อมูลสินค้าว่างเปล่า', count: 0 });
             }
 
+            // 1. จัดทำ Map ข้อมูลสต็อกและราคาจาก POSPOS โดยใช้รหัสสินค้า (Barcode/ID) เป็นคีย์หลักเท่านั้น
+            const posposMap = new Map();
+            for (const item of items) {
+              const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
+              if (!barcode) continue;
+              const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
+              const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+              posposMap.set(barcode, { price, stock });
+            }
+
+            // 2. ดึงเฉพาะรายการสินค้าที่มีอยู่ใน Mini App ปัจจุบัน
+            const { results: appProducts } = await db.prepare('SELECT id FROM products').all();
+            const totalAppProducts = appProducts ? appProducts.length : 0;
+
+            // 3. เตรียมคำสั่ง UPDATE โดยตรวจสอบจากรหัสสินค้า (id) ตรงกันเท่านั้น
             const updateStmt = db.prepare(`
               UPDATE products
               SET price = CASE WHEN ? > 0 THEN ? ELSE price END,
                   stock = ?,
                   status = CASE WHEN ? <= 0 THEN 'out_of_stock' ELSE 'active' END,
                   updated_at = CURRENT_TIMESTAMP
-              WHERE id = ? OR name = ?
+              WHERE id = ?
             `);
 
             let updatedCount = 0;
             const batch = [];
             const BATCH_SIZE = 50;
 
-            for (const item of items) {
-              const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
-              const name = String(item.name || item.product_name || '').trim();
-              const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
-              const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+            for (const p of (appProducts || [])) {
+              const pId = String(p.id || '').trim();
+              if (pId && posposMap.has(pId)) {
+                const pos = posposMap.get(pId);
+                batch.push(updateStmt.bind(pos.price, pos.price, pos.stock, pos.stock, pId));
+                updatedCount++;
 
-              if (!barcode && !name) continue;
-
-              batch.push(updateStmt.bind(price, price, stock, stock, barcode, name));
-
-              if (batch.length >= BATCH_SIZE) {
-                await db.batch(batch.splice(0, batch.length));
-                updatedCount += BATCH_SIZE;
+                if (batch.length >= BATCH_SIZE) {
+                  await db.batch(batch.splice(0, batch.length));
+                }
               }
             }
 
             if (batch.length > 0) {
               await db.batch(batch);
-              updatedCount += batch.length;
             }
 
             return jsonResponse({
               status: 'success',
-              message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS เข้าสู่ระบบร้านเกื้อกูลกันสำเร็จ',
+              message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS สำหรับสินค้าใน Mini App สำเร็จ',
               totalFromPospos: items.length,
+              totalInApp: totalAppProducts,
               processed: updatedCount,
               syncedAt: new Date().toISOString()
             });

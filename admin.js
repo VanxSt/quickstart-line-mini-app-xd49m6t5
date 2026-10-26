@@ -2125,56 +2125,23 @@ async function fetchProducts(showLoading = true) {
 
   isProductsLoading = true;
 
-  // 1. โหลดข้อมูลจาก LocalStorage Cache ทันที (0ms) เพื่อให้ไม่ต้องรอ
   try {
-    const cached = localStorage.getItem('cached_admin_products');
-    if (cached && allProducts.length === 0) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        processIncomingProducts(parsed);
-      }
-    }
-  } catch (e) { }
+    localStorage.removeItem('cached_admin_products');
+  } catch (e) {}
 
   let fetchedData = null;
 
-  // ดึงจาก Cloudflare D1 เสมอเพื่อให้ได้สต็อกสดจริงจาก POSPOS
+  // ดึงจาก Cloudflare D1 โดยตรงเสมอทุกครั้ง
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
         fetchedData = data.products;
       }
     }
-  } catch (err) { }
-
-  // หากยังไม่ได้ ให้ fallback ไปยัง static products.json
-  if (!fetchedData) {
-    try {
-      const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-          fetchedData = data.products;
-        }
-      }
-    } catch (err) { }
-  }
-
-  // Fallback ไปยัง Cloudflare D1 อีกครั้งหาก products.json โหลดไม่ได้
-  if (!fetchedData) {
-    try {
-      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-          fetchedData = data.products;
-        }
-      }
-    } catch (err) {
-      console.error('Fetch products error:', err);
-    }
+  } catch (err) {
+    console.error('Fetch products error:', err);
   }
 
   if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
@@ -2203,10 +2170,6 @@ function processIncomingProducts(products) {
   allProducts = products || [];
   adminProducts = allProducts;
   isAdminProductsLoaded = true;
-
-  try {
-    localStorage.setItem('cached_admin_products', JSON.stringify(allProducts));
-  } catch (e) { }
 
   populateCategoryAndTagFilters();
   applyProductFilters();
@@ -3426,7 +3389,7 @@ async function syncPosposFromAdmin() {
     const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=syncPospos&_t=${Date.now()}`);
     const data = await res.json();
     if (data.status === 'success') {
-      alert(`✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- จำนวนสินค้าจาก POSPOS: ${data.totalFromPospos || 0} รายการ\n- อัปเดตราคาและสต็อกลงระบบ: ${data.processed || 0} รายการ\n\nLINE Mini App จะแสดงข้อมูลล่าสุดทันทีครับ`);
+      alert(`✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- สินค้าในระบบ Mini App: ${data.totalInApp || 0} รายการ\n- อัปเดตราคาและสต็อกตรงรหัส: ${data.processed || 0} รายการ\n(จากคลังสินค้า POSPOS ทั้งหมด ${data.totalFromPospos || 0} รายการ)\n\nLINE Mini App ได้รับข้อมูลล่าสุดเรียบร้อยครับ`);
       if (typeof fetchProducts === 'function') {
         fetchProducts(true);
       }
