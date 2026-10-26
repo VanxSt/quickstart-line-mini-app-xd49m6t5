@@ -9,7 +9,7 @@
   
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="catalog.css?v=6" />
+  <link rel="stylesheet" href="catalog.css?v=7" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -618,6 +618,30 @@
             </button>
           </div>
 
+          <!-- Promo Code / Coupon Section -->
+          <div class="checkout-section">
+            <div class="promo-code-box" id="promoCodeContainer">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="font-weight: 700; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                  <span>🎟️</span> โค้ดคูปองส่วนลด
+                </div>
+                <span id="couponBadge" style="display: none; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #dcfce7; color: #15803d;">✓ ใช้คูปองแล้ว</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="couponCodeInput" placeholder="พิมพ์โค้ดส่วนลด..." style="flex: 1; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" />
+                <button type="button" id="btnApplyCoupon" class="btn-primary" style="padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 13.5px; white-space: nowrap;">ใช้โค้ด</button>
+              </div>
+              <div id="couponMessage" style="display: none; font-size: 12px; margin-top: 6px; font-weight: 500;"></div>
+              <!-- Quick Coupon Recommendations -->
+              <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 11.5px; color: #64748b; font-weight: 500;">แนะนำ:</span>
+                <button type="button" class="coupon-chip" onclick="applyPromoChip('WELCOME50')" style="background: #eff6ff; border: 1px dashed #3b82f6; color: #1d4ed8; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🏷️ WELCOME50 (ลด 50฿)</button>
+                <button type="button" class="coupon-chip" onclick="applyPromoChip('FREESHIP')" style="background: #f0fdf4; border: 1px dashed #10b981; color: #047857; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🚚 FREESHIP (ส่งฟรี)</button>
+                <button type="button" class="coupon-chip" onclick="applyPromoChip('KUE10')" style="background: #fefce8; border: 1px dashed #eab308; color: #854d0e; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">✨ KUE10 (ลด 10%)</button>
+              </div>
+            </div>
+          </div>
+
           <div class="checkout-section">
             <!-- Checkout Total Summary Card -->
             <div class="checkout-total-banner"
@@ -630,6 +654,10 @@
               <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
                 <span style="color: #38bdf8;">🚚 ค่าจัดส่ง (<span id="checkoutDistanceLabel">1 กม.</span>):</span>
                 <strong id="checkoutShippingFeeText" style="color: #38bdf8;">฿0</strong>
+              </div>
+              <div id="checkoutCouponRow" style="display: none; justify-content: space-between; font-size: 14px; margin-bottom: 6px; color: #4ade80;">
+                <span>🎟️ ส่วนลดคูปอง (<span id="checkoutCouponCodeLabel"></span>):</span>
+                <strong id="checkoutCouponDiscountText">-฿0</strong>
               </div>
               <div id="checkoutDiscountNote"
                 style="font-size: 12px; color: #4ade80; margin-bottom: 8px; font-weight: 500;"></div>
@@ -702,7 +730,7 @@
   </div>
 
   <!-- Catalog Logic Script -->
-  <script src="catalog.js?v=21"></script>
+  <script src="catalog.js?v=22"></script>
 </body>
 
 </html>

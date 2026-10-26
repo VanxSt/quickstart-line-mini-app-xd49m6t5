@@ -39,6 +39,241 @@ function formatThaiPhoneNumber(raw) {
   return num;
 }
 
+// ========================================================
+// 1. PROMO CODE / COUPON SYSTEM
+// ========================================================
+const PROMO_CODES = {
+  'WELCOME50': {
+    code: 'WELCOME50',
+    type: 'fixed',
+    amount: 50,
+    minSpend: 100,
+    desc: 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100'
+  },
+  'FREESHIP': {
+    code: 'FREESHIP',
+    type: 'shipping',
+    amount: 0,
+    minSpend: 0,
+    desc: 'ฟรีค่าจัดส่งทุกระยะทาง'
+  },
+  'KUE10': {
+    code: 'KUE10',
+    type: 'percent',
+    percent: 10,
+    minSpend: 150,
+    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150'
+  },
+  'COFFEE20': {
+    code: 'COFFEE20',
+    type: 'fixed',
+    amount: 20,
+    minSpend: 60,
+    desc: 'ส่วนลด ฿20 เมื่อสั่งซื้อขั้นต่ำ ฿60'
+  }
+};
+
+let appliedCoupon = null;
+
+function applyPromoCode(inputCode) {
+  const code = String(inputCode || '').trim().toUpperCase();
+  const msgEl = document.getElementById('couponMessage');
+  const badgeEl = document.getElementById('couponBadge');
+  const container = document.getElementById('promoCodeContainer');
+  const inputEl = document.getElementById('couponCodeInput');
+
+  if (!code) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = 'กรุณากรอกโค้ดส่วนลด';
+    }
+    return;
+  }
+
+  const promo = PROMO_CODES[code];
+  if (!promo) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = `❌ ไม่พบโค้ด "${code}" หรือโค้ดนี้หมดอายุแล้ว`;
+    }
+    if (container) container.classList.remove('applied');
+    if (badgeEl) badgeEl.style.display = 'none';
+    appliedCoupon = null;
+    calculateCheckoutTotal();
+    return;
+  }
+
+  // คำนวณยอดรวมสินค้าเพื่อตรวจ minSpend
+  const subtotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  if (subtotal < promo.minSpend) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#dc2626';
+      msgEl.textContent = `⚠️ โค้ดนี้ต้องมียอดซื้อสินค้าขั้นต่ำ ฿${promo.minSpend} (ยอดปัจจุบัน ฿${subtotal})`;
+    }
+    appliedCoupon = null;
+    calculateCheckoutTotal();
+    return;
+  }
+
+  appliedCoupon = promo;
+  if (inputEl) inputEl.value = code;
+  if (container) container.classList.add('applied');
+  if (badgeEl) {
+    badgeEl.style.display = 'inline-block';
+    badgeEl.textContent = `✓ ใช้โค้ด ${code} สำเร็จ!`;
+  }
+  if (msgEl) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = `🎉 ${promo.desc}`;
+  }
+
+  calculateCheckoutTotal();
+}
+
+function removePromoCode() {
+  appliedCoupon = null;
+  const msgEl = document.getElementById('couponMessage');
+  const badgeEl = document.getElementById('couponBadge');
+  const container = document.getElementById('promoCodeContainer');
+  const inputEl = document.getElementById('couponCodeInput');
+
+  if (inputEl) inputEl.value = '';
+  if (container) container.classList.remove('applied');
+  if (badgeEl) badgeEl.style.display = 'none';
+  if (msgEl) {
+    msgEl.style.display = 'none';
+  }
+  calculateCheckoutTotal();
+}
+
+window.applyPromoChip = function(code) {
+  const inputEl = document.getElementById('couponCodeInput');
+  if (inputEl) inputEl.value = code;
+  applyPromoCode(code);
+};
+
+// ========================================================
+// 2. UPSELLING / CROSS-SELLING SYSTEM
+// ========================================================
+function renderUpsellSection(container) {
+  if (!container || cart.length === 0 || !PRODUCTS || PRODUCTS.length === 0) return;
+
+  const cartIds = new Set(cart.map(c => String(c.id)));
+  let candidates = PRODUCTS.filter(p => !cartIds.has(String(p.id)) && (!p.status || String(p.status).toLowerCase() !== 'inactive'));
+  if (candidates.length === 0) return;
+
+  // จัดลำดับความน่าสนใจ: หมวด bakery, ของทานเล่น, dessert หรือสุ่ม 4 รายการ
+  const prioritized = candidates.filter(p => {
+    const cat = String(p.category || '').toLowerCase();
+    const name = String(p.name || '').toLowerCase();
+    return cat.includes('bakery') || cat.includes('เบเกอรี่') || cat.includes('ขนม') || cat.includes('dessert') || name.includes('ครัวซอง') || name.includes('เค้ก') || name.includes('คุกกี้');
+  });
+
+  const upsellItems = (prioritized.length >= 3 ? prioritized : candidates).slice(0, 4);
+  if (upsellItems.length === 0) return;
+
+  const upsellWrapper = document.createElement('div');
+  upsellWrapper.className = 'cart-upsell-wrapper';
+  upsellWrapper.innerHTML = `
+    <div style="font-weight: 700; font-size: 13.5px; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="display: flex; align-items: center; gap: 6px;">
+        <span>✨</span> สั่งทานคู่กัน ยิ่งฟิน! (เมนูแนะนำ)
+      </span>
+      <span style="font-size: 11px; color: #64748b; font-weight: 500;">แตะเพื่อเพิ่ม</span>
+    </div>
+    <div class="upsell-items-scroll">
+      ${upsellItems.map(item => `
+        <div class="upsell-card">
+          <img src="${getOptimizedImageUrl(item.img)}" alt="${item.name}" class="upsell-img" onerror="this.onerror=null; this.src='https://placehold.co/200x200/f3f0ec/a88b62?text=Item';" />
+          <div class="upsell-title" title="${item.name}">${item.name}</div>
+          <div class="upsell-price">฿${(Number(item.price) || 0).toLocaleString()}</div>
+          <button type="button" class="btn-upsell-add" onclick="addUpsellToCart('${item.id}')">
+            <span>+</span> เพิ่ม
+          </button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  container.appendChild(upsellWrapper);
+}
+
+window.addUpsellToCart = function(productId) {
+  const product = PRODUCTS.find(p => String(p.id) === String(productId));
+  if (!product) return;
+  addToCart(product, 1);
+  renderCartItems();
+};
+
+// ========================================================
+// 3. VISUAL ORDER TIMELINE STEPPER
+// ========================================================
+function renderOrderTimeline(status) {
+  const normStatus = String(status || '').trim();
+  let currentStep = 1;
+  let isCancelled = false;
+
+  if (normStatus === 'ยกเลิก') {
+    isCancelled = true;
+  } else if (normStatus === 'จัดส่งสำเร็จ') {
+    currentStep = 4;
+  } else if (normStatus === 'กำลังจัดส่ง' || normStatus === 'จัดส่งแล้ว') {
+    currentStep = 3;
+  } else if (normStatus === 'กำลังจัดเตรียมสินค้า' || normStatus === 'ชำระเงิน' || normStatus === 'ยืนยันแล้ว' || normStatus === 'รอชำระเงิน') {
+    currentStep = 2;
+  } else {
+    currentStep = 1;
+  }
+
+  if (isCancelled) {
+    return `
+      <div class="order-timeline-stepper" style="background: #fef2f2; border-color: #fecaca; margin-top: 12px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #dc2626; font-weight: 700; font-size: 13px;">
+          <span>❌</span> คำสั่งซื้อนี้ถูกยกเลิกแล้ว
+        </div>
+      </div>
+    `;
+  }
+
+  const steps = [
+    { num: 1, label: 'รับออเดอร์', icon: '⏳', desc: 'ร้านค้าได้รับคำสั่งซื้อแล้ว รอการตรวจสอบ' },
+    { num: 2, label: 'กำลังเตรียม', icon: '👨‍🍳', desc: 'ทางร้านกำลังพิถีพิถันจัดเตรียมสินค้าของคุณ' },
+    { num: 3, label: 'กำลังส่ง', icon: '🛵', desc: 'สินค้ากำลังเดินทางไปยังปลายทางของคุณ' },
+    { num: 4, label: 'ส่งสำเร็จ', icon: '✅', desc: 'สินค้าจัดส่งถึงคุณเรียบร้อยแล้ว ขอบคุณที่ใช้บริการครับ' }
+  ];
+
+  const progressPercent = Math.round(((currentStep - 1) / (steps.length - 1)) * 100);
+  const activeDesc = steps[currentStep - 1].desc;
+
+  return `
+    <div class="order-timeline-stepper">
+      <div class="timeline-track">
+        <div class="timeline-track-base"></div>
+        <div class="timeline-track-progress" style="width: calc(${progressPercent}% - 30px);"></div>
+        ${steps.map(s => {
+          let stateClass = '';
+          if (s.num < currentStep) stateClass = 'completed';
+          else if (s.num === currentStep) stateClass = 'active';
+          return `
+            <div class="timeline-step ${stateClass}">
+              <div class="step-dot">
+                ${s.num < currentStep ? '✓' : s.icon}
+              </div>
+              <span class="step-label">${s.label}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="timeline-desc-box">
+        💡 <strong>ความคืบหน้า:</strong> ${activeDesc}
+      </div>
+    </div>
+  `;
+}
+
 // Helper สำหรับปรับแต่ง URL รูปภาพเพื่อประสิทธิภาพสูงสุด (แปลงเป็น WebP และย่อขนาดหากมี CDN รองรับ)
 function getOptimizedImageUrl(url) {
   if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
@@ -779,6 +1014,9 @@ function renderCartItems() {
 
   totalPriceEl.textContent = `฿${total}`;
   btnGoToCheckout.disabled = false;
+
+  // แสดงแถบสินค้าแนะนำ (Upselling / Cross-selling)
+  renderUpsellSection(cartBody);
 }
 
 // Bind to window for inline HTML onclick handlers
@@ -1227,7 +1465,39 @@ function calculateCheckoutTotal() {
     }
   }
 
-  const grandTotal = subtotal + shippingFee;
+  // คำนวณส่วนลดจากคูปอง (ถ้ามี)
+  let discountAmount = 0;
+  let couponLabel = '';
+
+  if (appliedCoupon) {
+    if (appliedCoupon.type === 'shipping') {
+      discountAmount = shippingFee;
+      shippingFee = 0;
+      couponLabel = `${appliedCoupon.code} (ส่งฟรี)`;
+    } else if (appliedCoupon.type === 'percent') {
+      discountAmount = Math.round(subtotal * (appliedCoupon.percent / 100));
+      couponLabel = `${appliedCoupon.code} (-${appliedCoupon.percent}%)`;
+    } else if (appliedCoupon.type === 'fixed') {
+      discountAmount = Math.min(subtotal, appliedCoupon.amount);
+      couponLabel = `${appliedCoupon.code} (-฿${appliedCoupon.amount})`;
+    }
+  }
+
+  const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  // อัปเดตแถวคูปองใน Banner
+  const couponRow = document.getElementById('checkoutCouponRow');
+  const couponCodeLabel = document.getElementById('checkoutCouponCodeLabel');
+  const couponDiscountText = document.getElementById('checkoutCouponDiscountText');
+  if (couponRow) {
+    if (appliedCoupon && discountAmount > 0) {
+      couponRow.style.display = 'flex';
+      if (couponCodeLabel) couponCodeLabel.textContent = couponLabel;
+      if (couponDiscountText) couponDiscountText.textContent = `-฿${discountAmount.toLocaleString()}`;
+    } else {
+      couponRow.style.display = 'none';
+    }
+  }
 
   const subtotalEl = document.getElementById('checkoutSubtotalText');
   if (subtotalEl) subtotalEl.textContent = `฿${subtotal.toLocaleString()}`;
@@ -1273,6 +1543,8 @@ function calculateCheckoutTotal() {
   return {
     subtotal: subtotal,
     shippingFee: shippingFee,
+    discountAmount: discountAmount,
+    couponCode: appliedCoupon ? appliedCoupon.code : '',
     grandTotal: grandTotal,
     distanceKm: distKm
   };
@@ -1520,7 +1792,7 @@ async function fetchMemberInfo(userId) {
   }
 }
 
-async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0, paymentMethod = '') {
+async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems = [], deliveryType = 'ทันที', preorderTime = '', shippingOption = 'จัดส่ง', subtotal = 0, shippingFee = 0, paymentMethod = '', discountAmount = 0, couponCode = '') {
   const calcSubtotal = subtotal || cartItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   const calcShippingFee = shippingOption === 'รับหน้าร้าน' ? 0 : (shippingFee || Math.max(0, totalPrice - calcSubtotal));
 
@@ -1702,6 +1974,14 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
               { type: "text", text: calcShippingFee > 0 ? `฿${calcShippingFee.toLocaleString()}` : "ฟรี (฿0)", size: "sm", color: calcShippingFee > 0 ? "#0f172a" : "#16a34a", weight: "bold", align: "end", flex: 3 }
             ]
           },
+          ...(discountAmount > 0 ? [{
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              { type: "text", text: `🎟️ ส่วนลดคูปอง (${couponCode})`, size: "sm", color: "#e11d48", flex: 4 },
+              { type: "text", text: `-฿${discountAmount.toLocaleString()}`, size: "sm", color: "#e11d48", weight: "bold", align: "end", flex: 2 }
+            ]
+          }] : []),
           { type: "separator", margin: "sm" },
           {
             type: "box",
@@ -1869,6 +2149,9 @@ async function loadMyOrders() {
             <div style="font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: #475569;">รายการสินค้า:</div>
             ${itemsHtml}
           </div>
+
+          <!-- ติดตามสถานะคำสั่งซื้อแบบ Visual Timeline Stepper -->
+          ${renderOrderTimeline(order.status)}
           
           <!-- ปุ่ม Action -->
           <div style="display: flex; gap: 8px; width: 100%; margin-top: 12px;">
@@ -2429,6 +2712,8 @@ if (btnSubmitOrder) {
       totalPrice: totals.grandTotal,
       subtotalPrice: totals.subtotal,
       shippingFee: totals.shippingFee,
+      discountAmount: totals.discountAmount || 0,
+      couponCode: totals.couponCode || '',
       distanceKm: totals.distanceKm,
       deliveryType: deliveryType,
       preorderTime: preorderTimeStr,
@@ -2474,10 +2759,11 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, formatThaiPhoneNumber(phone), totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee, paymentMethod);
+        await sendOrderFlexMessage(orderId, name, formatThaiPhoneNumber(phone), totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee, paymentMethod, totals.discountAmount || 0, totals.couponCode || '');
       }
 
-      // เคลียร์ตะกร้าและปิด Modal ทันที
+      // เคลียร์คูปอง ตะกร้า และปิด Modal ทันที
+      removePromoCode();
       const noteInputEl = document.getElementById('checkoutNote');
       if (noteInputEl) noteInputEl.value = '';
       clearCart();
@@ -2497,6 +2783,21 @@ if (btnSubmitOrder) {
       alert('❌ เกิดข้อผิดพลาดในระบบแอปพลิเคชัน กรุณาลองใหม่อีกครั้ง');
       btnSubmitOrder.disabled = false;
       const btnSubmitText = document.getElementById('btnSubmitText'); if (btnSubmitText) btnSubmitText.textContent = 'ยืนยันการสั่งซื้อ'; else btnSubmitOrder.textContent = 'ยืนยันการสั่งซื้อและส่งข้อมูล';
+    }
+  });
+}
+
+// Promo Code / Coupon Event Listeners
+const btnApplyCoupon = document.getElementById('btnApplyCoupon');
+const couponCodeInput = document.getElementById('couponCodeInput');
+if (btnApplyCoupon && couponCodeInput) {
+  btnApplyCoupon.addEventListener('click', () => {
+    applyPromoCode(couponCodeInput.value);
+  });
+  couponCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyPromoCode(couponCodeInput.value);
     }
   });
 }

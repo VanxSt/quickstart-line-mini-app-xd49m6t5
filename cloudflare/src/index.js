@@ -920,6 +920,9 @@ export default {
           } else if (data.deliveryType === 'ล่วงหน้า' && data.preorderTime) {
             displayAddress = `🕒 [สั่งล่วงหน้า: ${data.preorderTime} น.] ${data.addressDetails || ''}`;
           }
+          if (data.couponCode && Number(data.discountAmount) > 0) {
+            displayAddress += `\n🎟️ โค้ดส่วนลด: ${data.couponCode} (-฿${Number(data.discountAmount).toLocaleString()})`;
+          }
           if (data.note) {
             displayAddress += `\n📝 หมายเหตุ: ${data.note.trim()}`;
           }

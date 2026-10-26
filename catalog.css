@@ -1456,4 +1456,210 @@ body.no-scroll {
 .cart-modal-footer,
 .checkout-modal-footer {
   padding-bottom: 90px !important;
+}
+
+/* ========================================================
+   1. PROMO CODE / COUPON SYSTEM
+   ======================================================== */
+.promo-code-box {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  transition: all 0.25s ease;
+}
+.promo-code-box.applied {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+.coupon-chip {
+  transition: all 0.2s ease;
+}
+.coupon-chip:hover, .coupon-chip:active {
+  transform: translateY(-1px) scale(1.02);
+  filter: brightness(0.95);
+}
+
+/* ========================================================
+   2. UPSELLING / CROSS-SELLING IN CART
+   ======================================================== */
+.cart-upsell-wrapper {
+  margin-top: 16px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+.upsell-items-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.upsell-card {
+  flex: 0 0 135px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.upsell-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.upsell-img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.upsell-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+  height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.upsell-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-color, #2563eb);
+  margin-top: 4px;
+}
+.btn-upsell-add {
+  margin-top: 8px;
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  background: var(--primary-color, #388BC2);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.2s ease;
+}
+.btn-upsell-add:active {
+  transform: scale(0.96);
+}
+
+/* ========================================================
+   3. VISUAL ORDER TIMELINE STEPPER
+   ======================================================== */
+.order-timeline-stepper {
+  margin-top: 14px;
+  padding: 14px 12px 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+.timeline-track {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+.timeline-track-base {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+.timeline-track-progress {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  z-index: 2;
+  transition: width 0.4s ease;
+}
+.timeline-step {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  transition: all 0.3s ease;
+}
+.timeline-step.completed .step-dot {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+.timeline-step.active .step-dot {
+  background: #2563eb;
+  border-color: #93c5fd;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  animation: pulse-step 2s infinite;
+}
+.timeline-step.cancelled .step-dot {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+.step-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+.timeline-step.completed .step-label {
+  color: #059669;
+}
+.timeline-step.active .step-label {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.timeline-desc-box {
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #475569;
+  text-align: center;
+  font-weight: 500;
+}
+@keyframes pulse-step {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25); }
+  50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.1); }
 }
