@@ -2913,18 +2913,18 @@
               <p id="stat-total-categories">0</p>
             </div>
           </div>
-          <div class="stat-card shipping">
-            <div class="stat-icon">⭐</div>
+          <div class="stat-card" style="border-left: 4px solid #10b981;">
+            <div class="stat-icon" style="background: #dcfce7; color: #15803d;">🟢</div>
             <div class="stat-info">
-              <h3>สินค้าแนะนำ / มีแท็ก</h3>
-              <p id="stat-tagged-products">0</p>
+              <h3>มีสต็อกพร้อมขาย</h3>
+              <p id="stat-instock-products" style="color: #16a34a; font-weight: 700;">0</p>
             </div>
           </div>
-          <div class="stat-card sales">
-            <div class="stat-icon">💰</div>
+          <div class="stat-card" style="border-left: 4px solid #ef4444;">
+            <div class="stat-icon" style="background: #fee2e2; color: #dc2626;">❌</div>
             <div class="stat-info">
-              <h3>ราคาเฉลี่ย</h3>
-              <p id="stat-avg-price">฿0</p>
+              <h3>สินค้าหมดสต็อก (0)</h3>
+              <p id="stat-outstock-products" style="color: #dc2626; font-weight: 700;">0</p>
             </div>
           </div>
         </section>
@@ -2943,7 +2943,7 @@
                 title="ล้างการค้นหา">✕</button>
             </div>
 
-            <!-- Status Segmented Control (ทั้งหมด | 🟢 เปิดแสดง | 🚫 ปิดการแสดงผล) -->
+            <!-- Status Segmented Control (ทั้งหมด | 🟢 เปิดแสดง | 🚫 ปิดการแสดงผล | 📦 มีสต็อก | ❌ สต็อกหมด) -->
             <div class="status-segment-group">
               <button id="segStatusAll" class="status-seg-btn active" data-status="all" onclick="selectStatusPill('all')" title="แสดงสินค้าทุกสถานะ">
                 ทั้งหมด <span id="badge-status-all" class="seg-badge">0</span>
@@ -2953,6 +2953,12 @@
               </button>
               <button id="segStatusInactive" class="status-seg-btn status-closed" data-status="inactive" onclick="selectStatusPill('inactive')" title="ดูเฉพาะสินค้าที่ถูกปิดการแสดงผล">
                 🚫 ปิดการแสดงผล <span id="badge-status-inactive" class="seg-badge">0</span>
+              </button>
+              <button id="segStatusInStock" class="status-seg-btn" data-status="in_stock" onclick="selectStatusPill('in_stock')" title="ดูเฉพาะสินค้าที่มีสต็อกคงเหลือ">
+                📦 มีสต็อก <span id="badge-status-instock" class="seg-badge" style="background: #dcfce7; color: #166534;">0</span>
+              </button>
+              <button id="segStatusOutStock" class="status-seg-btn" data-status="out_of_stock" onclick="selectStatusPill('out_of_stock')" title="ดูเฉพาะสินค้าที่หมดสต็อก (0 ชิ้น)">
+                ❌ หมด (0) <span id="badge-status-outstock" class="seg-badge" style="background: #fee2e2; color: #991b1b;">0</span>
               </button>
             </div>
 
@@ -2968,6 +2974,8 @@
                 <option value="name_asc">🔤 ชื่อสินค้า (ก - ฮ)</option>
                 <option value="price_asc">💵 ราคา (น้อย → มาก)</option>
                 <option value="price_desc">💰 ราคา (มาก → น้อย)</option>
+                <option value="stock_desc">📦 สต็อก (มาก → น้อย)</option>
+                <option value="stock_asc">⚠️ สต็อก (น้อย → มาก)</option>
                 <option value="sku_asc">🔢 รหัสสินค้า (SKU)</option>
               </select>
 
@@ -2976,6 +2984,8 @@
                 <option value="all">all</option>
                 <option value="inactive">inactive</option>
                 <option value="active">active</option>
+                <option value="in_stock">in_stock</option>
+                <option value="out_of_stock">out_of_stock</option>
               </select>
               <select id="productCategoryFilter" onchange="onProductFilterChange()" style="display: none;">
                 <option value="all">all</option>
@@ -3001,7 +3011,7 @@
                 style="display: none; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">✕
                 ล้างตัวกรองทั้งหมด</button>
             </div>
-            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่การ์ดสินค้าเพื่อดูรายละเอียด | สลับเปิด/ปิด เพื่อควบคุมการแสดงผลของลูกค้าแบบเรียลไทม์</span>
+            <span style="font-size: 12px; color: #94a3b8;">💡 คลิกที่การ์ดสินค้าเพื่อดูรายละเอียด | ตรวจสอบจำนวนสต็อกคงเหลือจาก POSPOS ได้ทันที</span>
           </div>
 
           <!-- Table View Container (Default hidden) -->
@@ -3010,10 +3020,11 @@
               <thead>
                 <tr>
                   <th>ข้อมูลสินค้า (รูปภาพ / ชื่อสินค้า / รหัส SKU / แท็ก)</th>
-                  <th style="width: 170px;">หมวดหมู่</th>
-                  <th style="width: 120px;">ราคาขาย</th>
-                  <th style="text-align: center; width: 160px;">แสดงให้ลูกค้าเห็น</th>
-                  <th style="text-align: right; width: 110px;">การจัดการ</th>
+                  <th style="width: 150px;">หมวดหมู่</th>
+                  <th style="width: 110px;">ราคาขาย</th>
+                  <th style="width: 140px; text-align: center;">📦 สต็อกคงเหลือ</th>
+                  <th style="text-align: center; width: 140px;">แสดงให้ลูกค้าเห็น</th>
+                  <th style="text-align: right; width: 100px;">การจัดการ</th>
                 </tr>
               </thead>
               <tbody id="productsBody">
@@ -3422,6 +3433,22 @@
                 style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1e293b; border: 1px solid #e2e8f0;"></code>
               <button class="btn-copy-sku" onclick="copySkuFromModal()" title="คัดลอก SKU">📋 คัดลอก</button>
             </div>
+          </div>
+        </div>
+        <!-- Stock Quantity Box inside Modal -->
+        <div style="margin-bottom: 16px; padding: 14px 18px; border-radius: 12px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+          <div>
+            <div style="font-size: 13.5px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
+              <span>📦</span> สต็อกคงเหลือในร้าน (POSPOS)
+            </div>
+            <div style="font-size: 12px; color: #15803d; margin-top: 2px;">
+              จำนวนคงเหลือจริงสำหรับขายหน้าร้านและออนไลน์
+            </div>
+          </div>
+          <div>
+            <span id="detailProductStockBadge" style="font-size: 17px; font-weight: 800; color: #15803d; background: white; padding: 5px 14px; border-radius: 10px; border: 1px solid #86efac; display: inline-block;">
+              0 ชิ้น
+            </span>
           </div>
         </div>
         <!-- Status Visibility Box inside Modal -->
@@ -5919,6 +5946,19 @@
         }
       }
 
+      // Fallback ไปยัง static products.json
+      if (!fetchedData || fetchedData.length === 0) {
+        try {
+          const res = await fetch('./products.json?_t=' + Date.now(), { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+              fetchedData = data.products;
+            }
+          }
+        } catch (err) { }
+      }
+
       if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
         processIncomingProducts(fetchedData);
       } else if (allProducts.length === 0) {
@@ -6116,8 +6156,13 @@
 
       filteredProducts = allProducts.filter(p => {
         const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+        const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+        const isOutStock = stockQty <= 0 || (p.status && p.status === 'out_of_stock');
+
         if (productSelectedStatus === 'active' && isInactive) return false;
         if (productSelectedStatus === 'inactive' && !isInactive) return false;
+        if (productSelectedStatus === 'in_stock' && isOutStock) return false;
+        if (productSelectedStatus === 'out_of_stock' && !isOutStock) return false;
 
         if (productSelectedCategory !== 'all' && p.category !== productSelectedCategory) {
           return false;
@@ -6143,6 +6188,10 @@
         filteredProducts.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
       } else if (productSortOrder === 'price_desc') {
         filteredProducts.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      } else if (productSortOrder === 'stock_desc') {
+        filteredProducts.sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
+      } else if (productSortOrder === 'stock_asc') {
+        filteredProducts.sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
       } else if (productSortOrder === 'sku_asc') {
         filteredProducts.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
       }
@@ -6158,6 +6207,8 @@
         let filterDesc = '';
         if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
         else if (productSelectedStatus === 'inactive') filterDesc += ' (🚫 เฉพาะที่ปิดการแสดงผล)';
+        else if (productSelectedStatus === 'in_stock') filterDesc += ' (📦 เฉพาะที่มีสต็อก)';
+        else if (productSelectedStatus === 'out_of_stock') filterDesc += ' (❌ เฉพาะที่สต็อกหมด)';
         if (productSelectedCategory !== 'all') filterDesc += ' (หมวด: ' + productSelectedCategory + ')';
         if (productSelectedTag !== 'all') filterDesc += ' (แท็ก: ' + productSelectedTag + ')';
         if (productSearchQuery) filterDesc += ' (ค้นหา: "' + productSearchQuery + '")';
@@ -6192,7 +6243,7 @@
 
       if (slice.length === 0) {
         tbody.innerHTML = '<tr>' +
-          '<td colspan="5" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
+          '<td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">' +
           '<div style="font-size: 36px; margin-bottom: 8px;">🔍</div>' +
           '<p style="font-weight: 600; font-size: 15px; color: var(--text-main);">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>' +
           '<p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">ลองเปลี่ยนคำค้นหา หรือกดเลือกหมวดหมู่ "ทั้งหมด"</p>' +
@@ -6209,6 +6260,24 @@
         const catName = p.category || 'ทั่วไป';
         const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
         const isActive = !isInactive;
+
+        const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+        const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+        const isLowStock = !isOutStock && (stockQty <= 5);
+
+        let stockBoxBg = '#f0fdf4';
+        let stockBoxBorder = '#bbf7d0';
+        let stockBoxVal = '#15803d';
+
+        if (isOutStock) {
+          stockBoxBg = '#fef2f2';
+          stockBoxBorder = '#fecaca';
+          stockBoxVal = '#dc2626';
+        } else if (isLowStock) {
+          stockBoxBg = '#fffbeb';
+          stockBoxBorder = '#fde68a';
+          stockBoxVal = '#b45309';
+        }
 
         if (!isActive) {
           tr.classList.add('product-row-inactive');
@@ -6229,6 +6298,11 @@
           '</td>' +
           '<td><span class="category-badge">📂 ' + catName + '</span></td>' +
           '<td><span class="price-tag-big">฿' + (Number(p.price) || 0).toLocaleString() + '</span></td>' +
+          '<td style="text-align: center;">' +
+          '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; background: ' + stockBoxBg + '; color: ' + stockBoxVal + '; border: 1px solid ' + stockBoxBorder + ';">' +
+          (isOutStock ? '❌ 0 (หมด)' : '📦 ' + stockQty.toLocaleString() + ' ชิ้น') +
+          '</span>' +
+          '</td>' +
           '<td style="text-align: center;">' +
           '<div class="product-status-toggle-wrapper" onclick="event.stopPropagation()">' +
           '<label class="switch-toggle" title="' + (isActive ? 'คลิกเพื่อปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'คลิกเพื่อเปิดให้ลูกค้าเห็นสินค้านี้') + '">' +
@@ -6272,22 +6346,74 @@
         const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
         const isActive = !isInactive;
 
+        const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+        const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+        const isLowStock = !isOutStock && (stockQty <= 5);
+
+        let stockBadgeStyle = '';
+        let stockBadgeText = '';
+        let stockBoxBg = '';
+        let stockBoxBorder = '';
+        let stockBoxLabel = '';
+        let stockBoxVal = '';
+
+        if (isOutStock) {
+          stockBadgeStyle = 'background: rgba(220, 38, 38, 0.92); color: #ffffff;';
+          stockBadgeText = '❌ สต็อก 0 (หมด)';
+          stockBoxBg = '#fef2f2';
+          stockBoxBorder = '#fecaca';
+          stockBoxLabel = '#991b1b';
+          stockBoxVal = '#dc2626';
+        } else if (isLowStock) {
+          stockBadgeStyle = 'background: rgba(217, 119, 6, 0.92); color: #ffffff;';
+          stockBadgeText = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBoxBg = '#fffbeb';
+          stockBoxBorder = '#fde68a';
+          stockBoxLabel = '#92400e';
+          stockBoxVal = '#b45309';
+        } else {
+          stockBadgeStyle = 'background: rgba(16, 185, 129, 0.92); color: #ffffff;';
+          stockBadgeText = '📦 คงเหลือ ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBoxBg = '#f0fdf4';
+          stockBoxBorder = '#bbf7d0';
+          stockBoxLabel = '#166534';
+          stockBoxVal = '#15803d';
+        }
+
         if (!isActive) {
           card.classList.add('card-inactive');
         }
 
-        card.innerHTML = '<div class="admin-product-card-img-wrap" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' +
+        card.innerHTML = '<div class="admin-product-card-img-wrap" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer; position: relative;">' +
           '<img src="' + imgUrl + '" alt="' + (p.name || '') + '" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src=\'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image\';">' +
           tagHtml +
           '<div class="admin-product-card-category-float">' + (p.category || 'ทั่วไป') + '</div>' +
-          (!isActive ? '<div style="position: absolute; top: 8px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : '') +
+          
+          '<!-- ป้ายจำนวนสต็อกลอยบนรูป -->' +
+          '<div style="position: absolute; top: 8px; right: 8px; ' + stockBadgeStyle + ' font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 2; display: flex; align-items: center; gap: 4px;">' +
+          stockBadgeText +
+          '</div>' +
+
+          (!isActive ? '<div style="position: absolute; top: 38px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 10.5px; padding: 2px 7px; border-radius: 5px; font-weight: 600; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : '') +
           '</div>' +
           '<div class="admin-product-card-body">' +
           '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || 'ไม่มีชื่อสินค้า') + '</div>' +
-          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">' +
+          
+          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px;">' +
           '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกคัดลอก SKU">📋 ' + (p.id || '-') + '</span>' +
           '</div>' +
-          '<div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">' +
+
+          '<!-- แถบแสดงจำนวนสต็อกคงเหลือชัดเจน -->' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 9px; background: ' + stockBoxBg + '; border: 1px solid ' + stockBoxBorder + '; border-radius: 8px; margin-bottom: 7px;">' +
+          '<span style="font-size: 11.5px; font-weight: 600; color: ' + stockBoxLabel + '; display: flex; align-items: center; gap: 4px;">' +
+          '<span>📦 สต็อกสินค้า:</span>' +
+          '</span>' +
+          '<span style="font-size: 12.5px; font-weight: 800; color: ' + stockBoxVal + '; background: #ffffff; padding: 2px 8px; border-radius: 6px; border: 1px solid ' + stockBoxBorder + '; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">' +
+          (isOutStock ? '❌ 0 (หมด)' : stockQty.toLocaleString() + ' ชิ้น') +
+          '</span>' +
+          '</div>' +
+
+          '<div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">' +
           '<span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">แสดงให้ลูกค้าเห็น:</span>' +
           '<div style="display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation()">' +
           '<label class="switch-toggle switch-toggle-sm" title="' + (isActive ? 'ปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'เปิดแสดงสินค้านี้ให้ลูกค้าเห็น') + '">' +
@@ -6298,7 +6424,9 @@
           '</div>' +
           '</div>' +
           '<div class="admin-product-card-footer">' +
+          '<div>' +
           '<div class="admin-product-card-price">฿' + (Number(p.price) || 0).toLocaleString() + '</div>' +
+          '</div>' +
           '<button class="btn-view" onclick="openProductDetailModal(\'' + p.id + '\')">ดูข้อมูล</button>' +
           '</div>' +
           '</div>';
@@ -6349,6 +6477,28 @@
       }
       if (hint) {
         hint.textContent = isActive ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+      }
+
+      // Stock Badge in Detail Modal
+      const stockBadge = document.getElementById('detailProductStockBadge');
+      if (stockBadge) {
+        const stockQty = Number(product.stock !== undefined && product.stock !== null ? product.stock : 0);
+        if (stockQty <= 0 || product.status === 'out_of_stock') {
+          stockBadge.textContent = '❌ สินค้าหมดสต็อก (0 ชิ้น)';
+          stockBadge.style.color = '#dc2626';
+          stockBadge.style.borderColor = '#fca5a5';
+          stockBadge.style.background = '#fef2f2';
+        } else if (stockQty <= 5) {
+          stockBadge.textContent = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ชิ้น (ใกล้หมด)';
+          stockBadge.style.color = '#d97706';
+          stockBadge.style.borderColor = '#fde68a';
+          stockBadge.style.background = '#fffbeb';
+        } else {
+          stockBadge.textContent = '📦 ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBadge.style.color = '#15803d';
+          stockBadge.style.borderColor = '#86efac';
+          stockBadge.style.background = '#ffffff';
+        }
       }
 
       if (modal) modal.classList.add('active');
@@ -6436,6 +6586,8 @@
 
       let activeCount = 0;
       let inactiveCount = 0;
+      let inStockCount = 0;
+      let outStockCount = 0;
       const categories = new Set();
       let taggedCount = 0;
       let totalPriceSum = 0;
@@ -6446,6 +6598,12 @@
           inactiveCount++;
         } else {
           activeCount++;
+        }
+        const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+        if (stockQty > 0 && p.status !== 'out_of_stock') {
+          inStockCount++;
+        } else {
+          outStockCount++;
         }
         if (p.category) categories.add(p.category);
         if (p.tag) taggedCount++;
@@ -6458,12 +6616,22 @@
       if (statCat) statCat.textContent = categories.size.toLocaleString();
       if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
+      const statInStock = document.getElementById('stat-instock-products');
+      if (statInStock) statInStock.textContent = inStockCount.toLocaleString();
+
+      const statOutStock = document.getElementById('stat-outstock-products');
+      if (statOutStock) statOutStock.textContent = outStockCount.toLocaleString();
+
       const bAll = document.getElementById('badge-status-all');
       if (bAll) bAll.textContent = allProducts.length.toLocaleString();
       const bActive = document.getElementById('badge-status-active');
       if (bActive) bActive.textContent = activeCount.toLocaleString();
       const bInactive = document.getElementById('badge-status-inactive');
       if (bInactive) bInactive.textContent = inactiveCount.toLocaleString();
+      const bInStock = document.getElementById('badge-status-instock');
+      if (bInStock) bInStock.textContent = inStockCount.toLocaleString();
+      const bOutStock = document.getElementById('badge-status-outstock');
+      if (bOutStock) bOutStock.textContent = outStockCount.toLocaleString();
 
       const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
       if (statAvg) statAvg.textContent = '฿' + avg.toLocaleString();
@@ -7018,6 +7186,39 @@
       }
     }
     window.deletePromoCode = deletePromoCode;
+
+    // ==========================================
+    // POSPOS STOCK SYNC (Admin Action)
+    // ==========================================
+    async function syncPosposFromAdmin() {
+      const btn = document.getElementById('btnSyncPospos');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> กำลังซิงค์ POSPOS...';
+      }
+
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL + '?action=syncPospos&_t=' + Date.now());
+        const data = await res.json();
+        if (data.status === 'success') {
+          alert('✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- จำนวนสินค้าจาก POSPOS: ' + (data.totalFromPospos || 0) + ' รายการ\n- อัปเดตราคาและสต็อกลงระบบ: ' + (data.processed || 0) + ' รายการ\n\nระบบจะรีเฟรชข้อมูลสต็อกล่าสุดทันทีครับ');
+          if (typeof fetchProducts === 'function') {
+            fetchProducts(true);
+          }
+        } else {
+          alert('⚠️ การซิงค์ไม่สำเร็จ: ' + (data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์'));
+        }
+      } catch (err) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อกับ POSPOS: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      }
+    }
+    window.syncPosposFromAdmin = syncPosposFromAdmin;
 
   </script>
 </body>

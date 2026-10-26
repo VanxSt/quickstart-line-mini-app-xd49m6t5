@@ -2135,9 +2135,9 @@ async function fetchProducts(showLoading = true) {
 
   let fetchedData = null;
 
-  // 2. ดึงจาก static products.json (เร็วที่สุด ~50ms และมีสินค้าครบ)
+  // ดึงจาก Cloudflare D1 เสมอเพื่อให้ได้สต็อกสดจริงจาก POSPOS
   try {
-    const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
     if (res.ok) {
       const data = await res.json();
       if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
@@ -2146,19 +2146,31 @@ async function fetchProducts(showLoading = true) {
     }
   } catch (err) { }
 
-  // 2. Fetch directly from Cloudflare D1 API if static data not available
+  // หากยังไม่ได้ ให้ fallback ไปยัง static products.json
+  if (!fetchedData) {
+    try {
+      const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+          fetchedData = data.products;
+        }
+      }
+    } catch (err) { }
+  }
+
+  // Fallback ไปยัง Cloudflare D1 อีกครั้งหาก products.json โหลดไม่ได้
   if (!fetchedData) {
     try {
       const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-            fetchedData = data.products;
-          }
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+          fetchedData = data.products;
         }
-      } catch (err) {
-        console.error('Fetch products error:', err);
       }
+    } catch (err) {
+      console.error('Fetch products error:', err);
     }
   }
 
@@ -2361,8 +2373,13 @@ function applyProductFilters() {
 
   filteredProducts = allProducts.filter(p => {
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
+    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const isOutStock = stockQty <= 0 || (p.status && p.status === 'out_of_stock');
+
     if (productSelectedStatus === 'active' && isInactive) return false;
     if (productSelectedStatus === 'inactive' && !isInactive) return false;
+    if (productSelectedStatus === 'in_stock' && isOutStock) return false;
+    if (productSelectedStatus === 'out_of_stock' && !isOutStock) return false;
 
     if (productSelectedCategory !== 'all' && p.category !== productSelectedCategory) {
       return false;
@@ -2388,6 +2405,10 @@ function applyProductFilters() {
     filteredProducts.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
   } else if (productSortOrder === 'price_desc') {
     filteredProducts.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+  } else if (productSortOrder === 'stock_desc') {
+    filteredProducts.sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
+  } else if (productSortOrder === 'stock_asc') {
+    filteredProducts.sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
   } else if (productSortOrder === 'sku_asc') {
     filteredProducts.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
   }
@@ -2403,6 +2424,8 @@ function renderProductsList() {
     let filterDesc = '';
     if (productSelectedStatus === 'active') filterDesc += ' (🟢 เฉพาะเปิดแสดง)';
     else if (productSelectedStatus === 'inactive') filterDesc += ' (🚫 เฉพาะที่ปิดการแสดงผล)';
+    else if (productSelectedStatus === 'in_stock') filterDesc += ' (📦 เฉพาะที่มีสต็อก)';
+    else if (productSelectedStatus === 'out_of_stock') filterDesc += ' (❌ เฉพาะที่สต็อกหมด)';
     if (productSelectedCategory !== 'all') filterDesc += ` (หมวด: ${productSelectedCategory})`;
     if (productSelectedTag !== 'all') filterDesc += ` (แท็ก: ${productSelectedTag})`;
     if (productSearchQuery) filterDesc += ` (ค้นหา: "${productSearchQuery}")`;
@@ -2438,7 +2461,7 @@ function renderProductsTable() {
   if (slice.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+        <td colspan="6" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
           <p style="font-weight: 500;">ไม่พบสินค้าที่ตรงกับเงื่อนไขการค้นหา</p>
         </td>
@@ -2454,6 +2477,24 @@ function renderProductsTable() {
     const catHtml = p.category ? `<span class="category-badge">📂 ${p.category}</span>` : `<span style="color:#cbd5e1;">-</span>`;
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
     const isActive = !isInactive;
+
+    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+    const isLowStock = !isOutStock && (stockQty <= 5);
+
+    let stockBoxBg = '#f0fdf4';
+    let stockBoxBorder = '#bbf7d0';
+    let stockBoxVal = '#15803d';
+
+    if (isOutStock) {
+      stockBoxBg = '#fef2f2';
+      stockBoxBorder = '#fecaca';
+      stockBoxVal = '#dc2626';
+    } else if (isLowStock) {
+      stockBoxBg = '#fffbeb';
+      stockBoxBorder = '#fde68a';
+      stockBoxVal = '#b45309';
+    }
 
     if (!isActive) {
       tr.classList.add('product-row-inactive');
@@ -2476,6 +2517,11 @@ function renderProductsTable() {
       <td>${catHtml}</td>
       <td>
         <strong style="color: #1e293b; font-size: 14px;">฿${(Number(p.price) || 0).toLocaleString()}</strong>
+      </td>
+      <td style="text-align: center;">
+        <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; background: ${stockBoxBg}; color: ${stockBoxVal}; border: 1px solid ${stockBoxBorder};">
+          ${isOutStock ? '❌ 0 (หมด)' : '📦 ' + stockQty.toLocaleString() + ' ชิ้น'}
+        </span>
       </td>
       <td style="text-align: center;">
         <div class="product-status-toggle-wrapper" onclick="event.stopPropagation()">
@@ -2521,6 +2567,40 @@ function renderProductsGrid() {
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
     const isActive = !isInactive;
 
+    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+    const isLowStock = !isOutStock && (stockQty <= 5);
+
+    let stockBadgeStyle = '';
+    let stockBadgeText = '';
+    let stockBoxBg = '';
+    let stockBoxBorder = '';
+    let stockBoxLabel = '';
+    let stockBoxVal = '';
+
+    if (isOutStock) {
+      stockBadgeStyle = 'background: rgba(220, 38, 38, 0.92); color: #ffffff;';
+      stockBadgeText = '❌ สต็อก 0 (หมด)';
+      stockBoxBg = '#fef2f2';
+      stockBoxBorder = '#fecaca';
+      stockBoxLabel = '#991b1b';
+      stockBoxVal = '#dc2626';
+    } else if (isLowStock) {
+      stockBadgeStyle = 'background: rgba(217, 119, 6, 0.92); color: #ffffff;';
+      stockBadgeText = `⚠️ เหลือ ${stockQty.toLocaleString()} ชิ้น`;
+      stockBoxBg = '#fffbeb';
+      stockBoxBorder = '#fde68a';
+      stockBoxLabel = '#92400e';
+      stockBoxVal = '#b45309';
+    } else {
+      stockBadgeStyle = 'background: rgba(16, 185, 129, 0.92); color: #ffffff;';
+      stockBadgeText = `📦 คงเหลือ ${stockQty.toLocaleString()} ชิ้น`;
+      stockBoxBg = '#f0fdf4';
+      stockBoxBorder = '#bbf7d0';
+      stockBoxLabel = '#166534';
+      stockBoxVal = '#15803d';
+    }
+
     if (!isActive) {
       card.classList.add('card-inactive');
     }
@@ -2530,15 +2610,33 @@ function renderProductsGrid() {
         <img src="${imgUrl}" alt="${p.name}" class="admin-product-card-img" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';">
         ${tagHtml}
         <div class="admin-product-card-category-float">${p.category || 'ทั่วไป'}</div>
-        ${!isActive ? '<div style="position: absolute; top: 8px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : ''}
+        
+        <!-- ป้ายจำนวนสต็อกลอยบนรูป -->
+        <div style="position: absolute; top: 8px; right: 8px; ${stockBadgeStyle} font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; backdrop-filter: blur(4px); box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 2; display: flex; align-items: center; gap: 4px;">
+          ${stockBadgeText}
+        </div>
+
+        ${!isActive ? '<div style="position: absolute; top: 38px; right: 8px; background: rgba(15,23,42,0.85); color: #e2e8f0; font-size: 10.5px; padding: 2px 7px; border-radius: 5px; font-weight: 600; backdrop-filter: blur(4px); z-index: 2;">⚪ ซ่อนอยู่</div>' : ''}
       </div>
       <div class="admin-product-card-body">
         <div class="admin-product-card-title" title="${p.name}" onclick="openProductDetailModal('${p.id}')" style="cursor: pointer;">${p.name}</div>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px;">
           <code class="sku-code">${p.id}</code>
           <button class="btn-copy-sku" onclick="copyProductSku('${p.id}', event)">📋 คัดลอก</button>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">
+
+        <!-- แถบแสดงจำนวนสต็อกคงเหลือชัดเจน -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 9px; background: ${stockBoxBg}; border: 1px solid ${stockBoxBorder}; border-radius: 8px; margin-bottom: 7px;">
+          <span style="font-size: 11.5px; font-weight: 600; color: ${stockBoxLabel}; display: flex; align-items: center; gap: 4px;">
+            <span>📦 สต็อกสินค้า:</span>
+          </span>
+          <span style="font-size: 12.5px; font-weight: 800; color: ${stockBoxVal}; background: #ffffff; padding: 2px 8px; border-radius: 6px; border: 1px solid ${stockBoxBorder}; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+            ${isOutStock ? '❌ 0 (หมด)' : stockQty.toLocaleString() + ' ชิ้น'}
+          </span>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-top: 1px dashed var(--border); margin-bottom: 8px;">
           <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">แสดงให้ลูกค้าเห็น:</span>
           <div style="display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation()">
             <label class="switch-toggle switch-toggle-sm" title="${isActive ? 'ปิดซ่อนสินค้านี้ไม่ให้ลูกค้าเห็น' : 'เปิดแสดงสินค้านี้ให้ลูกค้าเห็น'}">
@@ -2549,7 +2647,9 @@ function renderProductsGrid() {
           </div>
         </div>
         <div class="admin-product-card-footer">
-          <div class="admin-product-card-price">฿${(Number(p.price) || 0).toLocaleString()}</div>
+          <div>
+            <div class="admin-product-card-price">฿${(Number(p.price) || 0).toLocaleString()}</div>
+          </div>
           <button class="btn-view" onclick="openProductDetailModal('${p.id}')">ดูข้อมูล</button>
         </div>
       </div>
@@ -2601,6 +2701,28 @@ function openProductDetailModal(productId) {
   }
   if (hint) {
     hint.textContent = isActive ? 'เปิดให้ลูกค้าเห็นและสั่งซื้อได้ตามปกติ' : 'สินค้านี้ถูกซ่อนอยู่ ลูกค้าจะไม่เห็นในหน้าร้าน';
+  }
+
+  // Stock Badge in Detail Modal
+  const stockBadge = document.getElementById('detailProductStockBadge');
+  if (stockBadge) {
+    const stockQty = Number(product.stock !== undefined && product.stock !== null ? product.stock : 0);
+    if (stockQty <= 0 || product.status === 'out_of_stock') {
+      stockBadge.textContent = '❌ สินค้าหมดสต็อก (0 ชิ้น)';
+      stockBadge.style.color = '#dc2626';
+      stockBadge.style.borderColor = '#fca5a5';
+      stockBadge.style.background = '#fef2f2';
+    } else if (stockQty <= 5) {
+      stockBadge.textContent = `⚠️ เหลือ ${stockQty.toLocaleString()} ชิ้น (ใกล้หมด)`;
+      stockBadge.style.color = '#d97706';
+      stockBadge.style.borderColor = '#fde68a';
+      stockBadge.style.background = '#fffbeb';
+    } else {
+      stockBadge.textContent = `📦 ${stockQty.toLocaleString()} ชิ้น`;
+      stockBadge.style.color = '#15803d';
+      stockBadge.style.borderColor = '#86efac';
+      stockBadge.style.background = '#ffffff';
+    }
   }
 
   if (modal) modal.classList.add('active');
@@ -2683,6 +2805,8 @@ function updateProductStats() {
 
   let activeCount = 0;
   let inactiveCount = 0;
+  let inStockCount = 0;
+  let outStockCount = 0;
   const categories = new Set();
   let taggedCount = 0;
   let totalPriceSum = 0;
@@ -2693,6 +2817,12 @@ function updateProductStats() {
       inactiveCount++;
     } else {
       activeCount++;
+    }
+    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    if (stockQty > 0 && p.status !== 'out_of_stock') {
+      inStockCount++;
+    } else {
+      outStockCount++;
     }
     if (p.category) categories.add(p.category);
     if (p.tag) taggedCount++;
@@ -2705,12 +2835,22 @@ function updateProductStats() {
   if (statCat) statCat.textContent = categories.size.toLocaleString();
   if (statTagged) statTagged.textContent = taggedCount.toLocaleString();
 
+  const statInStock = document.getElementById('stat-instock-products');
+  if (statInStock) statInStock.textContent = inStockCount.toLocaleString();
+
+  const statOutStock = document.getElementById('stat-outstock-products');
+  if (statOutStock) statOutStock.textContent = outStockCount.toLocaleString();
+
   const bAll = document.getElementById('badge-status-all');
   if (bAll) bAll.textContent = allProducts.length.toLocaleString();
   const bActive = document.getElementById('badge-status-active');
   if (bActive) bActive.textContent = activeCount.toLocaleString();
   const bInactive = document.getElementById('badge-status-inactive');
   if (bInactive) bInactive.textContent = inactiveCount.toLocaleString();
+  const bInStock = document.getElementById('badge-status-instock');
+  if (bInStock) bInStock.textContent = inStockCount.toLocaleString();
+  const bOutStock = document.getElementById('badge-status-outstock');
+  if (bOutStock) bOutStock.textContent = outStockCount.toLocaleString();
 
   const avg = allProducts.length > 0 ? Math.round(totalPriceSum / allProducts.length) : 0;
   if (statAvg) statAvg.textContent = `฿${avg.toLocaleString()}`;
