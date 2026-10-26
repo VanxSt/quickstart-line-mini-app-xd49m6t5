@@ -1,4 +1,5 @@
-const GOOGLE_SCRIPT_URL = 'https://kuekoonkan-api.noperfecf.workers.dev';
+window.GOOGLE_SCRIPT_URL = window.GOOGLE_SCRIPT_URL || 'https://kuekoonkan-api.noperfecf.workers.dev';
+var GOOGLE_SCRIPT_URL = window.GOOGLE_SCRIPT_URL;
 
 let PRODUCTS = [];
 
@@ -159,19 +160,30 @@ const btnSubmitOrder = document.getElementById('btnSubmitOrder');
 // Initialize LIFF
 async function initLiff() {
   try {
-    await liff.init({ liffId: '2010951634-lg8G4wUA' });
+    if (typeof liff === 'undefined') {
+      console.warn('LIFF SDK not available on window');
+      return;
+    }
+    // ถ้า LIFF ได้รับการ init เรียบร้อยแล้ว (เช่น จาก index.js ในโหมด SPA) ไม่ต้อง init ซ้ำ
+    if (!liff.id) {
+      await liff.init({ liffId: '2010951634-lg8G4wUA' });
+    }
     console.log('LIFF Initialized in catalog page');
     if (liff.isLoggedIn()) {
       try {
         const profile = await liff.getProfile();
-        currentMemberInfo.displayName = profile.displayName;
-        await fetchMemberInfo(profile.userId);
+        if (profile && profile.displayName) {
+          currentMemberInfo.displayName = profile.displayName;
+        }
+        if (profile && profile.userId) {
+          await fetchMemberInfo(profile.userId);
+        }
       } catch (profileError) {
         console.error('Error fetching LINE profile on init:', profileError);
       }
     }
   } catch (error) {
-    console.error('LIFF initialization failed:', error);
+    console.warn('LIFF initialization handled gracefully:', error);
   }
 }
 
@@ -1279,7 +1291,7 @@ function openCheckoutModal() {
     setTimeout(() => { selectSavedAddress(0); }, 50);
   } else {
     selectedSavedAddressIndex = -1;
-    // หากไม่มีที่อยู่เซฟใน LocalStorage ให้ลองดึงจาก member profile ใน Google Sheet
+    // หากไม่มีที่อยู่เซฟใน LocalStorage ให้ลองดึงจาก member profile ในฐานข้อมูล D1
     if (currentMemberInfo.gpsLocation) {
       document.getElementById('gpsLocationLink').value = currentMemberInfo.gpsLocation;
       document.getElementById('checkoutAddressDetails').value = currentMemberInfo.addressDetails || '';
@@ -1401,7 +1413,7 @@ async function fetchMemberInfo(userId) {
         addressLabel: data.addressLabel || ''
       };
 
-      // ซิงค์ saved addresses จาก Google Sheet ลง LocalStorage เพื่อให้ลูกค้ามีที่อยู่ใช้บนทุกอุปกรณ์
+      // ซิงค์ saved addresses จากฐานข้อมูล D1 ลง LocalStorage เพื่อให้ลูกค้ามีที่อยู่ใช้บนทุกอุปกรณ์
       if (data.savedAddresses) {
         try {
           const remoteSaved = JSON.parse(data.savedAddresses);
@@ -2234,7 +2246,7 @@ if (addressLabelEl) addressLabelEl.addEventListener('input', validateCheckoutFor
 if (preorderDateInput) preorderDateInput.addEventListener('change', validateCheckoutForm);
 if (preorderTimeSelect) preorderTimeSelect.addEventListener('change', validateCheckoutForm);
 
-// Submit Order to Google Sheets
+// Submit Order to Cloudflare API / Server
 if (btnSubmitOrder) {
   btnSubmitOrder.addEventListener('click', async () => {
     const name = checkoutName.value.trim();
@@ -2652,9 +2664,15 @@ if (btnCloseLightbox) {
 }
 
 // Back to Home
-btnBack.addEventListener('click', () => {
-  window.location.href = 'index.html';
-});
+if (btnBack) {
+  btnBack.addEventListener('click', () => {
+    if (typeof window.showProfileView === 'function') {
+      window.showProfileView();
+    } else {
+      window.location.href = 'index.html';
+    }
+  });
+}
 
 
 // ===== โหลดสินค้า 3 ชั้น: Cache → Static JSON → GAS =====
@@ -2724,51 +2742,106 @@ let catalogLoaded = false;
 
 async function loadProducts() {
   if (catalogRefreshInFlight) return catalogRefreshInFlight;
-  catalogRefreshInFlight = refreshCatalogProducts();
+  catalogRefreshInFlight = doLoadProducts();
   try { return await catalogRefreshInFlight; }
   finally { catalogRefreshInFlight = null; }
 }
 
-async function refreshCatalogProducts() {
-  const productsGrid = document.getElementById('productsGrid');
-  // Never display persisted or bundled prices/images before the live response.
-  try {
-    localStorage.removeItem('cached_products');
-    localStorage.removeItem('cached_products_v2');
-  } catch (e) { }
-  if (!catalogLoaded && productsGrid) {
-    productsGrid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px"><p>กำลังโหลดสินค้าล่าสุด...</p></div>';
+async function doLoadProducts() {
+  const grid = document.getElementById('productsGrid');
+
+  // 1. ระดับที่ 1: ดึงจาก Cache ทันที (0ms) เพื่อให้สินค้าขึ้นทันทีตั้งแต่เปิดหน้า
+  if (!catalogLoaded) {
+    try {
+      const cached = localStorage.getItem('cached_products_v2') || localStorage.getItem('cached_products');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const cachedProducts = Array.isArray(parsed) ? parsed : (parsed.products || []);
+        if (cachedProducts && cachedProducts.length > 0) {
+          PRODUCTS = cachedProducts;
+          catalogLoaded = true;
+          initCategoryFilters();
+          renderProducts();
+          console.log(`Loaded ${PRODUCTS.length} products from local cache (0ms)`);
+        }
+      }
+    } catch (e) {
+      console.warn('Cache product parse error:', e);
+    }
   }
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  // 2. ระดับที่ 2: ถ้าในแคชยังไม่มี ให้โหลดจาก products.json (Static CDN โหลดเร็ว ~50ms ไม่ล่มแน่นอน)
+  if (!catalogLoaded) {
+    if (grid) {
+      grid.innerHTML = '<div style="text-align:center;width:100%;padding:60px 20px;color:var(--text-light)"><p style="font-size:15px;font-weight:600;">กำลังโหลดรายการสินค้า...</p></div>';
+    }
+    try {
+      const staticRes = await fetch('products.json?v=' + Date.now(), { cache: 'default' });
+      if (staticRes.ok) {
+        const staticData = await staticRes.json();
+        const staticProducts = Array.isArray(staticData) ? staticData : (staticData.products || []);
+        if (staticProducts && staticProducts.length > 0) {
+          PRODUCTS = staticProducts;
+          catalogLoaded = true;
+          initCategoryFilters();
+          renderProducts();
+          try {
+            localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+          } catch (e) {}
+          console.log(`Loaded ${PRODUCTS.length} products from products.json`);
+        }
+      }
+    } catch (err) {
+      console.warn('products.json fetch error:', err);
+    }
+  }
+
+  // 3. ระดับที่ 3: ซิงค์ข้อมูลล่าสุดจาก Cloudflare Worker API (แบบ Background ไม่บล็อก UI)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&_t=${Date.now()}`, {
       signal: controller.signal,
       cache: 'no-store'
     });
-    if (!response.ok) throw new Error('Product request failed');
-    const data = await response.json();
-    if (data.status !== 'success' || !Array.isArray(data.products)) {
-      throw new Error('Invalid product response');
-    }
-    const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
-    PRODUCTS = data.products;
-    catalogLoaded = true;
-    if (changed) {
-      initCategoryFilters();
-      renderProducts();
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+        const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
+        PRODUCTS = data.products;
+        catalogLoaded = true;
+        try {
+          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+        } catch (e) {}
+        if (changed) {
+          initCategoryFilters();
+          renderProducts();
+        }
+        console.log(`Live product sync completed: ${PRODUCTS.length} items`);
+        return;
+      }
     }
   } catch (error) {
-    console.warn('Live catalog refresh failed:', error.message);
-    if (!catalogLoaded) {
-      showProductsError(productsGrid, '⚠️', 'โหลดสินค้าล่าสุดไม่สำเร็จ', 'ตรวจสอบอินเทอร์เน็ตแล้วกดลองใหม่');
-    }
-  } finally {
-    clearTimeout(timeoutId);
+    console.warn('Live catalog refresh background sync:', error.message);
+  }
+
+  // 4. Fallback ระดับสุดท้าย: หากไม่มีข้อมูลจากทั้ง 3 ช่องทาง ให้ใช้ Mock Products
+  if (!catalogLoaded || !PRODUCTS || PRODUCTS.length === 0) {
+    console.warn('Falling back to mock products');
+    PRODUCTS = getMockProducts();
+    catalogLoaded = true;
+    initCategoryFilters();
+    renderProducts();
   }
 }
 
-// Refresh live prices and images without requiring a redeployment or page reload.
+// Export functions to window for global access
+window.loadProducts = loadProducts;
+window.renderProducts = renderProducts;
+
+// Refresh live prices and images periodically in the background
 setInterval(() => {
   if (document.visibilityState === 'visible') loadProducts();
 }, 60000);
@@ -2784,7 +2857,7 @@ function showProductsError(grid, icon, title, subtitle) {
       <div style="font-size:40px;margin-bottom:12px">${icon}</div>
       <p style="font-size:15px;font-weight:600">${title}</p>
       <p style="font-size:12px;margin-top:6px;opacity:0.7">${subtitle}</p>
-      <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px">🔄 ลองใหม่</button>
+      <button type="button" onclick="window.loadProducts()" style="margin-top:16px;padding:10px 24px;background:var(--primary-color,#388BC2);color:white;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 4px 10px rgba(56,139,194,0.3);">🔄 ลองใหม่อีกครั้ง</button>
     </div>`;
 }
 
@@ -2833,18 +2906,30 @@ async function start() {
     }
   }
 
+  // Expose openOrdersModal globally for SPA navigation
+  window.openOrdersModal = openOrdersModal;
+  window.openProductDetail = openProductDetail;
+  window.openCartModal = openCartModal;
+
   // Check if URL has a specific product query param (deep link)
   const productId = urlParams.get('product');
   if (productId) {
-    openProductDetail(parseInt(productId, 10));
+    if (typeof window.showCatalogView === 'function') {
+      window.showCatalogView();
+    }
+    setTimeout(() => {
+      openProductDetail(parseInt(productId, 10));
+    }, 100);
   }
 
   const openParam = urlParams.get('open');
   if (openParam === 'favorites') {
-    openOrdersModal();
-    const tabFav = document.getElementById('tabFavOrders');
-    if (tabFav) {
-      tabFav.click();
+    if (typeof window.showCatalogView === 'function') {
+      window.showCatalogView('favorites');
+    } else {
+      openOrdersModal();
+      const tabFav = document.getElementById('tabFavOrders');
+      if (tabFav) tabFav.click();
     }
   }
 }

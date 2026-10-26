@@ -23,4 +23,3 @@ function fixEncoding(filePath) {
 }
 
 fixEncoding('admin.html');
-fixEncoding('admin-gas.html');

@@ -3,10 +3,10 @@ const https = require('https');
 
 const url = 'https://kuekoonkan-api.noperfecf.workers.dev/api/products';
 
-console.log('กำลังดึงข้อมูลสินค้าจาก Google Sheets...');
+console.log('กำลังดึงข้อมูลสินค้าจาก Cloudflare API...');
 
 https.get(url, (res) => {
-  // Handle redirects (Google Apps Script usually redirects to another URL)
+  // Handle redirects if needed
   if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
     console.log('พบการ Redirect, กำลังดึงข้อมูลจาก URL ใหม่...');
     https.get(res.headers.location, (redirectRes) => {

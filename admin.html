@@ -3283,7 +3283,7 @@
       window.onerror(String(e.reason && e.reason.message || e.reason), '', 0, 0);
     });
 
-    // Storage สำรอง: เบราว์เซอร์บางตัวบล็อก localStorage ใน iframe ของ Apps Script (ทำให้สคริปต์พังทั้งหน้า)
+    // Storage สำรอง: กรณีเบราว์เซอร์บางตัวบล็อก localStorage
     window.LS = (function () {
       try {
         window.localStorage.setItem('__t', '1');
@@ -4433,10 +4433,10 @@
         const tbody = document.getElementById('ordersBody');
         if (tbody) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">' +
-            '<div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>' +
-            '<p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ยังไม่พบข้อมูลคำสั่งซื้อ หรือยังไม่ได้อัปเดต google.gs</p>' +
-            '<p style="font-size: 13px; margin-bottom: 16px; color: #94a3b8;">กรุณาคัดลอกไฟล์ <code>google.gs</code> ไปวางทับใน Apps Script แล้วกด Deploy เวอร์ชันใหม่ (New Version)</p>' +
-            '<button onclick="fetchOrders(true)" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">🔄 ลองใหม่อีกครั้ง</button>' +
+            '<div style="font-size: 32px; margin-bottom: 8px;">📦</div>' +
+            '<p style="font-weight: 600; color: #64748b; margin-bottom: 6px;">ยังไม่พบข้อมูลคำสั่งซื้อในระบบ</p>' +
+            '<p style="font-size: 13px; margin-bottom: 16px; color: #94a3b8;">ยังไม่มีรายการสั่งซื้อ หรือเซิร์ฟเวอร์กำลังเชื่อมต่อกับฐานข้อมูล Cloudflare D1</p>' +
+            '<button onclick="fetchOrders(true)" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">🔄 รีเฟรชข้อมูล</button>' +
             '</td></tr>';
         }
       }
@@ -4708,41 +4708,49 @@
       if (loading) loading.style.display = 'none';
     }
 
-    // ===== Sync Catalog: Export สินค้าจาก GAS → products.json → ให้ Admin Download =====
-    function syncCatalog() {
+    // ===== Sync Catalog: Export สินค้าจาก Cloudflare D1 → products.json → ให้ Admin Download =====
+    async function syncCatalog() {
       const btn = document.getElementById('syncCatalogBtn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลัง Sync...'; }
 
-      google.script.run
-        .withSuccessHandler(function (jsonStr) {
-          try {
-            const data = JSON.parse(jsonStr);
-            if (data.status !== 'success' || !Array.isArray(data.products)) {
-              alert('❌ Sync ล้มเหลว: ' + (data.message || 'ไม่ได้รับข้อมูลสินค้า'));
-              if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
-              return;
-            }
-            // Download products.json
-            const blob = new Blob([jsonStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'products.json';
-            a.click();
-            URL.revokeObjectURL(url);
-
-            if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
-            alert('✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (' + data.total + ' สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!');
-          } catch (e) {
-            alert('❌ Error parsing JSON: ' + e.message);
-            if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+      try {
+        let products = allProducts;
+        if (!products || products.length === 0) {
+          const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getProducts&all=true&_t=' + Date.now());
+          const data = await res.json();
+          if (data && data.status === 'success' && Array.isArray(data.products)) {
+            products = data.products;
           }
-        })
-        .withFailureHandler(function (err) {
-          alert('❌ ไม่สามารถดึงข้อมูลสินค้าได้: ' + err.message);
+        }
+
+        if (!products || products.length === 0) {
+          alert('❌ Sync ล้มเหลว: ไม่พบข้อมูลสินค้าในฐานข้อมูล');
           if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
-        })
-        .exportProductsJson();
+          return;
+        }
+
+        const jsonStr = JSON.stringify({
+          status: 'success',
+          total: products.length,
+          lastUpdated: new Date().toISOString(),
+          products: products
+        }, null, 2);
+
+        // Download products.json
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'products.json';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+        alert('✅ Sync สำเร็จ! ดาวน์โหลด products.json แล้ว (' + products.length + ' สินค้า)\n\n📌 วิธีใช้งาน:\n1. นำไฟล์ products.json ไปวางแทนที่ไฟล์เดิมในโฟลเดอร์โปรเจค\n2. Commit + Push ขึ้น Git\n3. Vercel จะ Deploy อัตโนมัติ\n\n⚡ หลังจากนั้น ลูกค้าจะเห็นสินค้าเร็วขึ้นมาก!');
+      } catch (err) {
+        alert('❌ ไม่สามารถดึงข้อมูลสินค้าได้: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = '📦 Sync Catalog'; }
+      }
     }
 
     function renderMembers() {
@@ -5509,7 +5517,7 @@
     }
 
     /* ==========================================================================
-       Product Catalog Logic & Handlers (Admin GAS)
+       Product Catalog Logic & Handlers (Admin Cloudflare D1)
        ========================================================================== */
 
     function getOptimizedImageUrl(url) {
@@ -5551,33 +5559,7 @@
 
       let fetchedData = null;
 
-      // 2. In Google Apps Script environment, call getProductsNative()
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        fetchedData = await new Promise((resolve) => {
-          const timer = setTimeout(() => {
-            console.warn('getProductsNative timeout (4s), falling back to URL fetch');
-            resolve(null);
-          }, 4000);
-          try {
-            google.script.run
-              .withSuccessHandler(function (products) {
-                clearTimeout(timer);
-                resolve(products || []);
-              })
-              .withFailureHandler(function (err) {
-                clearTimeout(timer);
-                console.error('Error fetching admin products via GAS:', err);
-                resolve(null);
-              })
-              .getProductsNative();
-          } catch (e) {
-            clearTimeout(timer);
-            resolve(null);
-          }
-        });
-      }
-
-      // 3. Fallback: URL fetch
+      // 2. Fetch directly from Cloudflare D1 API
       if (!fetchedData || fetchedData.length === 0) {
         try {
           const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getProducts&all=true&_t=' + Date.now());
@@ -6193,7 +6175,7 @@
         }
       }
 
-      // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database / Google Apps Script
+      // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database
       try {
         const res = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
@@ -6209,13 +6191,7 @@
           console.log('Product status saved to server:', result);
         }
       } catch (err) {
-        console.warn('Backend update error, attempting GAS fallback:', err);
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler(function (r) { console.log('GAS status saved:', r); })
-            .withFailureHandler(function (e) { console.error('GAS save failed:', e); })
-            .updateProductStatusNative(productId, newStatus);
-        }
+        console.error('Backend update error:', err);
       }
     }
     window.toggleProductStatus = toggleProductStatus;

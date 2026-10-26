@@ -964,8 +964,8 @@ async function fetchOrders(showLoading = true) {
         <tr>
           <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
             <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
-            <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถดึงข้อมูลจาก Google Apps Script ได้</p>
-            <p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบว่าตั้งค่า 'Who has access' เป็น 'Anyone' ใน Web App Deployment หรือยัง</p>
+            <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px;">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
+            <p style="font-size: 13px; margin-bottom: 16px;">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือสถานะของ Cloudflare API</p>
             <button onclick="fetchOrders(true)" style="padding: 8px 16px; border-radius: 8px; background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer;">🔄 ลองใหม่อีกครั้ง</button>
           </td>
         </tr>
@@ -2146,25 +2146,10 @@ async function fetchProducts(showLoading = true) {
     }
   } catch (err) { }
 
-  // 3. Fallback: ถ้าเปิดใน Google Apps Script หรือไม่มีไฟล์ static ให้ดึงผ่าน GAS
+  // 2. Fetch directly from Cloudflare D1 API if static data not available
   if (!fetchedData) {
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-      fetchedData = await new Promise((resolve) => {
-        google.script.run
-          .withSuccessHandler(function (products) {
-            resolve(products || []);
-          })
-          .withFailureHandler(function (err) {
-            console.error('Error fetching admin products via GAS:', err);
-            resolve(null);
-          })
-          .getProductsNative();
-      });
-    }
-
-    if (!fetchedData) {
-      try {
-        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
+    try {
+      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
@@ -2781,7 +2766,7 @@ async function toggleProductStatus(productId, isChecked, event) {
     }
   }
 
-  // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database / Google Apps Script
+  // 3. ส่งข้อมูลไปอัปเดตบน Cloudflare D1 Database
   try {
     const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
@@ -2797,13 +2782,7 @@ async function toggleProductStatus(productId, isChecked, event) {
       console.log('Product status saved to server:', result);
     }
   } catch (err) {
-    console.warn('Backend update error, attempting GAS fallback:', err);
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-      google.script.run
-        .withSuccessHandler(function (r) { console.log('GAS status saved:', r); })
-        .withFailureHandler(function (e) { console.error('GAS save failed:', e); })
-        .updateProductStatusNative(productId, newStatus);
-    }
+    console.error('Backend update error:', err);
   }
 }
 

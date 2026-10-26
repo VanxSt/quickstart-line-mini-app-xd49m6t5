@@ -1,6 +1,7 @@
-// Vercel Serverless Function — Proxy ดึงสินค้าจาก GAS แทนมือถือ
-// มือถือ → Vercel CDN (เร็ว) → GAS (server-to-server เร็ว)
-const GAS_URL = 'https://kuekoonkan-api.noperfecf.workers.dev';
+// Vercel Serverless Function — Proxy ดึงสินค้าจาก Cloudflare D1 Worker
+// มือถือ → Vercel CDN (เร็ว) → Cloudflare Worker (server-to-server เร็ว)
+const API_URL = 'https://kuekoonkan-api.noperfecf.workers.dev';
+const GAS_URL = API_URL; // Alias for compatibility
 
 export default async function handler(req, res) {
   // CORS headers
@@ -8,14 +9,14 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   
   // Cache ไว้ 60 วินาทีบน Vercel CDN, stale-while-revalidate 5 นาที
-  // ลูกค้าจะได้ข้อมูลจาก CDN cache ทันที ไม่ต้องรอ GAS
+  // ลูกค้าจะได้ข้อมูลจาก CDN cache ทันที ไม่ต้องรอ Worker
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // server-side timeout ยาวกว่าได้
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-    const response = await fetch(`${GAS_URL}?action=getProducts&_t=${Date.now()}`, {
+    const response = await fetch(`${API_URL}?action=getProducts&_t=${Date.now()}`, {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
     console.error('Proxy fetch error:', error.message);
     return res.status(502).json({ 
       status: 'error', 
-      message: 'ไม่สามารถเชื่อมต่อกับ Google Sheets ได้ในขณะนี้'
+      message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ฐานข้อมูลได้ในขณะนี้'
     });
   }
 }

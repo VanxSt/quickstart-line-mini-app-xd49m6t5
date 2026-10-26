@@ -5,8 +5,44 @@
   <meta charset="utf-8" />
   <meta name="viewport"
     content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
-  <title>ร้านเกื้อกูลกัน</title>
+  <title>ร้านเกื้อกูลกัน - บริการสั่งสินค้าออนไลน์</title>
+  
+  <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="catalog.css?v=6" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* SPA Layout Views Control */
+    body.is-profile-view {
+      background: radial-gradient(circle at top right, #ffffff, #f0f4f8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 20px 40px 20px;
+      min-height: 100vh;
+    }
+    body.is-profile-view #floatingCartContainer {
+      display: none !important;
+    }
+    body.is-catalog-view {
+      background: var(--bg-color, #f8fafc) !important;
+      display: block !important;
+      padding: 0 !important;
+      padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+      min-height: 100vh;
+    }
+
+    /* ซ่อนตะกร้าลอย เมื่อเปิดหน้ารายละเอียดสินค้า / ตะกร้า / ชำระเงิน / ประวัติ / ดูรูป */
+    .modal.show ~ #floatingCartContainer,
+    .lightbox.show ~ #floatingCartContainer {
+      display: none !important;
+    }
+    body:has(.modal.show) #floatingCartContainer,
+    body:has(.lightbox.show) #floatingCartContainer {
+      display: none !important;
+    }
+  </style>
 
   <!-- Pre-load Cached Profile in 0ms (ทันทีไม่ต้องรอ Network) -->
   <script>
@@ -20,136 +56,636 @@
     })();
   </script>
 
+  <!-- Leaflet & LINE LIFF SDKs -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script type="module" src="index.js"></script>
 </head>
 
-<body id="body">
-  <div class="app-container">
-    <!-- Shop Header -->
-    <header class="app-header">
-      <div class="shop-logo-container">
-        <img src="kuekoonkan-logo.jpg" alt="โลโก้ร้านเกื้อกูลกัน" class="shop-logo" />
-      </div>
-      <h1 class="shop-name">ร้านเกื้อกูลกัน</h1>
-      <p class="shop-subtitle">ยินดีต้อนรับคุณลูกค้าทุกท่าน</p>
-    </header>
+<body id="body" class="is-profile-view">
 
-    <!-- Membership Card UI -->
-    <div class="member-card" id="profile">
-      <div class="card-header">
-        <span class="card-logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-          </svg>
-          เกื้อกูลกัน
-        </span>
-        <span class="card-type">MEMBER</span>
-      </div>
-
-      <div class="card-profile-section">
-        <div class="profile-avatar-wrapper">
-          <img id="pictureUrl" class="profile-avatar" src="https://vos.line-scdn.net/imgs/apis/ic_mini.png"
-            alt="Profile Picture" />
+  <!-- ========================================== -->
+  <!-- VIEW 1: Member Profile (หน้าแรก)           -->
+  <!-- ========================================== -->
+  <div id="viewProfile" class="app-view" style="width: 100%; max-width: 480px;">
+    <div class="app-container">
+      <!-- Shop Header -->
+      <header class="app-header">
+        <div class="shop-logo-container">
+          <img src="kuekoonkan-logo.jpg" alt="โลโก้ร้านเกื้อกูลกัน" class="shop-logo" />
         </div>
-        <div class="profile-meta">
-          <div id="displayName" class="profile-name">สมาชิกเกื้อกูลกัน</div>
-          <div id="statusMessage" class="profile-status">ยินดีต้อนรับสมาชิกใหม่</div>
-        </div>
-      </div>
+        <h1 class="shop-name">ร้านเกื้อกูลกัน</h1>
+        <p class="shop-subtitle">ยินดีต้อนรับคุณลูกค้าทุกท่าน</p>
+      </header>
 
-      <div class="card-details">
-        <!-- Email Row -->
-        <div class="detail-row">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
-          <span class="detail-label">อีเมล:</span>
-          <span id="email" class="detail-val">เชื่อมต่อผ่าน LINE</span>
+      <!-- Membership Card UI -->
+      <div class="member-card" id="profile">
+        <div class="card-header">
+          <span class="card-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+            เกื้อกูลกัน
+          </span>
+          <span class="card-type">MEMBER</span>
         </div>
 
-        <!-- Phone Row -->
-        <div class="detail-row">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
-            </path>
-          </svg>
-          <span class="detail-label">โทร:</span>
-          <div class="phone-input-container">
-            <input type="tel" id="phone" class="phone-input" placeholder="ระบุเบอร์โทรศัพท์..." />
-            <button id="btnSavePhoneInline" class="btn-save-inline" title="บันทึกเบอร์โทร">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </button>
+        <div class="card-profile-section">
+          <div class="profile-avatar-wrapper">
+            <img id="pictureUrl" class="profile-avatar" src="https://vos.line-scdn.net/imgs/apis/ic_mini.png"
+              alt="Profile Picture" />
+          </div>
+          <div class="profile-meta">
+            <div id="displayName" class="profile-name">สมาชิกเกื้อกูลกัน</div>
+            <div id="statusMessage" class="profile-status">ยินดีต้อนรับสมาชิกใหม่</div>
           </div>
         </div>
+
+        <div class="card-details">
+          <!-- Email Row -->
+          <div class="detail-row">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span class="detail-label">อีเมล:</span>
+            <span id="email" class="detail-val">เชื่อมต่อผ่าน LINE</span>
+          </div>
+
+          <!-- Phone Row -->
+          <div class="detail-row">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+              </path>
+            </svg>
+            <span class="detail-label">โทร:</span>
+            <div class="phone-input-container">
+              <input type="tel" id="phone" class="phone-input" placeholder="ระบุเบอร์โทรศัพท์..." />
+              <button id="btnSavePhoneInline" class="btn-save-inline" title="บันทึกเบอร์โทร">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <span class="card-id-label">MEMBER ID</span>
+          <span id="userId" class="card-id-val">MEMBER-LINE</span>
+        </div>
       </div>
 
-      <div class="card-footer">
-        <span class="card-id-label">MEMBER ID</span>
-        <span id="userId" class="card-id-val">MEMBER-LINE</span>
+      <!-- สคริปต์เรนเดอร์ข้อมูลสมาชิกทันทีใน 0ms ป้องกันหน้าจอค้างโหลด -->
+      <script>
+        (function() {
+          if (window.__CACHED_MEMBER__) {
+            var m = window.__CACHED_MEMBER__;
+            var dn = document.getElementById('displayName');
+            var sm = document.getElementById('statusMessage');
+            var em = document.getElementById('email');
+            var pic = document.getElementById('pictureUrl');
+            var uid = document.getElementById('userId');
+            var ph = document.getElementById('phone');
+
+            if (dn && m.displayName) dn.textContent = m.displayName;
+            if (sm && m.statusMessage) sm.textContent = m.statusMessage;
+            if (em && m.email) em.textContent = m.email;
+            if (pic && m.pictureUrl) pic.src = m.pictureUrl;
+            if (uid && m.userId) {
+              uid.textContent = m.userId.length > 8 ? m.userId.substring(0, 5) + '*****' + m.userId.substring(m.userId.length - 4) : m.userId;
+            }
+            if (ph && m.phone) ph.value = m.phone;
+          }
+        })();
+      </script>
+
+      <!-- Buttons Section -->
+      <div class="actions-section">
+        <button id="btnNextPage" class="btn-premium btn-primary-gradient">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          ดูแค็ตตาล็อกสินค้า (Catalog)
+        </button>
+
+        <button id="btnSaveData" class="btn-premium btn-secondary-outline">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          อัปเดตข้อมูลลูกค้า
+        </button>
+
+        <button id="btnFavoriteOrders" class="btn-premium btn-secondary-outline" style="margin-top: 10px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          รายการโปรดที่ถูกใจ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VIEW 2: Product Catalog (หน้าแค็ตตาล็อก)   -->
+  <!-- ========================================== -->
+  <div id="viewCatalog" class="app-view" style="display: none; width: 100%;">
+    <!-- Navbar -->
+    <header class="navbar">
+      <button class="btn-back" id="btnBack" aria-label="ย้อนกลับ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+      <div class="navbar-brand">
+        <img src="kuekoonkan-logo.jpg" alt="Cafe Logo" class="navbar-logo">
+        <span class="navbar-title">เกื้อกูลกัน</span>
+      </div>
+      <div class="navbar-actions" style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn-search-nav" id="btnSearchNav" aria-label="ค้นหาสินค้า"
+          style="background: none; border: none; cursor: pointer; color: var(--text-main); position: relative; padding: 8px;"
+          title="ค้นหาสินค้า">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <button class="btn-orders" id="btnOrders" aria-label="ประวัติการสั่งซื้อ"
+          style="background: none; border: none; cursor: pointer; color: var(--text-main); position: relative; padding: 8px;"
+          title="ประวัติการสั่งซื้อ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </button>
+        <button class="btn-cart" id="btnCart" aria-label="ตะกร้าสินค้า">
+          <div class="cart-icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            <span class="cart-badge" id="cartBadge">0</span>
+          </div>
+        </button>
+      </div>
+    </header>
+
+    <!-- Nav Search Overlay -->
+    <div id="navSearchContainer" style="display: none; position: sticky; top: 60px; z-index: 998; padding: 10px 15px; background: rgba(255, 255, 255, 0.98); border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+      <div style="margin: 0; max-width: 100%; display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 12px; padding: 0 12px; background: #fff;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; margin-right: 8px;">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="navSearchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." style="flex: 1; border: none; outline: none; padding: 12px 0; font-size: 16px; background: transparent;" />
+        <button id="btnCloseNavSearch" style="background: none; border: none; padding: 8px; cursor: pointer; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin-right: -4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
     </div>
 
-    <!-- สคริปต์เรนเดอร์ข้อมูลสมาชิกทันทีใน 0ms ป้องกันหน้าจอค้างโหลด -->
-    <script>
-      (function() {
-        if (window.__CACHED_MEMBER__) {
-          var m = window.__CACHED_MEMBER__;
-          var dn = document.getElementById('displayName');
-          var sm = document.getElementById('statusMessage');
-          var em = document.getElementById('email');
-          var pic = document.getElementById('pictureUrl');
-          var uid = document.getElementById('userId');
-          var ph = document.getElementById('phone');
+    <!-- Hero Section -->
+    <section class="hero">
+      <h1>Premium Menu</h1>
+      <p>คัดสรรวัตถุดิบชั้นเลิศ รังสรรค์ความอร่อยในทุกเมนู</p>
+    </section>
 
-          if (dn && m.displayName) dn.textContent = m.displayName;
-          if (sm && m.statusMessage) sm.textContent = m.statusMessage;
-          if (em && m.email) em.textContent = m.email;
-          if (pic && m.pictureUrl) pic.src = m.pictureUrl;
-          if (uid && m.userId) {
-            uid.textContent = m.userId.length > 8 ? m.userId.substring(0, 5) + '*****' + m.userId.substring(m.userId.length - 4) : m.userId;
-          }
-          if (ph && m.phone) ph.value = m.phone;
-        }
-      })();
-    </script>
+    <!-- Search and Filter Section -->
+    <section class="search-container">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <form class="search-box" style="margin: 0;" onsubmit="event.preventDefault(); document.getElementById('searchInput').blur();">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="search" id="searchInput" placeholder="ค้นหาเมนูที่คุณต้องการ..." style="padding-right: 86px;" />
+          <button type="submit" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--primary-color); color: white; border: none; border-radius: 20px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(56, 139, 194, 0.25); transition: background-color 0.2s;">ค้นหา</button>
+        </form>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+          <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">เรียงลำดับ:</span>
+          <select id="sortSelect" style="padding: 8px 14px; border: 1px solid var(--border-color); border-radius: 20px; background-color: var(--card-bg); color: var(--text-dark); font-size: 0.8rem; font-weight: 500; outline: none; box-shadow: var(--shadow-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234a5568%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 28px;">
+            <option value="price_asc">ราคา: ถูก - แพง</option>
+            <option value="price_desc">ราคา: แพง - ถูก</option>
+            <option value="name_asc">ชื่อ: ก - ฮ (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </section>
 
-    <!-- Buttons Section -->
-    <div class="actions-section">
-      <button id="btnNextPage" class="btn-premium btn-primary-gradient">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <path d="M16 10a4 4 0 0 1-8 0"></path>
+    <!-- Category Tabs -->
+    <div class="category-system-container">
+      <nav class="categories parent-categories" id="parentCategoriesNav">
+        <!-- Dynamic Parent Categories will be rendered here -->
+      </nav>
+      <nav class="categories sub-categories" id="subCategoriesNav"
+        style="display: none; padding-top: 0; margin-top: -12px;">
+        <!-- Dynamic Sub Categories will be rendered here -->
+      </nav>
+    </div>
+
+    <!-- Products Grid -->
+    <main class="products-grid" id="productsGrid">
+      <!-- Products will be dynamically rendered here by catalog.js -->
+    </main>
+
+    <!-- Product Detail Modal -->
+    <div class="modal" id="productModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span style="font-weight: 600; color: var(--text-light);">รายละเอียดสินค้า</span>
+          <button class="btn-close" id="btnCloseModal" aria-label="ปิด">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="modalContentBody">
+          <!-- Content will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="modal" id="cartModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span style="font-weight: 600; color: var(--text-light);">ตะกร้าสินค้าของคุณ</span>
+          <button class="btn-close" id="btnCloseCartModal" aria-label="ปิด">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="cartModalBody" class="modal-body-scroll">
+          <!-- Cart Items List will be injected here -->
+        </div>
+        <div class="cart-modal-footer">
+          <div class="cart-summary-total">
+            <span>ยอดรวมทั้งหมด:</span>
+            <span id="cartTotalPrice">฿0</span>
+          </div>
+          <div class="cart-footer-buttons">
+            <button class="btn-outline" id="btnContinueShopping">เลือกซื้อสินค้าต่อ</button>
+            <button class="btn-primary" id="btnGoToCheckout" disabled>ชำระเงินและจัดส่ง</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders Modal -->
+    <div class="modal" id="ordersModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span style="font-weight: 600; color: var(--text-light);">ประวัติการสั่งซื้อ</span>
+          <button class="btn-close" id="btnCloseOrdersModal" aria-label="ปิด">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <!-- Tabs for Orders -->
+        <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 0 0 0 0;">
+          <button id="tabAllOrders" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); cursor: pointer; transition: all 0.2s;">📦 ทั้งหมด</button>
+          <button id="tabFavOrders" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;">⭐ รายการโปรด</button>
+        </div>
+        <div id="ordersModalBody" class="modal-body-scroll" style="min-height: 200px;">
+          <!-- Orders List will be injected here -->
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
+            กำลังโหลดประวัติการสั่งซื้อ...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal" id="checkoutModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span style="font-weight: 600; color: var(--text-light);">ข้อมูลจัดส่งและชำระเงิน</span>
+          <button class="btn-close" id="btnCloseCheckoutModal" aria-label="ปิด">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="checkoutModalBody" class="modal-body-scroll">
+          <!-- Customer Info Section -->
+          <div class="checkout-section">
+            <h3>📦 ข้อมูลผู้รับสินค้า</h3>
+            <div class="form-group">
+              <label for="checkoutName">ชื่อผู้รับ *</label>
+              <input type="text" id="checkoutName" placeholder="ระบุชื่อผู้รับ..." required />
+            </div>
+            <div class="form-group">
+              <label for="checkoutPhone">เบอร์โทรศัพท์ติดต่อ *</label>
+              <input type="tel" id="checkoutPhone" placeholder="ระบุเบอร์โทรศัพท์..." required />
+            </div>
+          </div>
+
+          <!-- Order Timing Section (สั่งซื้อล่วงหน้า) -->
+          <div class="checkout-section">
+            <h3>🕒 เวลาจัดส่ง / รับสินค้า</h3>
+            <div class="delivery-type-group" style="display: flex; gap: 16px; margin-top: 12px; margin-bottom: 12px;">
+              <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="deliveryType" value="ทันที" checked
+                  style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">ส่งทันที (ด่วนที่สุด)</span>
+              </label>
+              <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="deliveryType" value="ล่วงหน้า"
+                  style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">สั่งล่วงหน้า (ระบุเวลา)</span>
+              </label>
+            </div>
+
+            <div id="preorderTimeSection"
+              style="display: none; background: rgba(0,0,0,0.02); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); margin-top: 12px;">
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label for="preorderDate">วันที่ต้องการ *</label>
+                <input type="date" id="preorderDate" required
+                  style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; box-sizing: border-box;" />
+              </div>
+              <div class="form-group" style="margin-bottom: 4px;">
+                <label for="preorderTime">เวลาที่ต้องการ (9:00 - 16:00) *</label>
+                <select id="preorderTime"
+                  style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #fff; font-size: 14px; box-sizing: border-box;">
+                  <option value="" disabled selected>-- เลือกเวลา --</option>
+                  <option value="09:00">09:00 น.</option>
+                  <option value="09:30">09:30 น.</option>
+                  <option value="10:00">10:00 น.</option>
+                  <option value="10:30">10:30 น.</option>
+                  <option value="11:00">11:00 น.</option>
+                  <option value="11:30">11:30 น.</option>
+                  <option value="12:00">12:00 น.</option>
+                  <option value="12:30">12:30 น.</option>
+                  <option value="13:00">13:00 น.</option>
+                  <option value="13:30">13:30 น.</option>
+                  <option value="14:00">14:00 น.</option>
+                  <option value="14:30">14:30 น.</option>
+                  <option value="15:00">15:00 น.</option>
+                  <option value="15:30">15:30 น.</option>
+                  <option value="16:00">16:00 น.</option>
+                </select>
+              </div>
+              <small style="color: var(--text-light); font-size: 12px; display: block; margin-top: 4px;">ℹ️
+                ทางร้านให้บริการสั่งล่วงหน้าในช่วงเวลา 09:00 น. ถึง 16:00 น. เท่านั้น</small>
+            </div>
+          </div>
+
+          <div class="checkout-section">
+            <h3>💰 เลือกช่องทางการชำระเงิน</h3>
+            <div class="payment-method-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: 8px;">
+              <label class="radio-label payment-option-all" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="โอนจ่าย" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">🏦 โอนเงินผ่านบัญชีธนาคาร</span>
+              </label>
+
+              <label class="radio-label payment-option-delivery" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="ปลายทาง" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">📦 เก็บเงินปลายทาง (COD)</span>
+              </label>
+
+              <div id="codSubOptions" style="display: none; flex-direction: column; gap: 10px; margin-left: 26px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="radio" name="codType" value="ปลายทางโอน" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+                  <span style="font-size: 14px;">📲 ปลายทางโอน (โอนเงินเมื่อของถึง)</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="radio" name="codType" value="ชำระเงินสดเตรียมเงินทอน" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                  <span style="font-size: 14px;">💰 ชำระเงินสด (เตรียมเงินทอน)</span>
+                </label>
+                <div id="codCashChangeInput" style="display: none; margin-left: 24px; margin-top: 4px;">
+                  <input type="number" id="codCashAmount" placeholder="ยอดเงินที่จะจ่าย (เช่น 1000)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+                </div>
+
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="radio" name="codType" value="โอนเงินผสมเงินสด" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                  <span style="font-size: 14px;">💵 โอนเงินผสมเงินสด</span>
+                </label>
+                <div id="codMixedInput" style="display: none; margin-left: 24px; margin-top: 4px; flex-direction: column; gap: 8px;">
+                  <input type="number" id="codMixedTransfer" placeholder="ยอดโอน (บาท)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+                  <input type="number" id="codMixedCash" placeholder="ยอดเงินสด (บาท)" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; font-size: 13px;" />
+                </div>
+              </div>
+
+              <label class="radio-label payment-option-store" style="display: none; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="จ่ายเงินหน้าร้าน" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">🏪 จ่ายเงินหน้าร้าน</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Shipping Option Section -->
+          <div class="checkout-section">
+            <h3>🚚 ช่องทางการรับสินค้า</h3>
+            <div class="shipping-option-group" style="display: flex; gap: 16px; margin-top: 12px; margin-bottom: 12px;">
+              <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="shippingOption" value="จัดส่ง" checked
+                  style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">จัดส่งตามที่อยู่</span>
+              </label>
+              <label class="radio-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="shippingOption" value="รับหน้าร้าน"
+                  style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span style="font-size: 15px;">รับเองที่หน้าร้าน</span>
+              </label>
+            </div>
+
+            <!-- Shipping Fee Conditions Info Box -->
+            <div id="shippingConditionsBox"
+              style="background: var(--bg-card, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; padding: 12px 14px; margin-top: 8px;">
+              <div
+                style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
+              </div>
+              <ul
+                style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
+                <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
+                <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)
+                </li>
+                <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10
+                  บาท)</li>
+                <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Saved Addresses Section -->
+          <div class="checkout-section" id="savedAddressesSection" style="display: none;">
+            <h3>🏠 เลือกที่อยู่ที่บันทึกไว้</h3>
+            <div id="savedAddressList" class="saved-address-list">
+              <!-- Saved addresses will be injected here -->
+            </div>
+            <button type="button" class="btn-add-new-address" id="btnUseNewAddress">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              เพิ่มที่อยู่ใหม่
+            </button>
+          </div>
+
+          <!-- Distance Display Section -->
+          <div id="deliveryDistanceSection"
+            style="margin-top: 14px; margin-bottom: 14px; display: block; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px;">
+            <div style="font-weight: 600; font-size: 14px; color: #166534; display: flex; align-items: center; gap: 6px;">
+              <span>🛵 ระยะทางจัดส่งจากร้านถึงที่อยู่ของลูกค้า</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
+              <span id="deliveryDistanceText" style="font-size: 22px; font-weight: 800; color: #15803d;">0 กม.</span>
+              <span style="font-size: 13px; color: #166534;">(คำนวณตามพิกัดจริง)</span>
+            </div>
+            <input type="hidden" id="deliveryDistance" value="0" />
+          </div>
+
+          <!-- Location Geolocation Pinning Section -->
+          <div class="checkout-section" id="newAddressSection">
+            <h3>📍 ที่อยู่สำหรับจัดส่ง</h3>
+            <p class="section-tip">กดปุ่ม GPS หรือแตะบนแผนที่เพื่อปักหมุดตำแหน่งจัดส่ง</p>
+            <button type="button" class="btn-location-gps" id="btnGetLocation">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              📡 ดึงตำแหน่งปัจจุบันผ่าน GPS
+            </button>
+
+            <!-- Interactive Map for Pin Dropping -->
+            <div id="mapPickerContainer" class="map-picker-container">
+              <div id="mapPicker" style="width: 100%; height: 100%; border-radius: 12px;"></div>
+              <div class="map-instruction-overlay" id="mapInstructionOverlay">
+                <span>👆 แตะบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อย้ายตำแหน่ง</span>
+              </div>
+            </div>
+
+            <div id="locationStatus" class="location-status-badge">ยังไม่ได้ปักหมุดตำแหน่งที่ตั้ง</div>
+            <input type="hidden" id="gpsLocationLink" value="" />
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="checkoutAddressDetails">รายละเอียดที่อยู่เพิ่มเติม <span
+                  style="color: #ef4444;">*</span></label>
+              <textarea id="checkoutAddressDetails" placeholder="ระบุเลขที่บ้าน, ชั้น, อาคาร, ซอย, ถนน หรือจุดสังเกต..."
+                rows="3" required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="addressLabel">ตั้งชื่อที่อยู่นี้ <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="addressLabel" placeholder="เช่น บ้าน, ที่ทำงาน, คอนโด..." required />
+            </div>
+
+            <button type="button" id="btnSaveAddressNow" class="btn-outline" style="width: 100%; margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: bold;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              บันทึกที่อยู่นี้ทันที
+            </button>
+          </div>
+
+          <div class="checkout-section">
+            <!-- Checkout Total Summary Card -->
+            <div class="checkout-total-banner"
+              style="padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; margin-top: 14px;">
+              <div id="checkoutItemsList" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.15);"></div>
+              <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
+                <span style="color: #cbd5e1;">ยอดรวมสินค้า:</span>
+                <strong id="checkoutSubtotalText" style="color: #ffffff;">฿0</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
+                <span style="color: #38bdf8;">🚚 ค่าจัดส่ง (<span id="checkoutDistanceLabel">1 กม.</span>):</span>
+                <strong id="checkoutShippingFeeText" style="color: #38bdf8;">฿0</strong>
+              </div>
+              <div id="checkoutDiscountNote"
+                style="font-size: 12px; color: #4ade80; margin-bottom: 8px; font-weight: 500;"></div>
+              <div
+                style="border-top: 1px dashed rgba(255,255,255,0.25); padding-top: 10px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 15px; font-weight: 600;">สุทธิที่ต้องชำระ:</span>
+                <strong id="checkoutTotalText" style="font-size: 22px; color: #facc15;">฿0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Note / Remarks Section -->
+          <div class="checkout-section">
+            <h3>📝 หมายเหตุ / โน๊ตถึงทางร้าน (ถ้ามี)</h3>
+            <div class="form-group" style="margin-top: 8px;">
+              <textarea id="checkoutNote"
+                placeholder="ระบุข้อความเพิ่มเติม เช่น ฝากไว้ที่ป้อมยาม, โทรแจ้งก่อนถึง, ไม่ใส่ถั่ว..." rows="2"
+                style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); font-family: inherit; font-size: 0.9rem; resize: vertical; background-color: var(--bg-color);"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="checkout-modal-footer">
+          <button class="btn-primary btn-block btn-gray-disabled"
+            id="btnSubmitOrder" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px;">
+            <span id="btnSubmitText">ยืนยันการสั่งซื้อ</span>
+            <span id="btnSubmitPrice">฿0</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Lightbox Modal for Large Image View -->
+    <div class="lightbox" id="imageLightbox">
+      <button class="btn-lightbox-close" id="btnCloseLightbox" aria-label="ปิด">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
-        ดูแค็ตตาล็อกสินค้า (Catalog)
       </button>
+      <div class="lightbox-content">
+        <img id="lightboxImage" src="" alt="รูปสินค้าขนาดใหญ่">
+        <div class="lightbox-caption" id="lightboxCaption">ชื่อสินค้า</div>
+      </div>
+    </div>
 
-      <button id="btnSaveData" class="btn-premium btn-secondary-outline">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        อัปเดตข้อมูลลูกค้า
-      </button>
-
-      <button id="btnFavoriteOrders" class="btn-premium btn-secondary-outline" style="margin-top: 10px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: none;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-        </svg>
-        รายการโปรดที่ถูกใจ
-      </button>
+    <!-- Bottom Cart Bar -->
+    <div id="floatingCartContainer" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.06);" onclick="if(typeof openCartModal === 'function') openCartModal();">
+      <div style="background-color: var(--primary-color); color: white; border-radius: 16px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(56, 139, 194, 0.3); cursor: pointer; transition: transform 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="position: relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span style="position: absolute; top: -6px; right: -8px; background: #ff3b30; color: white; font-size: 11px; font-weight: bold; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid var(--primary-color);" id="floatCartQty">0</span>
+          </div>
+          <span style="font-weight: 600; font-size: 15px;">ตะกร้าสินค้า</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; font-size: 16px;">฿<span id="floatCartPrice">0</span></span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -158,6 +694,9 @@
     <div class="toast-icon">✓</div>
     <span id="toastMessage">บันทึกข้อมูลเรียบร้อย</span>
   </div>
+
+  <!-- Catalog Logic Script -->
+  <script src="catalog.js?v=21"></script>
 </body>
 
 </html>

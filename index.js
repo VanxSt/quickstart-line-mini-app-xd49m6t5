@@ -513,24 +513,112 @@ if (btnSavePhoneInline) {
   });
 }
 
+// ========================================================
+// 6. การสลับหน้า SPA ระหว่าง Profile View และ Catalog View
+// ========================================================
+window.showCatalogView = function(mode) {
+  const profileView = document.getElementById('viewProfile');
+  const catalogView = document.getElementById('viewCatalog');
+  const floatingCart = document.getElementById('floatingCartContainer');
+
+  if (catalogView) {
+    if (profileView) profileView.style.display = 'none';
+    catalogView.style.display = 'block';
+    document.body.classList.remove('is-profile-view');
+    document.body.classList.add('is-catalog-view');
+    if (floatingCart) floatingCart.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    // โหลดสินค้าทันทีถ้ายังไม่ได้โหลด
+    if (typeof window.loadProducts === 'function') {
+      window.loadProducts();
+    }
+
+    if (window.location.hash !== '#catalog' && window.location.hash !== '#favorites') {
+      history.pushState({ view: 'catalog' }, '', '#catalog');
+    }
+
+    if (mode === 'favorites') {
+      setTimeout(() => {
+        if (typeof window.openOrdersModal === 'function') {
+          window.openOrdersModal();
+          const tabFav = document.getElementById('tabFavOrders');
+          if (tabFav) tabFav.click();
+        }
+      }, 100);
+    }
+  } else {
+    // กรณีที่ไม่ได้เปิดในหน้าที่มี Catalog View
+    if (mode === 'favorites') {
+      window.location.href = 'second.html?open=favorites';
+    } else {
+      window.location.href = 'second.html';
+    }
+  }
+};
+
+window.showProfileView = function() {
+  const profileView = document.getElementById('viewProfile');
+  const catalogView = document.getElementById('viewCatalog');
+  const floatingCart = document.getElementById('floatingCartContainer');
+
+  if (profileView) {
+    if (catalogView) catalogView.style.display = 'none';
+    profileView.style.display = 'block';
+    document.body.classList.remove('is-catalog-view');
+    document.body.classList.add('is-profile-view');
+    if (floatingCart) floatingCart.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    if (window.location.hash) {
+      history.pushState({ view: 'profile' }, '', window.location.pathname + window.location.search);
+    }
+  } else {
+    window.location.href = 'index.html';
+  }
+};
+
+// ตรวจสอบ Hash เมื่อโหลดหน้า หรือเมื่อกดย้อนกลับในเบราว์เซอร์
+function handleHashNavigation() {
+  const hash = window.location.hash;
+  if (hash === '#catalog') {
+    window.showCatalogView();
+  } else if (hash === '#favorites') {
+    window.showCatalogView('favorites');
+  } else {
+    // ถ้าไม่มี hash และมี viewProfile ให้แสดง profile
+    const profileView = document.getElementById('viewProfile');
+    const catalogView = document.getElementById('viewCatalog');
+    if (profileView && catalogView && catalogView.style.display === 'block') {
+      window.showProfileView();
+    }
+  }
+}
+
+window.addEventListener('popstate', handleHashNavigation);
+window.addEventListener('hashchange', handleHashNavigation);
+
+// ตรวจสอบทันทีตอนเริ่มต้น
+setTimeout(handleHashNavigation, 50);
+
 if (btnNextPage) {
   btnNextPage.addEventListener('click', () => {
-    if (phone && !phone.value.trim()) {
-      showToast('กรุณาระบุเบอร์โทรศัพท์ก่อนเข้าดูเมนู', false);
-      phone.focus();
-      return;
+    // บันทึกเบอร์โทรศัพท์ถ้ามี
+    if (phone && phone.value.trim()) {
+      localStorage.setItem('user_phone_default', phone.value.trim());
+      if (userProfileData) userProfileData.phone = phone.value.trim();
     }
-    window.location.href = 'second.html';
+    window.showCatalogView();
   });
 }
 
 if (btnFavoriteOrders) {
   btnFavoriteOrders.addEventListener('click', () => {
-    if (phone && !phone.value.trim()) {
-      showToast('กรุณาระบุเบอร์โทรศัพท์ก่อนดูรายการโปรด', false);
-      phone.focus();
-      return;
+    if (phone && phone.value.trim()) {
+      localStorage.setItem('user_phone_default', phone.value.trim());
+      if (userProfileData) userProfileData.phone = phone.value.trim();
     }
-    window.location.href = 'second.html?open=favorites';
+    window.showCatalogView('favorites');
   });
 }
+
