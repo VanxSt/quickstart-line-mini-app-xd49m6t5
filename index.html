@@ -9,7 +9,7 @@
   
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="catalog.css?v=7" />
+  <link rel="stylesheet" href="catalog.css?v=8" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -379,7 +379,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <span style="font-weight: 700; color: var(--text-main); font-size: 15px;">📦 ติดตามสถานะ / ดูประวัติคำสั่งซื้อ</span>
-          <button class="btn-close" id="btnCloseOrdersModal" aria-label="ปิด">
+          <button class="btn-close" id="btnCloseOrdersModal" aria-label="ปิด" type="button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -388,11 +388,11 @@
           </button>
         </div>
         <!-- Tabs for Orders -->
-        <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 0 0 0 0;">
-          <button id="tabAllOrders" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); cursor: pointer; transition: all 0.2s;">📦 ทั้งหมด</button>
-          <button id="tabFavOrders" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;">⭐ รายการโปรด</button>
+        <div class="modal-tabs-header">
+          <button id="tabAllOrders" type="button" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); cursor: pointer; transition: all 0.2s;">📦 ทั้งหมด</button>
+          <button id="tabFavOrders" type="button" style="flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;">⭐ รายการโปรด</button>
         </div>
-        <div id="ordersModalBody" class="modal-body-scroll" style="min-height: 200px;">
+        <div id="ordersModalBody" class="modal-body-scroll">
           <!-- Orders List will be injected here -->
           <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
             กำลังโหลดประวัติการสั่งซื้อ...
@@ -743,7 +743,7 @@
   </div>
 
   <!-- Catalog Logic Script -->
-  <script src="catalog.js?v=25"></script>
+  <script src="catalog.js?v=26"></script>
 </body>
 
 </html>

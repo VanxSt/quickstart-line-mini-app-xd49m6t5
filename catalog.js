@@ -821,13 +821,62 @@ function openProductDetail(productOrId) {
   }
 
   modal.classList.add('show');
-  document.body.classList.add('no-scroll');
+  lockBodyScroll();
+}
+
+// === MOBILE MODAL SCROLL LOCK & TOUCH STABILITY ===
+let scrollLockCount = 0;
+let prevBodyScrollY = 0;
+
+function lockBodyScroll() {
+  scrollLockCount++;
+  if (scrollLockCount === 1) {
+    prevBodyScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+    document.body.style.top = `-${prevBodyScrollY}px`;
+    document.body.classList.add('no-scroll');
+  }
+}
+
+function unlockBodyScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0) {
+    document.body.classList.remove('no-scroll');
+    const top = Math.abs(parseInt(document.body.style.top || '0', 10));
+    document.body.style.top = '';
+    window.scrollTo(0, top || prevBodyScrollY);
+  }
+}
+
+function setupSafeModalBackdrop(modalEl, closeFn) {
+  if (!modalEl) return;
+  let isPointerDownOnBackdrop = false;
+
+  modalEl.addEventListener('pointerdown', (e) => {
+    isPointerDownOnBackdrop = (e.target === modalEl);
+  });
+
+  modalEl.addEventListener('click', (e) => {
+    if (e.target === modalEl && isPointerDownOnBackdrop) {
+      closeFn();
+    }
+    isPointerDownOnBackdrop = false;
+  });
+
+  const content = modalEl.querySelector('.modal-content');
+  if (content) {
+    content.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    content.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+    });
+  }
 }
 
 // Close Modal
 function closeModal() {
   modal.classList.remove('show');
-  document.body.classList.remove('no-scroll');
+  unlockBodyScroll();
   activeProduct = null;
 }
 
@@ -837,7 +886,7 @@ function openLightbox(imgSrc, name) {
     lightboxImg.src = imgSrc;
     lightboxCaption.textContent = name;
     lightbox.classList.add('show');
-    document.body.classList.add('no-scroll');
+    lockBodyScroll();
   }
 }
 
@@ -845,7 +894,7 @@ function openLightbox(imgSrc, name) {
 function closeLightbox() {
   if (lightbox) {
     lightbox.classList.remove('show');
-    document.body.classList.remove('no-scroll');
+    unlockBodyScroll();
   }
 }
 
@@ -1185,12 +1234,12 @@ window.removeCartItem = function (id) {
 function openCartModal() {
   renderCartItems();
   cartModal.classList.add('show');
-  document.body.classList.add('no-scroll');
+  lockBodyScroll();
 }
 
 function closeCartModal() {
   cartModal.classList.remove('show');
-  document.body.classList.remove('no-scroll');
+  unlockBodyScroll();
 }
 
 // === SAVED ADDRESSES SYSTEM ===
@@ -1788,7 +1837,7 @@ function openCheckoutModal() {
 
   toggleShippingFields();
   checkoutModal.classList.add('show');
-  document.body.classList.add('no-scroll');
+  lockBodyScroll();
 
   // สร้าง/รีเฟรช Map Picker หลังจาก modal แสดงเสร็จ
   setTimeout(() => {
@@ -1798,8 +1847,8 @@ function openCheckoutModal() {
 
 function closeCheckoutModal() {
   const checkoutModal = document.getElementById('checkoutModal');
-  checkoutModal.classList.remove('show');
-  document.body.classList.remove('no-scroll');
+  if (checkoutModal) checkoutModal.classList.remove('show');
+  unlockBodyScroll();
 }
 
 function validateCheckoutForm() {
@@ -2226,7 +2275,7 @@ const btnCloseOrdersModal = document.getElementById('btnCloseOrdersModal');
 function openOrdersModal() {
   if (ordersModal) {
     ordersModal.classList.add('show');
-    document.body.classList.add('no-scroll');
+    lockBodyScroll();
     loadMyOrders();
   }
 }
@@ -2234,18 +2283,20 @@ function openOrdersModal() {
 function closeOrdersModal() {
   if (ordersModal) {
     ordersModal.classList.remove('show');
-    document.body.classList.remove('no-scroll');
+    unlockBodyScroll();
   }
 }
 
 if (btnOrders) btnOrders.addEventListener('click', openOrdersModal);
-if (btnCloseOrdersModal) btnCloseOrdersModal.addEventListener('click', closeOrdersModal);
-
-if (ordersModal) {
-  ordersModal.addEventListener('click', (e) => {
-    if (e.target === ordersModal) closeOrdersModal();
+if (btnCloseOrdersModal) {
+  btnCloseOrdersModal.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeOrdersModal();
   });
 }
+
+setupSafeModalBackdrop(ordersModal, closeOrdersModal);
 
 async function loadMyOrders() {
   const ordersBody = document.getElementById('ordersModalBody');
@@ -2321,6 +2372,17 @@ async function loadMyOrders() {
         `;
         ordersBody.appendChild(row);
       });
+
+      const closeBottomDiv = document.createElement('div');
+      closeBottomDiv.style.textAlign = 'center';
+      closeBottomDiv.style.width = '100%';
+      closeBottomDiv.style.paddingTop = '10px';
+      closeBottomDiv.innerHTML = `
+        <button type="button" class="btn-close-modal-bottom" onclick="closeOrdersModal()">
+          ✕ ปิดหน้าต่างประวัติคำสั่งซื้อ
+        </button>
+      `;
+      ordersBody.appendChild(closeBottomDiv);
     } else {
       ordersBody.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
@@ -2465,19 +2527,9 @@ if (tabAllOrders && tabFavOrders) {
   });
 }
 
-// Cart Modal Backdrop Close
-if (cartModal) {
-  cartModal.addEventListener('click', (e) => {
-    if (e.target === cartModal) closeCartModal();
-  });
-}
-
-// Checkout Modal Backdrop Close
-if (checkoutModal) {
-  checkoutModal.addEventListener('click', (e) => {
-    if (e.target === checkoutModal) closeCheckoutModal();
-  });
-}
+// Cart & Checkout Modal Safe Backdrop Close
+setupSafeModalBackdrop(cartModal, closeCartModal);
+setupSafeModalBackdrop(checkoutModal, closeCheckoutModal);
 
 // ตำแหน่งพิกัดร้านเกื้อกูลกัน (Default Store Location)
 const STORE_LOCATION = { lat: 15.7256381, lng: 100.1131528 };
@@ -3175,13 +3227,16 @@ function selectSubCategory(sub) {
 
 
 // Modal Close logic
-modal.addEventListener('click', (e) => {
-  if (e.target === modal) {
-    closeModal();
-  }
-});
+setupSafeModalBackdrop(modal, closeModal);
 
-document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+const btnCloseModalEl = document.getElementById('btnCloseModal');
+if (btnCloseModalEl) {
+  btnCloseModalEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeModal();
+  });
+}
 
 // Lightbox Close logic
 if (lightbox) {
