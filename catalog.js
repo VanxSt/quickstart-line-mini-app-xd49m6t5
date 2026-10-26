@@ -64,6 +64,13 @@ const PROMO_CODES = {
     minSpend: 150,
     desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150'
   },
+  'BAKERY20': {
+    code: 'BAKERY20',
+    type: 'fixed',
+    amount: 20,
+    minSpend: 60,
+    desc: 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่'
+  },
   'COFFEE20': {
     code: 'COFFEE20',
     type: 'fixed',
@@ -166,11 +173,11 @@ function renderUpsellSection(container) {
   let candidates = PRODUCTS.filter(p => !cartIds.has(String(p.id)) && (!p.status || String(p.status).toLowerCase() !== 'inactive'));
   if (candidates.length === 0) return;
 
-  // จัดลำดับความน่าสนใจ: หมวด bakery, ของทานเล่น, dessert หรือสุ่ม 4 รายการ
+  // จัดลำดับความน่าสนใจ: หมวดวัตถุดิบเบเกอรี่, ขนมขบเคี้ยว, ของใช้ประจำวัน หรือสินค้าแนะนำ
   const prioritized = candidates.filter(p => {
     const cat = String(p.category || '').toLowerCase();
     const name = String(p.name || '').toLowerCase();
-    return cat.includes('bakery') || cat.includes('เบเกอรี่') || cat.includes('ขนม') || cat.includes('dessert') || name.includes('ครัวซอง') || name.includes('เค้ก') || name.includes('คุกกี้');
+    return cat.includes('วัตถุดิบ') || cat.includes('เบเกอรี่') || cat.includes('bakery') || cat.includes('ขนม') || cat.includes('แป้ง') || cat.includes('เนย') || cat.includes('นม') || cat.includes('ช็อกโกแลต') || cat.includes('เครื่องปรุง') || cat.includes('ของใช้');
   });
 
   const upsellItems = (prioritized.length >= 3 ? prioritized : candidates).slice(0, 4);
@@ -181,7 +188,7 @@ function renderUpsellSection(container) {
   upsellWrapper.innerHTML = `
     <div style="font-weight: 700; font-size: 13.5px; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
       <span style="display: flex; align-items: center; gap: 6px;">
-        <span>✨</span> สั่งทานคู่กัน ยิ่งฟิน! (เมนูแนะนำ)
+        <span>✨</span> สินค้าแนะนำซื้อเพิ่มสุดคุ้ม (ของใช้/วัตถุดิบยอดนิยม)
       </span>
       <span style="font-size: 11px; color: #64748b; font-weight: 500;">แตะเพื่อเพิ่ม</span>
     </div>
@@ -240,7 +247,7 @@ function renderOrderTimeline(status) {
 
   const steps = [
     { num: 1, label: 'รับออเดอร์', icon: '⏳', desc: 'ร้านค้าได้รับคำสั่งซื้อแล้ว รอการตรวจสอบ' },
-    { num: 2, label: 'กำลังเตรียม', icon: '👨‍🍳', desc: 'ทางร้านกำลังพิถีพิถันจัดเตรียมสินค้าของคุณ' },
+    { num: 2, label: 'กำลังเตรียม', icon: '📦', desc: 'ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่อง' },
     { num: 3, label: 'กำลังส่ง', icon: '🛵', desc: 'สินค้ากำลังเดินทางไปยังปลายทางของคุณ' },
     { num: 4, label: 'ส่งสำเร็จ', icon: '✅', desc: 'สินค้าจัดส่งถึงคุณเรียบร้อยแล้ว ขอบคุณที่ใช้บริการครับ' }
   ];
@@ -792,7 +799,7 @@ async function shareProduct(product) {
 
 // Order Product (Open LINE official account chat or send Message)
 async function orderProduct(product) {
-  const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n☕ ${product.name}\n💰 ราคา: ฿${product.price}`;
+  const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n🛒 ${product.name}\n💰 ราคา: ฿${product.price}`;
 
   // แปลง URL รูปภาพสินค้าให้เป็น URL แบบสัมบูรณ์ (Absolute URL) สำหรับส่งทางไลน์
   let productImg = getOptimizedImageUrl(product.img);
