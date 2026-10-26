@@ -637,6 +637,60 @@ export default {
           }
           return jsonResponse({ status: 'success', id: targetId, productStatus: newStatus });
         }
+
+        // Action: getPromoCodes OR GET /api/promos
+        if (action === 'getPromoCodes' || url.pathname === '/api/promos') {
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS promo_codes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              code TEXT UNIQUE,
+              type TEXT DEFAULT 'fixed',
+              amount REAL DEFAULT 0,
+              percent REAL DEFAULT 0,
+              min_spend REAL DEFAULT 0,
+              description TEXT,
+              start_date TEXT,
+              end_date TEXT,
+              is_active INTEGER DEFAULT 1,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          // Auto-seed defaults if table is empty
+          const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM promo_codes').first();
+          if (!countRow || countRow.cnt === 0) {
+            const seedQuery = `
+              INSERT OR IGNORE INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active)
+              VALUES 
+                ('WELCOME50', 'fixed', 50, 0, 100, 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100', '', '', 1),
+                ('FREESHIP', 'shipping', 0, 0, 0, 'ฟรีค่าจัดส่งทุกระยะทาง', '', '', 1),
+                ('KUE10', 'percent', 0, 10, 150, 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150', '', '', 1),
+                ('BAKERY20', 'fixed', 20, 0, 60, 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่', '', '', 1)
+            `;
+            await db.prepare(seedQuery).run();
+          }
+
+          const activeOnly = url.searchParams.get('activeOnly') === 'true';
+          const { results } = await db.prepare('SELECT * FROM promo_codes ORDER BY id DESC').all();
+          let promos = results || [];
+
+          if (activeOnly) {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            promos = promos.filter(p => {
+              if (Number(p.is_active) !== 1) return false;
+              if (p.start_date && p.start_date.trim() !== '' && todayStr < p.start_date.trim()) return false;
+              if (p.end_date && p.end_date.trim() !== '' && todayStr > p.end_date.trim()) return false;
+              return true;
+            });
+          }
+
+          return jsonResponse({
+            status: 'success',
+            promos: promos,
+            total: promos.length
+          });
+        }
       }
 
       // ==========================================
@@ -1437,6 +1491,104 @@ export default {
           }
 
           return jsonResponse({ status: 'success', imported: batch.length });
+        }
+
+        // 4.7 Action: savePromoCode OR POST /api/promos
+        if (postAction === 'savePromoCode' || (url.pathname === '/api/promos' && method === 'POST')) {
+          const rawCode = (postData.code || '').trim().toUpperCase();
+          if (!rawCode) {
+            return jsonResponse({ status: 'error', message: 'กรุณาระบุรหัสโค้ดส่วนลด' }, 400);
+          }
+
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS promo_codes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              code TEXT UNIQUE,
+              type TEXT DEFAULT 'fixed',
+              amount REAL DEFAULT 0,
+              percent REAL DEFAULT 0,
+              min_spend REAL DEFAULT 0,
+              description TEXT,
+              start_date TEXT,
+              end_date TEXT,
+              is_active INTEGER DEFAULT 1,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          const type = postData.type || 'fixed'; // fixed, percent, shipping
+          const amount = Number(postData.amount) || 0;
+          const percent = Number(postData.percent) || 0;
+          const minSpend = Number(postData.minSpend || postData.min_spend) || 0;
+          const description = (postData.description || '').trim();
+          const startDate = (postData.startDate || postData.start_date || '').trim();
+          const endDate = (postData.endDate || postData.end_date || '').trim();
+          const isActive = (postData.isActive !== undefined ? (postData.isActive ? 1 : 0) : (postData.is_active !== undefined ? (postData.is_active ? 1 : 0) : 1));
+
+          const query = `
+            INSERT INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(code) DO UPDATE SET
+              type = excluded.type,
+              amount = excluded.amount,
+              percent = excluded.percent,
+              min_spend = excluded.min_spend,
+              description = excluded.description,
+              start_date = excluded.start_date,
+              end_date = excluded.end_date,
+              is_active = excluded.is_active,
+              updated_at = CURRENT_TIMESTAMP
+          `;
+
+          await db.prepare(query).bind(rawCode, type, amount, percent, minSpend, description, startDate, endDate, isActive).run();
+          return jsonResponse({ status: 'success', message: 'บันทึกโค้ดส่วนลดเรียบร้อย', code: rawCode });
+        }
+
+        // 4.8 Action: togglePromoCode OR POST /api/promos/toggle
+        if (postAction === 'togglePromoCode' || url.pathname === '/api/promos/toggle') {
+          const rawCode = (postData.code || '').trim().toUpperCase();
+          const isActive = postData.isActive ? 1 : 0;
+          if (!rawCode) {
+            return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+          }
+
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS promo_codes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              code TEXT UNIQUE,
+              type TEXT DEFAULT 'fixed',
+              amount REAL DEFAULT 0,
+              percent REAL DEFAULT 0,
+              min_spend REAL DEFAULT 0,
+              description TEXT,
+              start_date TEXT,
+              end_date TEXT,
+              is_active INTEGER DEFAULT 1,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          await db.prepare('UPDATE promo_codes SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE code = ?')
+            .bind(isActive, rawCode)
+            .run();
+
+          return jsonResponse({ status: 'success', code: rawCode, isActive });
+        }
+
+        // 4.9 Action: deletePromoCode OR POST /api/promos/delete
+        if (postAction === 'deletePromoCode' || url.pathname === '/api/promos/delete') {
+          const rawCode = (postData.code || '').trim().toUpperCase();
+          if (!rawCode) {
+            return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+          }
+
+          await db.prepare('DELETE FROM promo_codes WHERE code = ?')
+            .bind(rawCode)
+            .run();
+
+          return jsonResponse({ status: 'success', message: 'ลบโค้ดส่วนลดแล้ว', code: rawCode });
         }
 
         // 5. Action: register (หรือ Default Member Upsert) OR POST /api/members

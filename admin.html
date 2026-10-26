@@ -2352,6 +2352,37 @@
       color: #fff;
       border-color: #3b82f6;
     }
+
+    /* === Promo Code Segmented Filters === */
+    .status-segment-group {
+      display: inline-flex;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 10px;
+      gap: 3px;
+      border: 1px solid var(--border);
+    }
+    .status-seg-btn {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .status-seg-btn:hover {
+      color: #1e293b;
+    }
+    .status-seg-btn.active {
+      background: #ffffff;
+      color: #2563eb;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
   </style>
 </head>
 
@@ -2419,6 +2450,7 @@
         </a>
         <a href="#" class="nav-item" id="navProducts" onclick="switchTab('products')">🏷️ รายการสินค้า (Products)</a>
         <a href="#" class="nav-item" id="navMembers" onclick="switchTab('members')">👥 สมาชิก (Members)</a>
+        <a href="#" class="nav-item" id="navPromo" onclick="switchTab('promo')">🎟️ โค้ดส่วนลด (Promo Codes)</a>
       </nav>
 
       <div class="sidebar-footer" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
@@ -2703,6 +2735,13 @@
               <div class="overview-action-info">
                 <h4>รายชื่อสมาชิก</h4>
                 <p>ดูประวัติลูกค้า เบอร์โทร และ LINE ID</p>
+              </div>
+            </div>
+            <div class="overview-action-card" onclick="switchTab('promo')">
+              <div class="overview-action-icon" style="color: #ec4899;">🎟️</div>
+              <div class="overview-action-info">
+                <h4>โค้ดส่วนลด & โปรโมชั่น</h4>
+                <p>สร้างโค้ดโปรโมชั่น เปิด-ปิด และตั้งวันหมดอายุ</p>
               </div>
             </div>
           </div>
@@ -3063,7 +3102,207 @@
           </div>
         </section>
       </div>
+
+      <!-- Promo Codes View (จัดการโค้ดส่วนลด) -->
+      <div id="viewPromo" style="display: none;">
+        <header class="header">
+          <div>
+            <h1>🎟️ จัดการโค้ดส่วนลดและโปรโมชั่น (Promo Codes)</h1>
+            <p class="subtitle">สร้างโปรโมชั่นใหม่ ตั้งค่าเปิด-ปิด หรือกำหนดวันเริ่มและสิ้นสุดโปรโมชั่นอัตโนมัติ</p>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-sound-toggle" onclick="fetchPromoCodes(true)">
+              🔄 รีเฟรช
+            </button>
+            <button class="btn-primary" onclick="openPromoModal()">
+              <span>+</span> สร้างโค้ดส่วนลดใหม่
+            </button>
+          </div>
+        </header>
+
+        <!-- Promo Stats Summary Grid -->
+        <section class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f1f5f9; color: #475569;">🎟️</div>
+            <div class="stat-info">
+              <h3>โค้ดทั้งหมด</h3>
+              <p id="statPromoTotal">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #dcfce7; color: #15803d;">🟢</div>
+            <div class="stat-info">
+              <h3>เปิดใช้งานอยู่</h3>
+              <p id="statPromoActive" style="color: #16a34a;">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f1f5f9; color: #64748b;">⚪</div>
+            <div class="stat-info">
+              <h3>ปิดใช้งาน</h3>
+              <p id="statPromoInactive" style="color: #64748b;">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fee2e2; color: #dc2626;">⏳</div>
+            <div class="stat-info">
+              <h3>หมดอายุ / รอเริ่ม</h3>
+              <p id="statPromoExpired" style="color: #dc2626;">0</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Promo Codes Table Card -->
+        <section class="table-card">
+          <div class="table-header-toolbar" style="flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <h3 style="font-size: 16px; font-weight: 700;">รายการโปรโมชั่นทั้งหมด</h3>
+              <!-- Segmented status filter -->
+              <div class="status-segment-group">
+                <button type="button" class="status-seg-btn active" id="btnPromoFilterAll" onclick="setPromoFilter('all', this)">ทั้งหมด (<span id="promoFilterAllCount">0</span>)</button>
+                <button type="button" class="status-seg-btn" id="btnPromoFilterActive" onclick="setPromoFilter('active', this)">🟢 เปิดใช้งาน (<span id="promoFilterActiveCount">0</span>)</button>
+                <button type="button" class="status-seg-btn" id="btnPromoFilterInactive" onclick="setPromoFilter('inactive', this)">⚪ ปิดอยู่ (<span id="promoFilterInactiveCount">0</span>)</button>
+                <button type="button" class="status-seg-btn" id="btnPromoFilterExpired" onclick="setPromoFilter('expired', this)">🔴 หมดอายุ (<span id="promoFilterExpiredCount">0</span>)</button>
+              </div>
+            </div>
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="promoSearchInput" oninput="onPromoSearch(this.value)" placeholder="ค้นหารหัสโค้ด, รายละเอียด..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="promosTable">
+              <thead>
+                <tr>
+                  <th style="min-width: 150px;">รหัสคูปอง (Code)</th>
+                  <th style="min-width: 220px;">สิทธิประโยชน์ & รายละเอียด</th>
+                  <th style="min-width: 120px;">ยอดซื้อขั้นต่ำ</th>
+                  <th style="min-width: 170px;">ระยะเวลาโปรโมชั่น</th>
+                  <th style="text-align: center; min-width: 120px;">เปิด/ปิดโปร</th>
+                  <th style="text-align: center; min-width: 100px;">สถานะ</th>
+                  <th style="text-align: right; min-width: 130px;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="promosBody">
+              </tbody>
+            </table>
+          </div>
+          <div id="promosLoadingIndicator" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลโค้ดโปรโมชั่น...</p>
+          </div>
+        </section>
+      </div>
     </main>
+  </div>
+
+  <!-- Create / Edit Promo Code Modal -->
+  <div id="promoModal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px;">
+      <header class="modal-header">
+        <h3 style="font-size: 17px; font-weight: 700;" id="promoModalTitle">🎟️ สร้างโค้ดส่วนลดใหม่</h3>
+        <button class="close-btn" onclick="closePromoModal()">&times;</button>
+      </header>
+      <div class="modal-body" style="padding: 24px;">
+        <form id="promoForm" onsubmit="handleSavePromo(event)">
+          <input type="hidden" id="promoEditMode" value="create" />
+
+          <!-- รหัสโค้ด -->
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+              รหัสโค้ด (Promo Code) <span style="color:#ef4444;">*</span>
+            </label>
+            <input type="text" id="promoInputCode" required
+              style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"
+              placeholder="เช่น SUMMER50, FREESHIP, KUE10" />
+            <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 4px; display: block;">ระบบจะแปลงเป็นตัวพิมพ์ใหญ่อัตโนมัติ</small>
+          </div>
+
+          <!-- ประเภทส่วนลด & มูลค่า -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+                ประเภทส่วนลด <span style="color:#ef4444;">*</span>
+              </label>
+              <select id="promoInputType" onchange="onPromoTypeChange(this.value)"
+                style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13.5px; font-weight: 600; background: white;">
+                <option value="fixed">💰 ลดเป็นจำนวนเงิน (฿)</option>
+                <option value="percent">✨ ลดเป็นเปอร์เซ็นต์ (%)</option>
+                <option value="shipping">🚚 ฟรีค่าจัดส่ง (ส่งฟรี)</option>
+              </select>
+            </div>
+            <div>
+              <label id="promoValueLabel" style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+                จำนวนส่วนลด (บาท) <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="number" id="promoInputValue" min="0" step="1" value="50"
+                style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 700;" required />
+            </div>
+          </div>
+
+          <!-- ยอดซื้อขั้นต่ำ -->
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+              ยอดสั่งซื้อสินค้าขั้นต่ำ (บาท)
+            </label>
+            <input type="number" id="promoInputMinSpend" min="0" step="1" value="0"
+              style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600;" placeholder="0 = ไม่มีขั้นต่ำ" />
+            <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 4px; display: block;">ลูกค้าต้องมียอดซื้อสินค้าถึงจำนวนนี้ จึงจะใช้โค้ดได้ (ใส่ 0 หากไม่มีขั้นต่ำ)</small>
+          </div>
+
+          <!-- รายละเอียดโปรโมชั่น -->
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #1e293b;">
+              คำอธิบายโปรโมชั่น / เงื่อนไข
+            </label>
+            <input type="text" id="promoInputDesc"
+              style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13.5px;"
+              placeholder="เช่น ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100" />
+          </div>
+
+          <!-- วันที่เริ่ม - วันที่สิ้นสุด (ตัวเลือกวันเวลา) -->
+          <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: #1e293b;">🗓️ กำหนดช่วงเวลาโปรโมชั่น</span>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #475569; cursor: pointer;">
+                <input type="checkbox" id="promoNoExpiryCheck" onchange="togglePromoDateFields(!this.checked)" checked style="accent-color: var(--primary);" />
+                <span>ใช้ได้ตลอด (ไม่มีวันหมดอายุ)</span>
+              </label>
+            </div>
+
+            <div id="promoDateFieldsContainer" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px;">วันเริ่มโปรโมชั่น</label>
+                <input type="date" id="promoInputStartDate" style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: white;" />
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px;">วันสิ้นสุดโปรโมชั่น</label>
+                <input type="date" id="promoInputEndDate" style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: white;" />
+              </div>
+            </div>
+            <small id="promoDateHint" style="display: none; color: #64748b; font-size: 11px; margin-top: 6px;">* ระบบจะเปิดใช้งานโค้ดนี้เฉพาะช่วงวันที่กำหนดไว้เท่านั้น</small>
+          </div>
+
+          <!-- สวิตช์เปิด-ปิดการใช้งานทันที -->
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; margin-bottom: 20px;">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 700; color: #166534;">สถานะโปรโมชั่น (เปิด/ปิด)</div>
+              <div style="font-size: 11.5px; color: #15803d; margin-top: 2px;">เปิดใช้งานทันทีเพื่อให้ลูกค้าสามารถนำไปใช้ได้</div>
+            </div>
+            <label class="switch-toggle">
+              <input type="checkbox" id="promoInputIsActive" checked />
+              <span class="slider-round"></span>
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn-secondary" onclick="closePromoModal()">ยกเลิก</button>
+            <button type="submit" id="btnSubmitPromo" class="btn-primary" style="padding: 10px 22px;">💾 บันทึกโค้ดส่วนลด</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <div id="orderModal" class="modal-overlay">
@@ -3632,6 +3871,7 @@
       fetchOrders(true);
       fetchProducts(false);
       fetchMembers(false);
+      fetchPromoCodes(false);
       renderOverviewDashboard();
       setInterval(() => {
         if (currentTab === 'overview') {
@@ -3640,6 +3880,8 @@
           fetchOrders(false);
         } else if (currentTab === 'members') {
           fetchMembers(false);
+        } else if (currentTab === 'promo') {
+          fetchPromoCodes(false);
         }
       }, 12000);
     }
@@ -3656,14 +3898,16 @@
       const navOrders = document.getElementById('navOrders');
       const navProducts = document.getElementById('navProducts');
       const navMembers = document.getElementById('navMembers');
+      const navPromo = document.getElementById('navPromo');
 
       const viewOverview = document.getElementById('viewOverview');
       const viewOrders = document.getElementById('viewOrders');
       const viewProducts = document.getElementById('viewProducts');
       const viewMembers = document.getElementById('viewMembers');
+      const viewPromo = document.getElementById('viewPromo');
 
-      [navOverview, navOrders, navProducts, navMembers].forEach(n => { if (n) n.classList.remove('active'); });
-      [viewOverview, viewOrders, viewProducts, viewMembers].forEach(v => { if (v) v.style.display = 'none'; });
+      [navOverview, navOrders, navProducts, navMembers, navPromo].forEach(n => { if (n) n.classList.remove('active'); });
+      [viewOverview, viewOrders, viewProducts, viewMembers, viewPromo].forEach(v => { if (v) v.style.display = 'none'; });
 
       if (tab === 'overview') {
         if (navOverview) navOverview.classList.add('active');
@@ -3682,6 +3926,10 @@
         if (navMembers) navMembers.classList.add('active');
         if (viewMembers) viewMembers.style.display = 'block';
         fetchMembers(allMembers.length === 0);
+      } else if (tab === 'promo') {
+        if (navPromo) navPromo.classList.add('active');
+        if (viewPromo) viewPromo.style.display = 'block';
+        fetchPromoCodes(allPromoCodes.length === 0);
       }
     }
 
@@ -3700,6 +3948,7 @@
       fetchOrders(true);
       fetchProducts(true);
       fetchMembers(true);
+      fetchPromoCodes(true);
       renderOverviewDashboard();
       showToast('รีเฟรชข้อมูลภาพรวมแล้ว', 'success');
     }
@@ -6296,6 +6545,474 @@
     window.selectStatusPill = selectStatusPill;
     window.selectCategoryPill = selectCategoryPill;
     window.syncStatusPillsUI = syncStatusPillsUI;
+
+    // ==========================================
+    // PROMO CODES / COUPONS MANAGEMENT SYSTEM
+    // ==========================================
+    let allPromoCodes = [];
+    let promoFilterStatus = 'all'; // 'all' | 'active' | 'inactive' | 'expired'
+    let promoSearchQuery = '';
+
+    async function fetchPromoCodes(showLoading = true) {
+      const loading = document.getElementById('promosLoadingIndicator');
+      if (showLoading && allPromoCodes.length === 0 && loading) {
+        loading.style.display = 'flex';
+      }
+
+      // 1. โหลดจากแคชก่อนทันที (0ms)
+      try {
+        const cached = localStorage.getItem('cached_admin_promos');
+        if (cached && allPromoCodes.length === 0) {
+          allPromoCodes = JSON.parse(cached);
+          renderPromoCodes();
+          updatePromoStats();
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPromoCodes&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status === 'success' && Array.isArray(data.promos)) {
+            allPromoCodes = data.promos;
+            try {
+              localStorage.setItem('cached_admin_promos', JSON.stringify(allPromoCodes));
+            } catch (e) {}
+            renderPromoCodes();
+            updatePromoStats();
+          }
+        }
+      } catch (err) {
+        console.error('Fetch promo codes error:', err);
+      } finally {
+        if (loading) loading.style.display = 'none';
+      }
+    }
+    window.fetchPromoCodes = fetchPromoCodes;
+
+    function getPromoStatusInfo(p) {
+      const today = new Date().toISOString().slice(0, 10);
+      const isActive = Number(p.is_active) === 1;
+
+      if (!isActive) {
+        return { status: 'inactive', label: '⚪ ปิดใช้งาน', class: 'status-pill-inactive', canUse: false };
+      }
+      if (p.start_date && p.start_date.trim() !== '' && today < p.start_date.trim()) {
+        return { status: 'scheduled', label: `⏳ รอเริ่ม (${p.start_date})`, class: 'status-pill-inactive', canUse: false };
+      }
+      if (p.end_date && p.end_date.trim() !== '' && today > p.end_date.trim()) {
+        return { status: 'expired', label: '🔴 หมดอายุแล้ว', class: 'status-pill-inactive', canUse: false };
+      }
+      return { status: 'active', label: '🟢 เปิดใช้งานอยู่', class: 'status-pill-active', canUse: true };
+    }
+
+    function renderPromoCodes() {
+      const tbody = document.getElementById('promosBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      let filtered = allPromoCodes.filter(p => {
+        // กรองด้วย search query
+        if (promoSearchQuery) {
+          const q = promoSearchQuery.toLowerCase();
+          const matchCode = String(p.code || '').toLowerCase().includes(q);
+          const matchDesc = String(p.description || '').toLowerCase().includes(q);
+          if (!matchCode && !matchDesc) return false;
+        }
+
+        // กรองด้วย status filter
+        const info = getPromoStatusInfo(p);
+        if (promoFilterStatus === 'active') {
+          return info.status === 'active';
+        } else if (promoFilterStatus === 'inactive') {
+          return info.status === 'inactive';
+        } else if (promoFilterStatus === 'expired') {
+          return info.status === 'expired' || info.status === 'scheduled';
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+              <div style="font-size: 36px; margin-bottom: 8px;">🎟️</div>
+              <p style="font-weight: 600; color: var(--text-main);">ไม่พบโค้ดโปรโมชั่นที่ตรงกับเงื่อนไข</p>
+              <p style="font-size: 13px; margin-top: 4px;">แตะปุ่ม "+ สร้างโค้ดส่วนลดใหม่" เพื่อเริ่มสร้างโปรโมชั่นแรกของร้านคุณ</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const tr = document.createElement('tr');
+        const info = getPromoStatusInfo(p);
+        const isActive = Number(p.is_active) === 1;
+
+        // สิทธิประโยชน์
+        let benefitHtml = '';
+        if (p.type === 'percent') {
+          benefitHtml = `<span style="font-weight: 700; color: #b45309; background: #fef3c7; padding: 2px 8px; border-radius: 6px; font-size: 13px;">✨ ลด ${p.percent}%</span>`;
+        } else if (p.type === 'shipping') {
+          benefitHtml = `<span style="font-weight: 700; color: #047857; background: #dcfce7; padding: 2px 8px; border-radius: 6px; font-size: 13px;">🚚 ฟรีค่าจัดส่ง</span>`;
+        } else {
+          benefitHtml = `<span style="font-weight: 700; color: #1d4ed8; background: #dbeafe; padding: 2px 8px; border-radius: 6px; font-size: 13px;">💰 ลด ฿${Number(p.amount || 0).toLocaleString()}</span>`;
+        }
+
+        // ยอดซื้อขั้นต่ำ
+        const minSpendText = Number(p.min_spend || 0) > 0 ? `฿${Number(p.min_spend).toLocaleString()}` : '<span style="color:#64748b;">ไม่มีขั้นต่ำ</span>';
+
+        // ระยะเวลาโปรโมชั่น
+        let dateRangeHtml = '';
+        if (p.start_date || p.end_date) {
+          const s = p.start_date ? p.start_date : 'เริ่มทันที';
+          const e = p.end_date ? p.end_date : 'ไม่มีกำหนด';
+          dateRangeHtml = `<div style="font-size: 12.5px; color: #334155; font-weight: 600;">📅 ${s} ถึง ${e}</div>`;
+        } else {
+          dateRangeHtml = `<span style="font-size: 12px; color: #16a34a; font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 6px;">✨ ใช้ได้ตลอด (ไม่มีหมดอายุ)</span>`;
+        }
+
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-family: monospace; font-size: 15px; font-weight: 800; color: #1e293b; background: #f1f5f9; border: 1.5px dashed #94a3b8; padding: 4px 10px; border-radius: 8px; letter-spacing: 0.5px;">${p.code}</span>
+              <button type="button" class="btn-copy-sku" onclick="copyPromoCode('${p.code}', event)" title="คัดลอกรหัสโค้ด" style="padding: 3px 6px;">📋</button>
+            </div>
+          </td>
+          <td>
+            <div>${benefitHtml}</div>
+            <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">${p.description || '-'}</div>
+          </td>
+          <td><strong style="color: var(--text-main); font-size: 13.5px;">${minSpendText}</strong></td>
+          <td>${dateRangeHtml}</td>
+          <td style="text-align: center;">
+            <div class="product-status-toggle-wrapper" onclick="event.stopPropagation()">
+              <label class="switch-toggle" title="${isActive ? 'คลิกเพื่อปิดการใช้งานโค้ดนี้' : 'คลิกเพื่อเปิดใช้งานโค้ดนี้'}">
+                <input type="checkbox" ${isActive ? 'checked' : ''} onchange="togglePromoCode('${p.code}', this.checked, event)">
+                <span class="slider-round"></span>
+              </label>
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <span class="status-pill ${info.class}" style="font-size: 11.5px;">${info.label}</span>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: flex; justify-content: flex-end; gap: 6px;">
+              <button class="btn-action" onclick="openPromoModal('${p.code}')" style="padding: 5px 10px; font-size: 12px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 6px;">✏️ แก้ไข</button>
+              <button class="btn-action" onclick="deletePromoCode('${p.code}')" style="padding: 5px 10px; font-size: 12px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px;">🗑️ ลบ</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updatePromoStats() {
+      const today = new Date().toISOString().slice(0, 10);
+      let total = allPromoCodes.length;
+      let active = 0;
+      let inactive = 0;
+      let expired = 0;
+
+      allPromoCodes.forEach(p => {
+        const info = getPromoStatusInfo(p);
+        if (info.status === 'active') active++;
+        else if (info.status === 'inactive') inactive++;
+        else if (info.status === 'expired' || info.status === 'scheduled') expired++;
+      });
+
+      const elTotal = document.getElementById('statPromoTotal');
+      const elActive = document.getElementById('statPromoActive');
+      const elInactive = document.getElementById('statPromoInactive');
+      const elExpired = document.getElementById('statPromoExpired');
+
+      if (elTotal) elTotal.textContent = total;
+      if (elActive) elActive.textContent = active;
+      if (elInactive) elInactive.textContent = inactive;
+      if (elExpired) elExpired.textContent = expired;
+
+      const fAll = document.getElementById('promoFilterAllCount');
+      const fActive = document.getElementById('promoFilterActiveCount');
+      const fInactive = document.getElementById('promoFilterInactiveCount');
+      const fExpired = document.getElementById('promoFilterExpiredCount');
+
+      if (fAll) fAll.textContent = total;
+      if (fActive) fActive.textContent = active;
+      if (fInactive) fInactive.textContent = inactive;
+      if (fExpired) fExpired.textContent = expired;
+    }
+
+    function setPromoFilter(status, btn) {
+      promoFilterStatus = status;
+      document.querySelectorAll('#btnPromoFilterAll, #btnPromoFilterActive, #btnPromoFilterInactive, #btnPromoFilterExpired').forEach(b => {
+        b.classList.remove('active');
+      });
+      if (btn) btn.classList.add('active');
+      renderPromoCodes();
+    }
+    window.setPromoFilter = setPromoFilter;
+
+    function onPromoSearch(val) {
+      promoSearchQuery = (val || '').trim();
+      renderPromoCodes();
+    }
+    window.onPromoSearch = onPromoSearch;
+
+    function copyPromoCode(code, e) {
+      if (e) e.stopPropagation();
+      navigator.clipboard.writeText(code).then(() => {
+        showToast(`คัดลอกโค้ด "${code}" สำเร็จ! 📋`, 'success');
+      }).catch(() => {
+        showToast('ไม่สามารถคัดลอกได้', 'error');
+      });
+    }
+    window.copyPromoCode = copyPromoCode;
+
+    function openPromoModal(codeOrObj = null) {
+      const modal = document.getElementById('promoModal');
+      const modalTitle = document.getElementById('promoModalTitle');
+      const inputCode = document.getElementById('promoInputCode');
+      const inputType = document.getElementById('promoInputType');
+      const inputValue = document.getElementById('promoInputValue');
+      const inputMinSpend = document.getElementById('promoInputMinSpend');
+      const inputDesc = document.getElementById('promoInputDesc');
+      const noExpiryCheck = document.getElementById('promoNoExpiryCheck');
+      const inputStartDate = document.getElementById('promoInputStartDate');
+      const inputEndDate = document.getElementById('promoInputEndDate');
+      const inputIsActive = document.getElementById('promoInputIsActive');
+      const editModeInput = document.getElementById('promoEditMode');
+
+      if (!modal) return;
+
+      let promo = null;
+      if (codeOrObj) {
+        if (typeof codeOrObj === 'object') promo = codeOrObj;
+        else promo = allPromoCodes.find(p => p.code === codeOrObj);
+      }
+
+      if (promo) {
+        // Edit Mode
+        if (modalTitle) modalTitle.textContent = `✏️ แก้ไขโค้ดส่วนลด "${promo.code}"`;
+        if (editModeInput) editModeInput.value = 'edit';
+        if (inputCode) {
+          inputCode.value = promo.code;
+          inputCode.readOnly = true;
+          inputCode.style.background = '#f8fafc';
+        }
+        if (inputType) inputType.value = promo.type || 'fixed';
+        if (inputValue) inputValue.value = promo.type === 'percent' ? (promo.percent || 0) : (promo.amount || 0);
+        if (inputMinSpend) inputMinSpend.value = promo.min_spend || 0;
+        if (inputDesc) inputDesc.value = promo.description || '';
+
+        const hasDates = !!(promo.start_date || promo.end_date);
+        if (noExpiryCheck) noExpiryCheck.checked = !hasDates;
+        togglePromoDateFields(hasDates);
+        if (inputStartDate) inputStartDate.value = promo.start_date || '';
+        if (inputEndDate) inputEndDate.value = promo.end_date || '';
+        if (inputIsActive) inputIsActive.checked = Number(promo.is_active) === 1;
+      } else {
+        // Create Mode
+        if (modalTitle) modalTitle.textContent = '🎟️ สร้างโค้ดส่วนลดใหม่';
+        if (editModeInput) editModeInput.value = 'create';
+        if (inputCode) {
+          inputCode.value = '';
+          inputCode.readOnly = false;
+          inputCode.style.background = '#ffffff';
+          setTimeout(() => inputCode.focus(), 150);
+        }
+        if (inputType) inputType.value = 'fixed';
+        if (inputValue) inputValue.value = '50';
+        if (inputMinSpend) inputMinSpend.value = '0';
+        if (inputDesc) inputDesc.value = '';
+        if (noExpiryCheck) noExpiryCheck.checked = true;
+        togglePromoDateFields(false);
+        if (inputStartDate) inputStartDate.value = '';
+        if (inputEndDate) inputEndDate.value = '';
+        if (inputIsActive) inputIsActive.checked = true;
+      }
+
+      onPromoTypeChange(inputType ? inputType.value : 'fixed');
+      modal.classList.add('active');
+    }
+    window.openPromoModal = openPromoModal;
+
+    function closePromoModal() {
+      const modal = document.getElementById('promoModal');
+      if (modal) modal.classList.remove('active');
+    }
+    window.closePromoModal = closePromoModal;
+
+    function togglePromoDateFields(show) {
+      const container = document.getElementById('promoDateFieldsContainer');
+      const hint = document.getElementById('promoDateHint');
+      if (container) container.style.display = show ? 'grid' : 'none';
+      if (hint) hint.style.display = show ? 'block' : 'none';
+    }
+    window.togglePromoDateFields = togglePromoDateFields;
+
+    function onPromoTypeChange(type) {
+      const valLabel = document.getElementById('promoValueLabel');
+      const valInput = document.getElementById('promoInputValue');
+      if (!valLabel || !valInput) return;
+
+      if (type === 'shipping') {
+        valLabel.textContent = 'ส่วนลดค่าจัดส่ง';
+        valInput.value = '0';
+        valInput.disabled = true;
+        valInput.style.background = '#f1f5f9';
+      } else if (type === 'percent') {
+        valLabel.textContent = 'เปอร์เซ็นต์ส่วนลด (%) *';
+        valInput.disabled = false;
+        valInput.style.background = '#ffffff';
+        valInput.max = '100';
+        if (Number(valInput.value) > 100 || Number(valInput.value) === 0) valInput.value = '10';
+      } else {
+        valLabel.textContent = 'จำนวนส่วนลด (บาท) *';
+        valInput.disabled = false;
+        valInput.style.background = '#ffffff';
+        valInput.removeAttribute('max');
+        if (Number(valInput.value) === 0) valInput.value = '50';
+      }
+    }
+    window.onPromoTypeChange = onPromoTypeChange;
+
+    async function handleSavePromo(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const codeInput = document.getElementById('promoInputCode');
+      const code = (codeInput ? codeInput.value : '').trim().toUpperCase();
+      if (!code) {
+        alert('กรุณาระบุรหัสโค้ดส่วนลด');
+        return;
+      }
+
+      const type = document.getElementById('promoInputType')?.value || 'fixed';
+      const rawVal = Number(document.getElementById('promoInputValue')?.value) || 0;
+      const minSpend = Number(document.getElementById('promoInputMinSpend')?.value) || 0;
+      const description = (document.getElementById('promoInputDesc')?.value || '').trim();
+      const noExpiry = document.getElementById('promoNoExpiryCheck')?.checked;
+      const startDate = noExpiry ? '' : (document.getElementById('promoInputStartDate')?.value || '');
+      const endDate = noExpiry ? '' : (document.getElementById('promoInputEndDate')?.value || '');
+      const isActive = document.getElementById('promoInputIsActive')?.checked ? 1 : 0;
+
+      const amount = type === 'fixed' ? rawVal : 0;
+      const percent = type === 'percent' ? rawVal : 0;
+
+      const promoObj = {
+        code,
+        type,
+        amount,
+        percent,
+        min_spend: minSpend,
+        description,
+        start_date: startDate,
+        end_date: endDate,
+        is_active: isActive
+      };
+
+      // Optimistic update
+      const existingIdx = allPromoCodes.findIndex(p => p.code === code);
+      if (existingIdx >= 0) {
+        allPromoCodes[existingIdx] = { ...allPromoCodes[existingIdx], ...promoObj };
+      } else {
+        allPromoCodes.unshift(promoObj);
+      }
+
+      try {
+        localStorage.setItem('cached_admin_promos', JSON.stringify(allPromoCodes));
+      } catch (err) {}
+
+      renderPromoCodes();
+      updatePromoStats();
+      closePromoModal();
+      showToast(`บันทึกโค้ดส่วนลด "${code}" เรียบร้อยแล้ว! 🎟️`, 'success');
+
+      // Send to server
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'savePromoCode',
+            code,
+            type,
+            amount,
+            percent,
+            minSpend,
+            description,
+            startDate,
+            endDate,
+            isActive
+          })
+        });
+        const result = await res.json();
+        if (result && result.status === 'success') {
+          console.log('Promo saved on server:', result);
+        }
+      } catch (err) {
+        console.error('Server save error:', err);
+      }
+    }
+    window.handleSavePromo = handleSavePromo;
+
+    async function togglePromoCode(code, isChecked, event) {
+      if (event) event.stopPropagation();
+      const promo = allPromoCodes.find(p => p.code === code);
+      if (!promo) return;
+
+      promo.is_active = isChecked ? 1 : 0;
+      try {
+        localStorage.setItem('cached_admin_promos', JSON.stringify(allPromoCodes));
+      } catch (e) {}
+
+      renderPromoCodes();
+      updatePromoStats();
+
+      const msg = isChecked ? `เปิดใช้งานโค้ด "${code}" แล้ว 🟢` : `ปิดใช้งานโค้ด "${code}" แล้ว ⚪`;
+      showToast(msg, isChecked ? 'success' : 'info');
+
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'togglePromoCode',
+            code,
+            isActive: isChecked
+          })
+        });
+      } catch (err) {
+        console.error('Toggle promo error:', err);
+      }
+    }
+    window.togglePromoCode = togglePromoCode;
+
+    async function deletePromoCode(code) {
+      if (!confirm(`คุณต้องการลบโค้ดส่วนลด "${code}" ใช่หรือไม่?`)) return;
+
+      allPromoCodes = allPromoCodes.filter(p => p.code !== code);
+      try {
+        localStorage.setItem('cached_admin_promos', JSON.stringify(allPromoCodes));
+      } catch (e) {}
+
+      renderPromoCodes();
+      updatePromoStats();
+      showToast(`ลบโค้ดส่วนลด "${code}" เรียบร้อยแล้ว`, 'info');
+
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'deletePromoCode',
+            code
+          })
+        });
+      } catch (err) {
+        console.error('Delete promo error:', err);
+      }
+    }
+    window.deletePromoCode = deletePromoCode;
 
   </script>
 </body>

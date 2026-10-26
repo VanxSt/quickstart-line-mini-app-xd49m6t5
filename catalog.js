@@ -42,47 +42,151 @@ function formatThaiPhoneNumber(raw) {
 // ========================================================
 // 1. PROMO CODE / COUPON SYSTEM
 // ========================================================
-const PROMO_CODES = {
+let PROMO_CODES = {
   'WELCOME50': {
     code: 'WELCOME50',
     type: 'fixed',
     amount: 50,
+    percent: 0,
     minSpend: 100,
-    desc: 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100'
+    desc: 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100',
+    startDate: '',
+    endDate: ''
   },
   'FREESHIP': {
     code: 'FREESHIP',
     type: 'shipping',
     amount: 0,
+    percent: 0,
     minSpend: 0,
-    desc: 'ฟรีค่าจัดส่งทุกระยะทาง'
+    desc: 'ฟรีค่าจัดส่งทุกระยะทาง',
+    startDate: '',
+    endDate: ''
   },
   'KUE10': {
     code: 'KUE10',
     type: 'percent',
+    amount: 0,
     percent: 10,
     minSpend: 150,
-    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150'
+    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150',
+    startDate: '',
+    endDate: ''
   },
   'BAKERY20': {
     code: 'BAKERY20',
     type: 'fixed',
     amount: 20,
+    percent: 0,
     minSpend: 60,
-    desc: 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่'
-  },
-  'COFFEE20': {
-    code: 'COFFEE20',
-    type: 'fixed',
-    amount: 20,
-    minSpend: 60,
-    desc: 'ส่วนลด ฿20 เมื่อสั่งซื้อขั้นต่ำ ฿60'
+    desc: 'ส่วนลด ฿20 สำหรับของใช้และวัตถุดิบเบเกอรี่',
+    startDate: '',
+    endDate: ''
   }
 };
 
 let appliedCoupon = null;
 
-function applyPromoCode(inputCode) {
+async function syncActivePromoCodes() {
+  // 1. แคชเร็ว 0ms จาก LocalStorage
+  try {
+    const cached = localStorage.getItem('cached_active_promos');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        updatePromoCodesMap(parsed);
+      }
+    }
+  } catch (e) {}
+
+  // 2. ดึงข้อมูลล่าสุดจาก Cloudflare D1 Backend
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPromoCodes&activeOnly=true&_t=${Date.now()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.status === 'success' && Array.isArray(data.promos)) {
+        try {
+          localStorage.setItem('cached_active_promos', JSON.stringify(data.promos));
+        } catch (e) {}
+        updatePromoCodesMap(data.promos);
+      }
+    }
+  } catch (err) {
+    console.warn('Sync promo codes error:', err);
+  }
+}
+
+function updatePromoCodesMap(promosList) {
+  if (!Array.isArray(promosList) || promosList.length === 0) return;
+  const newMap = {};
+  promosList.forEach(p => {
+    if (!p.code) return;
+    const code = String(p.code).trim().toUpperCase();
+    const type = p.type || 'fixed';
+    const amount = Number(p.amount) || 0;
+    const percent = Number(p.percent) || 0;
+    const minSpend = Number(p.min_spend || p.minSpend) || 0;
+    let desc = p.description;
+    if (!desc) {
+      if (type === 'percent') desc = `ลด ${percent}% เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}`;
+      else if (type === 'shipping') desc = `ฟรีค่าจัดส่ง${minSpend > 0 ? ` เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}` : ''}`;
+      else desc = `ส่วนลด ฿${amount} เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}`;
+    }
+    newMap[code] = {
+      code,
+      type,
+      amount,
+      percent,
+      minSpend,
+      desc,
+      startDate: p.start_date || p.startDate || '',
+      endDate: p.end_date || p.endDate || ''
+    };
+  });
+
+  if (Object.keys(newMap).length > 0) {
+    PROMO_CODES = newMap;
+    renderQuickCouponChips();
+  }
+}
+
+function renderQuickCouponChips() {
+  const container = document.getElementById('quickCouponChipsContainer');
+  if (!container) return;
+  const codes = Object.values(PROMO_CODES);
+  if (codes.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  let chipsHtml = '<span style="font-size: 11.5px; color: #64748b; font-weight: 500;">แนะนำ:</span>';
+  codes.forEach(p => {
+    let badgeText = '';
+    let bg = '#eff6ff';
+    let border = '#3b82f6';
+    let color = '#1d4ed8';
+
+    if (p.type === 'percent') {
+      badgeText = `✨ ${p.code} (ลด ${p.percent}%)`;
+      bg = '#fefce8';
+      border = '#eab308';
+      color = '#854d0e';
+    } else if (p.type === 'shipping') {
+      badgeText = `🚚 ${p.code} (ส่งฟรี)`;
+      bg = '#f0fdf4';
+      border = '#10b981';
+      color = '#047857';
+    } else {
+      badgeText = `🏷️ ${p.code} (ลด ${p.amount}฿)`;
+    }
+
+    chipsHtml += `<button type="button" class="coupon-chip" onclick="applyPromoChip('${p.code}')" style="background: ${bg}; border: 1px dashed ${border}; color: ${color}; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">${badgeText}</button>`;
+  });
+  container.innerHTML = chipsHtml;
+}
+
+async function applyPromoCode(inputCode) {
   const code = String(inputCode || '').trim().toUpperCase();
   const msgEl = document.getElementById('couponMessage');
   const badgeEl = document.getElementById('couponBadge');
@@ -98,12 +202,53 @@ function applyPromoCode(inputCode) {
     return;
   }
 
-  const promo = PROMO_CODES[code];
+  let promo = PROMO_CODES[code];
+  if (!promo) {
+    // ถ้ายังไม่พบในแคช ลองดึงจาก API เซิร์ฟเวอร์อีกครั้งทันที
+    try {
+      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPromoCodes&activeOnly=true&_t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status === 'success' && Array.isArray(data.promos)) {
+          updatePromoCodesMap(data.promos);
+          promo = PROMO_CODES[code];
+        }
+      }
+    } catch (e) {}
+  }
+
   if (!promo) {
     if (msgEl) {
       msgEl.style.display = 'block';
       msgEl.style.color = '#ef4444';
-      msgEl.textContent = `❌ ไม่พบโค้ด "${code}" หรือโค้ดนี้หมดอายุแล้ว`;
+      msgEl.textContent = `❌ ไม่พบโค้ด "${code}" หรือโค้ดนี้ถูกปิด/หมดอายุแล้ว`;
+    }
+    if (container) container.classList.remove('applied');
+    if (badgeEl) badgeEl.style.display = 'none';
+    appliedCoupon = null;
+    calculateCheckoutTotal();
+    return;
+  }
+
+  // ตรวจสอบวันเริ่มและวันสิ้นสุดโปรโมชั่น
+  const today = new Date().toISOString().slice(0, 10);
+  if (promo.startDate && promo.startDate.trim() !== '' && today < promo.startDate.trim()) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = `⏳ โค้ดนี้จะเริ่มใช้งานได้ในวันที่ ${promo.startDate}`;
+    }
+    if (container) container.classList.remove('applied');
+    if (badgeEl) badgeEl.style.display = 'none';
+    appliedCoupon = null;
+    calculateCheckoutTotal();
+    return;
+  }
+  if (promo.endDate && promo.endDate.trim() !== '' && today > promo.endDate.trim()) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = `🔴 โค้ดนี้หมดอายุแล้ว (สิ้นสุดเมื่อ ${promo.endDate})`;
     }
     if (container) container.classList.remove('applied');
     if (badgeEl) badgeEl.style.display = 'none';
@@ -120,6 +265,8 @@ function applyPromoCode(inputCode) {
       msgEl.style.color = '#dc2626';
       msgEl.textContent = `⚠️ โค้ดนี้ต้องมียอดซื้อสินค้าขั้นต่ำ ฿${promo.minSpend} (ยอดปัจจุบัน ฿${subtotal})`;
     }
+    if (container) container.classList.remove('applied');
+    if (badgeEl) badgeEl.style.display = 'none';
     appliedCoupon = null;
     calculateCheckoutTotal();
     return;
@@ -1559,6 +1706,8 @@ function calculateCheckoutTotal() {
 
 function openCheckoutModal() {
   const checkoutModal = document.getElementById('checkoutModal');
+  renderQuickCouponChips();
+  syncActivePromoCodes();
   calculateCheckoutTotal();
 
   // Prefill default info from member profile (กรองเบอร์ปลอม เช่น 001 ทิ้ง)
@@ -3246,8 +3395,9 @@ function showProductsError(grid, icon, title, subtitle) {
 async function start() {
   loadCart();
 
-  // โหลดข้อมูลสินค้าเบื้องหลังแบบ Non-blocking (ไม่ต้องรอให้เสร็จก่อน)
+  // โหลดข้อมูลสินค้าและโค้ดโปรโมชั่นเบื้องหลังแบบ Non-blocking (ไม่ต้องรอให้เสร็จก่อน)
   loadProducts();
+  syncActivePromoCodes();
 
   // รอเพียงแค่การเชื่อมต่อกับ LINE LIFF ซึ่งทำงานเร็วกว่ามาก
   await initLiff();
