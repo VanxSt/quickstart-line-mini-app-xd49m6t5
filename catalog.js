@@ -3435,7 +3435,27 @@ async function doLoadProducts() {
     }
     throw new Error('ไม่พบข้อมูลสินค้าจากฐานข้อมูล');
   } catch (error) {
-    console.error('Database fetch error:', error.message);
+    console.warn('Database fetch error (D1 blocked/error):', error.message, 'กำลังดึงข้อมูลสำรองจาก products.json แทน');
+
+    // โหลดข้อมูลสำรองจาก products.json อัตโนมัติเมื่อ Cloudflare D1 โดนบล็อกหรือโควตาเต็ม เพื่อให้ลูกค้ายังสั่งซื้อได้ตามปกติ
+    try {
+      const staticRes = await fetch('products.json?v=' + Date.now(), { cache: 'no-store' });
+      if (staticRes.ok) {
+        const staticData = await staticRes.json();
+        const staticProducts = Array.isArray(staticData) ? staticData : (staticData.products || []);
+        if (staticProducts && staticProducts.length > 0) {
+          PRODUCTS = sanitizeProductList(staticProducts);
+          catalogLoaded = true;
+          initCategoryFilters();
+          renderProducts();
+          console.log(`Loaded ${PRODUCTS.length} products from products.json as backup fallback`);
+          return;
+        }
+      }
+    } catch (fallbackErr) {
+      console.error('Fallback products.json error:', fallbackErr.message);
+    }
+
     if (!catalogLoaded) {
       if (grid) {
         grid.innerHTML = `

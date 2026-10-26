@@ -187,17 +187,13 @@ async function runSync() {
 
   console.log(`✅ ดึงข้อมูลสำเร็จ! พบสินค้าใน POSPOS ทั้งหมด: ${posposItems.length} รายการ`);
 
-  // แปลงและจัดทำ Map จาก POSPOS โดยใช้ Barcode และ Name เป็นคีย์
+  // แปลงและจัดทำ Map จาก POSPOS โดยใช้ Barcode/ID เป็นคีย์หลักเท่านั้น
   const posposByBarcode = new Map();
-  const posposByName = new Map();
 
   for (const rawItem of posposItems) {
     const item = normalizePosposItem(rawItem);
     if (item.barcode) {
       posposByBarcode.set(item.barcode, item);
-    }
-    if (item.name) {
-      posposByName.set(item.name.toLowerCase(), item);
     }
   }
 

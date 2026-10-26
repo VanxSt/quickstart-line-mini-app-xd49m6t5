@@ -2141,7 +2141,16 @@ async function fetchProducts(showLoading = true) {
       }
     }
   } catch (err) {
-    console.error('Fetch products error:', err);
+    console.warn('Fetch products from D1 failed (blocked/error), fallback to products.json:', err);
+    try {
+      const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
+          fetchedData = data.products;
+        }
+      }
+    } catch (e) {}
   }
 
   if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
