@@ -250,7 +250,10 @@
           </div>
           <div class="form-group">
             <label for="checkoutPhone">เบอร์โทรศัพท์ติดต่อ *</label>
-            <input type="tel" id="checkoutPhone" placeholder="ระบุเบอร์โทรศัพท์..." required />
+            <input type="tel" id="checkoutPhone" placeholder="08X-XXX-XXXX" maxlength="12" inputmode="numeric" autocomplete="tel" required />
+            <small id="checkoutPhoneError" style="display: none; color: #ef4444; font-size: 11.5px; margin-top: 4px; font-weight: 500;">
+              * กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)
+            </small>
           </div>
         </div>
 

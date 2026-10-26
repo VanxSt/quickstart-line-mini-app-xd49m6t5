@@ -29,6 +29,31 @@ function htmlResponse(html, status = 200) {
   });
 }
 
+// Helper: ตรวจสอบและจัดรูปแบบเบอร์โทรศัพท์ (Thai Phone Validation)
+function cleanPhoneNumber(p) {
+  if (!p) return '';
+  let str = String(p).trim().replace(/[\s\-\(\)\.]/g, '');
+  if (str.startsWith('+66')) {
+    str = '0' + str.slice(3);
+  } else if (str.startsWith('66') && str.length >= 11) {
+    str = '0' + str.slice(2);
+  }
+  return str;
+}
+
+function isValidThaiPhone(p) {
+  const clean = cleanPhoneNumber(p);
+  // ต้องเป็นตัวเลข 9 หรือ 10 หลัก ขึ้นต้นด้วย 0
+  if (!/^0[0-9]{8,9}$/.test(clean)) {
+    return false;
+  }
+  // ป้องกันเลขซ้ำปลอม เช่น 0000000000 หรือ 0111111111 หรือ 001
+  if (/^0([0-9])\1{7,8}$/.test(clean)) {
+    return false;
+  }
+  return true;
+}
+
 // Flex Message Builder (ตรงตามระบบเดิม สวยงาม รองรับทุกสถานะ)
 function buildStatusFlexMessage(title, orderId, bodyText, headerBgColor, name, phone, shippingOption, deliveryType, preorderTime, items, totalPrice, paymentMethod = '-') {
   const cartItems = Array.isArray(items) ? items : [];
@@ -862,6 +887,17 @@ export default {
         // 2. Action: createOrder OR POST /api/orders
         if (postAction === 'createOrder' || url.pathname === '/api/orders') {
           const data = postData;
+
+          // บังคับตรวจสอบเบอร์โทรศัพท์ให้ถูกต้อง (ห้ามเว้นวรรค หรือ 001)
+          const rawPhone = data.phone || '';
+          const cleanPhone = cleanPhoneNumber(rawPhone);
+          if (!rawPhone || !isValidThaiPhone(cleanPhone)) {
+            return jsonResponse({
+              status: 'error',
+              message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
+            }, 400);
+          }
+
           const timestamp = new Date();
           const rand = Math.floor(Math.random() * 1000);
           const orderId =
@@ -902,7 +938,7 @@ export default {
               orderId,
               data.userId || 'unknown',
               data.displayName || data.customerName || '',
-              data.phone || '',
+              cleanPhone,
               data.gpsLocation || '',
               displayAddress,
               data.slipUrl || '',
@@ -961,7 +997,7 @@ export default {
                 .bind(
                   data.userId,
                   data.displayName || '',
-                  data.phone || '',
+                  cleanPhone,
                   data.gpsLocation || '',
                   data.addressDetails || '',
                   data.addressLabel || '',
@@ -1407,6 +1443,17 @@ export default {
             return jsonResponse({ status: 'error', message: 'Missing userId' }, 400);
           }
 
+          const rawPhone = postData.phone || '';
+          const cleanPhone = cleanPhoneNumber(rawPhone);
+          // ถ้ามี phone ส่งมาแต่ไม่ถูกต้อง (เช่น 001 หรือช่องว่าง) ให้ปฏิเสธเพื่อป้องกันข้อมูลเสีย
+          if (rawPhone && !isValidThaiPhone(cleanPhone)) {
+            return jsonResponse({
+              status: 'error',
+              message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
+            }, 400);
+          }
+          const validPhoneToSave = isValidThaiPhone(cleanPhone) ? cleanPhone : '';
+
           const query = `
             INSERT INTO members (user_id, display_name, status_message, email, picture_url, phone, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -1427,7 +1474,7 @@ export default {
               postData.statusMessage || '',
               postData.email || '',
               postData.pictureUrl || '',
-              postData.phone || ''
+              validPhoneToSave
             )
             .run();
 

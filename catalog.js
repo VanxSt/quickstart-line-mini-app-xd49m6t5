@@ -3,6 +3,42 @@ var GOOGLE_SCRIPT_URL = window.GOOGLE_SCRIPT_URL;
 
 let PRODUCTS = [];
 
+// Helper: ตรวจสอบและจัดรูปแบบเบอร์โทรศัพท์ (Thai Phone Validation)
+function cleanPhoneNumber(p) {
+  if (!p) return '';
+  let str = String(p).trim().replace(/[\s\-\(\)\.]/g, '');
+  if (str.startsWith('+66')) {
+    str = '0' + str.slice(3);
+  } else if (str.startsWith('66') && str.length >= 11) {
+    str = '0' + str.slice(2);
+  }
+  return str;
+}
+
+function isValidThaiPhone(p) {
+  const clean = cleanPhoneNumber(p);
+  // ต้องเป็นตัวเลข 9 หรือ 10 หลัก ขึ้นต้นด้วย 0
+  if (!/^0[0-9]{8,9}$/.test(clean)) {
+    return false;
+  }
+  // ป้องกันเลขซ้ำปลอม เช่น 0000000000 หรือ 0111111111 หรือ 001
+  if (/^0([0-9])\1{7,8}$/.test(clean)) {
+    return false;
+  }
+  return true;
+}
+
+function formatThaiPhoneNumber(raw) {
+  let num = String(raw || '').replace(/[^0-9]/g, '');
+  if (num.length > 10) num = num.slice(0, 10);
+  if (num.length > 6) {
+    return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6)}`;
+  } else if (num.length > 3) {
+    return `${num.slice(0, 3)}-${num.slice(3)}`;
+  }
+  return num;
+}
+
 // Helper สำหรับปรับแต่ง URL รูปภาพเพื่อประสิทธิภาพสูงสุด (แปลงเป็น WebP และย่อขนาดหากมี CDN รองรับ)
 function getOptimizedImageUrl(url) {
   if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
@@ -1246,9 +1282,10 @@ function openCheckoutModal() {
   const checkoutModal = document.getElementById('checkoutModal');
   calculateCheckoutTotal();
 
-  // Prefill default info from member profile
+  // Prefill default info from member profile (กรองเบอร์ปลอม เช่น 001 ทิ้ง)
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
-  document.getElementById('checkoutPhone').value = currentMemberInfo.phone || '';
+  const initialCheckoutPhone = currentMemberInfo.phone && isValidThaiPhone(currentMemberInfo.phone) ? formatThaiPhoneNumber(currentMemberInfo.phone) : '';
+  document.getElementById('checkoutPhone').value = initialCheckoutPhone;
 
   // รีเซ็ตตัวเลือกช่องทางการรับสินค้า
   const defaultShippingOption = document.querySelector('input[name="shippingOption"][value="จัดส่ง"]');
@@ -1339,8 +1376,26 @@ function closeCheckoutModal() {
 
 function validateCheckoutForm() {
   const name = document.getElementById('checkoutName')?.value.trim() || '';
-  const phone = document.getElementById('checkoutPhone')?.value.trim() || '';
+  const rawPhone = document.getElementById('checkoutPhone')?.value.trim() || '';
+  const cleanPhone = cleanPhoneNumber(rawPhone);
+  const isPhoneValid = isValidThaiPhone(cleanPhone);
+  const phoneInputEl = document.getElementById('checkoutPhone');
+  const phoneErrorEl = document.getElementById('checkoutPhoneError');
   const btnSubmitOrder = document.getElementById('btnSubmitOrder');
+
+  // ตรวจสอบและแสดงแจ้งเตือนสถานะเบอร์โทร
+  if (phoneInputEl) {
+    if (cleanPhone.length > 0 && !isPhoneValid) {
+      phoneInputEl.style.borderColor = '#ef4444';
+      if (phoneErrorEl) {
+        phoneErrorEl.style.display = 'block';
+        phoneErrorEl.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)';
+      }
+    } else {
+      phoneInputEl.style.borderColor = '';
+      if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+    }
+  }
 
   // ตรวจสอบการสั่งล่วงหน้า
   const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
@@ -1366,8 +1421,8 @@ function validateCheckoutForm() {
     }
   }
 
-  // Valid if Name, Phone, Shipping details, and Preorder (if any) are valid
-  const isValid = name !== "" && phone !== "" && isPreorderValid && isShippingValid;
+  // Valid if Name, Valid Phone, Shipping details, and Preorder (if any) are valid
+  const isValid = name !== "" && isPhoneValid && isPreorderValid && isShippingValid;
   if (btnSubmitOrder) {
     btnSubmitOrder.removeAttribute('disabled');
     if (!isValid) {
@@ -1395,7 +1450,9 @@ async function fetchMemberInfo(userId) {
         const nameInput = document.getElementById('checkoutName');
         const phoneInput = document.getElementById('checkoutPhone');
         if (nameInput && !nameInput.value) nameInput.value = currentMemberInfo.displayName;
-        if (phoneInput && !phoneInput.value) phoneInput.value = currentMemberInfo.phone;
+        if (phoneInput && !phoneInput.value && isValidThaiPhone(currentMemberInfo.phone)) {
+          phoneInput.value = formatThaiPhoneNumber(currentMemberInfo.phone);
+        }
       }
     }
   } catch (e) { }
@@ -1453,7 +1510,9 @@ async function fetchMemberInfo(userId) {
       const nameInput = document.getElementById('checkoutName');
       const phoneInput = document.getElementById('checkoutPhone');
       if (nameInput) nameInput.value = currentMemberInfo.displayName;
-      if (phoneInput) phoneInput.value = currentMemberInfo.phone;
+      if (phoneInput && isValidThaiPhone(currentMemberInfo.phone)) {
+        phoneInput.value = formatThaiPhoneNumber(currentMemberInfo.phone);
+      }
       validateCheckoutForm();
     }
   } catch (e) {
@@ -2239,7 +2298,12 @@ document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
 });
 
 if (checkoutName) checkoutName.addEventListener('input', validateCheckoutForm);
-if (checkoutPhone) checkoutPhone.addEventListener('input', validateCheckoutForm);
+if (checkoutPhone) {
+  checkoutPhone.addEventListener('input', (e) => {
+    e.target.value = formatThaiPhoneNumber(e.target.value);
+    validateCheckoutForm();
+  });
+}
 if (checkoutAddressDetails) checkoutAddressDetails.addEventListener('input', validateCheckoutForm);
 const addressLabelEl = document.getElementById('addressLabel');
 if (addressLabelEl) addressLabelEl.addEventListener('input', validateCheckoutForm);
@@ -2250,7 +2314,10 @@ if (preorderTimeSelect) preorderTimeSelect.addEventListener('change', validateCh
 if (btnSubmitOrder) {
   btnSubmitOrder.addEventListener('click', async () => {
     const name = checkoutName.value.trim();
-    const phone = checkoutPhone.value.trim();
+    const rawPhone = checkoutPhone.value.trim();
+    const cleanPhone = cleanPhoneNumber(rawPhone);
+    const isPhoneValid = isValidThaiPhone(cleanPhone);
+    const phone = cleanPhone;
 
     const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
     let rawAddressDetails = checkoutAddressDetails ? checkoutAddressDetails.value.trim() : '';
@@ -2258,7 +2325,11 @@ if (btnSubmitOrder) {
     // ตรวจสอบความครบถ้วนของข้อมูล
     let missingFields = [];
     if (!name) missingFields.push('ชื่อผู้สั่ง');
-    if (!phone) missingFields.push('เบอร์โทรศัพท์');
+    if (!rawPhone) {
+      missingFields.push('เบอร์โทรศัพท์ติดต่อ');
+    } else if (!isPhoneValid) {
+      missingFields.push('เบอร์โทรศัพท์ที่ถูกต้อง (ตัวเลข 10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)');
+    }
     if (shippingOption === 'จัดส่ง' && !rawAddressDetails) missingFields.push('รายละเอียดที่อยู่จัดส่ง');
 
     const deliveryTypeCheck = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
@@ -2403,7 +2474,7 @@ if (btnSubmitOrder) {
 
       // ส่งข้อความ Flex Message แจ้งรายละเอียดคำสั่งซื้อในห้องแชท LINE
       if (liff.isInClient()) {
-        await sendOrderFlexMessage(orderId, name, phone, totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee, paymentMethod);
+        await sendOrderFlexMessage(orderId, name, formatThaiPhoneNumber(phone), totals.grandTotal, cart, deliveryType, preorderTimeStr, shippingOption, totals.subtotal, totals.shippingFee, paymentMethod);
       }
 
       // เคลียร์ตะกร้าและปิด Modal ทันที

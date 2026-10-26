@@ -3303,6 +3303,40 @@
   <script>
     const GOOGLE_SCRIPT_URL = 'https://kuekoonkan-api.noperfecf.workers.dev';
 
+    // Helper: ตรวจสอบและจัดรูปแบบเบอร์โทรศัพท์ (Thai Phone Validation)
+    function cleanPhoneNumber(p) {
+      if (!p) return '';
+      let str = String(p).trim().replace(/[\s\-\(\)\.]/g, '');
+      if (str.startsWith('+66')) {
+        str = '0' + str.slice(3);
+      } else if (str.startsWith('66') && str.length >= 11) {
+        str = '0' + str.slice(2);
+      }
+      return str;
+    }
+
+    function isValidThaiPhone(p) {
+      const clean = cleanPhoneNumber(p);
+      if (!/^0[0-9]{8,9}$/.test(clean)) {
+        return false;
+      }
+      if (/^0([0-9])\1{7,8}$/.test(clean)) {
+        return false;
+      }
+      return true;
+    }
+
+    function formatThaiPhoneNumber(raw) {
+      let num = String(raw || '').replace(/[^0-9]/g, '');
+      if (num.length > 10) num = num.slice(0, 10);
+      if (num.length > 6) {
+        return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6)}`;
+      } else if (num.length > 3) {
+        return `${num.slice(0, 3)}-${num.slice(3)}`;
+      }
+      return num;
+    }
+
     let allOrders = [];
     let allMembers = [];
     let activeFilter = 'กำลังตรวจสอบออเดอร์';
@@ -4792,7 +4826,19 @@
           ? '<img src="' + m.pictureUrl + '" alt="' + (m.displayName || '') + '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);" />'
           : '<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">' + ((m.displayName || 'U').charAt(0)) + '</div>';
 
-        const cleanPhone = m.phone ? m.phone.replace(/'/g, "") : '-';
+        const rawPhone = m.phone ? m.phone.replace(/'/g, "").trim() : '';
+        let phoneDisplayHtml = '<span style="color: #94a3b8;">-</span>';
+        if (rawPhone) {
+          if (isValidThaiPhone(rawPhone)) {
+            phoneDisplayHtml = '<span style="font-weight: 600; color: #0f172a;">' + formatThaiPhoneNumber(rawPhone) + '</span>';
+          } else {
+            phoneDisplayHtml = '<span style="font-weight: 600; color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px;" title="เบอร์โทรไม่ถูกต้อง">' +
+              '⚠️ ' + rawPhone + ' (ไม่ถูกต้อง)' +
+              '</span>';
+          }
+        }
+
+        const editPhoneBtn = '<button type="button" class="btn-slip-action-sm" style="margin-left: 6px; padding: 2px 6px; font-size: 11px; cursor: pointer;" onclick="event.stopPropagation(); editMemberPhone(\'' + (m.userId || '') + '\', \'' + (rawPhone || '') + '\')" title="แก้ไขเบอร์โทรศัพท์">✏️</button>';
 
         tr.innerHTML = '<td>' +
           '<div style="display: flex; align-items: center; gap: 12px;">' +
@@ -4803,7 +4849,7 @@
           '</div>' +
           '</div>' +
           '</td>' +
-          '<td><span style="font-weight: 600; color: #1e293b;">' + cleanPhone + '</span></td>' +
+          '<td><div style="display: flex; align-items: center;">' + phoneDisplayHtml + editPhoneBtn + '</div></td>' +
           '<td><code style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #475569;">' + (m.userId || '-') + '</code></td>' +
           '<td style="font-size: 13px; color: var(--text-muted);">' + dateStr + '</td>';
         tbody.appendChild(tr);
@@ -4815,9 +4861,54 @@
       const elPhone = document.getElementById('stat-phone-members');
       if (elTotal) elTotal.textContent = allMembers.length;
       let phoneCount = 0;
-      allMembers.forEach(m => { if (m.phone && m.phone.trim() !== '') phoneCount++; });
+      allMembers.forEach(m => {
+        if (m.phone && isValidThaiPhone(m.phone)) phoneCount++;
+      });
       if (elPhone) elPhone.textContent = phoneCount;
     }
+
+    async function editMemberPhone(userId, currentPhone) {
+      if (!userId) return;
+      const initialVal = (currentPhone === '001' || !isValidThaiPhone(currentPhone)) ? '' : currentPhone;
+      const newPhone = prompt('กรุณาระบุเบอร์โทรศัพท์ใหม่ (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)\n*หากต้องการล้างเบอร์ทิ้ง ให้กดตกลงโดยเว้นว่างไว้*:', initialVal);
+      if (newPhone === null) return;
+
+      const trimmed = newPhone.trim();
+      const clean = cleanPhoneNumber(trimmed);
+      if (trimmed !== '' && !isValidThaiPhone(clean)) {
+        alert('⚠️ เบอร์โทรศัพท์ไม่ถูกต้อง!\nกรุณากรอกตัวเลข 10 หลัก ขึ้นต้นด้วย 0 เช่น 0812345678');
+        return;
+      }
+
+      const toast = showToast('กำลังอัปเดตเบอร์โทรศัพท์...', 'loading');
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'register',
+            userId: userId,
+            phone: clean
+          })
+        });
+        const result = await res.json();
+        if (toast && toast.parentNode) toast.remove();
+        if (result && result.status === 'success') {
+          showToast('บันทึกเบอร์โทรศัพท์ใหม่เรียบร้อยแล้ว!', 'success');
+          const mem = allMembers.find(m => m.userId === userId);
+          if (mem) mem.phone = clean;
+          renderMembers();
+          updateMemberStats();
+        } else {
+          showToast('ไม่สามารถบันทึกได้: ' + (result?.message || 'Unknown error'), 'error');
+        }
+      } catch (err) {
+        if (toast && toast.parentNode) toast.remove();
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        console.error('Update member phone error:', err);
+      }
+    }
+    window.editMemberPhone = editMemberPhone;
 
     let isModalEditMode = false;
 

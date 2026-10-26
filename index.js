@@ -37,6 +37,44 @@ const code = document.querySelector('#code');
 const friendShip = document.querySelector('#friendShip');
 
 // ========================================================
+// Helper: ตรวจสอบและจัดรูปแบบเบอร์โทรศัพท์ (Thai Phone Validation)
+// ========================================================
+function cleanPhoneNumber(p) {
+  if (!p) return '';
+  let str = String(p).trim().replace(/[\s\-\(\)\.]/g, '');
+  if (str.startsWith('+66')) {
+    str = '0' + str.slice(3);
+  } else if (str.startsWith('66') && str.length >= 11) {
+    str = '0' + str.slice(2);
+  }
+  return str;
+}
+
+function isValidThaiPhone(p) {
+  const clean = cleanPhoneNumber(p);
+  // ต้องเป็นตัวเลข 9 หรือ 10 หลัก ขึ้นต้นด้วย 0
+  if (!/^0[0-9]{8,9}$/.test(clean)) {
+    return false;
+  }
+  // ป้องกันเลขซ้ำปลอม เช่น 0000000000 หรือ 0111111111 หรือ 001
+  if (/^0([0-9])\1{7,8}$/.test(clean)) {
+    return false;
+  }
+  return true;
+}
+
+function formatThaiPhoneNumber(raw) {
+  let num = String(raw || '').replace(/[^0-9]/g, '');
+  if (num.length > 10) num = num.slice(0, 10);
+  if (num.length > 6) {
+    return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6)}`;
+  } else if (num.length > 3) {
+    return `${num.slice(0, 3)}-${num.slice(3)}`;
+  }
+  return num;
+}
+
+// ========================================================
 // 1. โหลดข้อมูลจาก Cache ขึ้นแสดงผลทันที (0 มิลลิวินาที ไม่ต้องรอ Network)
 // ========================================================
 function restoreCachedProfile() {
@@ -68,9 +106,12 @@ function restoreCachedProfile() {
             ? mId.substring(0, 5) + '*****' + mId.substring(mId.length - 4) 
             : mId;
         }
-        if (data.phone && phone) {
-          phone.value = data.phone;
+        if (data.phone && phone && isValidThaiPhone(data.phone)) {
+          phone.value = formatThaiPhoneNumber(data.phone);
           setPhoneInputState(true);
+        } else if (phone) {
+          phone.value = '';
+          setPhoneInputState(false);
         }
 
         userProfileData = {
@@ -232,12 +273,15 @@ async function getUserProfile() {
       email.textContent = userEmail;
     }
 
-    // ดึงเบอร์โทรจากแคชท้องถิ่นก่อน
+    // ดึงเบอร์โทรจากแคชท้องถิ่นก่อน (กรองเบอร์ปลอม เช่น 001 ทิ้ง)
     const cachedPhone = localStorage.getItem('user_phone_' + profile.userId);
-    const initialPhone = phone.value || cachedPhone || userPhone;
+    let initialPhone = phone.value || cachedPhone || userPhone || '';
+    if (!isValidThaiPhone(initialPhone)) {
+      initialPhone = '';
+    }
 
     if (phone) {
-      phone.value = initialPhone;
+      phone.value = initialPhone ? formatThaiPhoneNumber(initialPhone) : '';
       if (initialPhone) {
         setPhoneInputState(true);
       } else {
@@ -250,7 +294,7 @@ async function getUserProfile() {
       displayName: profile.displayName,
       statusMessage: profile.statusMessage || 'ยินดีต้อนรับสมาชิกใหม่',
       email: userEmail,
-      phone: initialPhone,
+      phone: initialPhone ? cleanPhoneNumber(initialPhone) : '',
       pictureUrl: profile.pictureUrl || ''
     };
 
@@ -265,10 +309,13 @@ async function getUserProfile() {
       .then(dbData => {
         if (dbData.status === 'success') {
           if (dbData.found) {
-            const savedPhone = dbData.phone || '';
+            let savedPhone = dbData.phone || '';
+            if (savedPhone && !isValidThaiPhone(savedPhone)) {
+              savedPhone = ''; // ล้างค่าที่ไม่ถูกต้อง เช่น 001 ทิ้ง
+            }
 
             if (savedPhone && savedPhone !== initialPhone) {
-              phone.value = savedPhone;
+              phone.value = formatThaiPhoneNumber(savedPhone);
               userProfileData.phone = savedPhone;
               setPhoneInputState(true);
               localStorage.setItem('user_phone_' + profile.userId, savedPhone);
@@ -363,7 +410,26 @@ if (btnSaveData) {
     }
 
     if (phone) {
-      userProfileData.phone = phone.value;
+      const rawVal = phone.value.trim();
+      const clean = cleanPhoneNumber(rawVal);
+      const phoneErrorEl = document.getElementById('phoneError');
+
+      // ตรวจสอบเบอร์โทร ถ้ามีกรอกต้องเป็นเบอร์ที่ถูกต้อง (ห้ามกรอกช่องว่าง หรือ 001)
+      if (rawVal !== '' && !isValidThaiPhone(clean)) {
+        phone.style.borderColor = '#ef4444';
+        if (phoneErrorEl) {
+          phoneErrorEl.style.display = 'block';
+          phoneErrorEl.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)';
+        }
+        showToast('⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง', false);
+        phone.focus();
+        return;
+      }
+
+      phone.style.borderColor = '';
+      if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+      userProfileData.phone = clean;
+      if (clean) phone.value = formatThaiPhoneNumber(clean);
     }
 
     try {
@@ -398,9 +464,9 @@ if (btnSaveData) {
       const result = await response.json();
       if (result.status === 'success') {
         showToast('อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว!', true);
-        if (phone && phone.value) {
-          localStorage.setItem('user_phone_' + (userProfileData.userId || 'default'), phone.value);
-          localStorage.setItem('user_phone_default', phone.value);
+        if (userProfileData.phone) {
+          localStorage.setItem('user_phone_' + (userProfileData.userId || 'default'), userProfileData.phone);
+          localStorage.setItem('user_phone_default', userProfileData.phone);
           localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
           localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
           setPhoneInputState(true);
@@ -428,9 +494,26 @@ if (btnSaveData) {
 }
 
 if (phone) {
-  phone.addEventListener('input', () => {
+  // จัดรูปแบบให้อ่านง่ายอัตโนมัติขณะพิมพ์ (08X-XXX-XXXX) และตรวจสอบความถูกต้อง
+  phone.addEventListener('input', (e) => {
+    const formatted = formatThaiPhoneNumber(e.target.value);
+    e.target.value = formatted;
+    const clean = cleanPhoneNumber(formatted);
+    const phoneErrorEl = document.getElementById('phoneError');
+
+    if (clean.length > 0 && !isValidThaiPhone(clean)) {
+      phone.style.borderColor = '#ef4444';
+      if (phoneErrorEl) {
+        phoneErrorEl.style.display = 'block';
+        phoneErrorEl.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)';
+      }
+    } else {
+      phone.style.borderColor = '';
+      if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+    }
+
     if (userProfileData) {
-      userProfileData.phone = phone.value;
+      userProfileData.phone = clean;
     }
   });
 
@@ -451,10 +534,31 @@ if (btnSavePhoneInline) {
 
     if (phone.readOnly) {
       setPhoneInputState(false);
+      phone.focus();
       return;
     }
 
-    userProfileData.phone = phone.value;
+    const rawVal = phone.value.trim();
+    const clean = cleanPhoneNumber(rawVal);
+    const phoneErrorEl = document.getElementById('phoneError');
+
+    // บังคับกรอกเบอร์โทรศัพท์ และต้องเป็นเบอร์ที่ถูกต้องเท่านั้น (ห้ามเว้นวรรค หรือ 001)
+    if (!rawVal || !isValidThaiPhone(clean)) {
+      phone.style.borderColor = '#ef4444';
+      if (phoneErrorEl) {
+        phoneErrorEl.style.display = 'block';
+        phoneErrorEl.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)';
+      }
+      showToast('⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง', false);
+      phone.focus();
+      return;
+    }
+
+    phone.style.borderColor = '';
+    if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+
+    userProfileData.phone = clean;
+    phone.value = formatThaiPhoneNumber(clean);
 
     try {
       btnSavePhoneInline.disabled = true;
@@ -487,15 +591,13 @@ if (btnSavePhoneInline) {
       const result = await response.json();
       if (result.status === 'success') {
         showToast('บันทึกเบอร์โทรศัพท์สำเร็จ!', true);
-        if (phone.value) {
-          localStorage.setItem('user_phone_' + (userProfileData.userId || 'default'), phone.value);
-          localStorage.setItem('user_phone_default', phone.value);
-          localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
-          localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
-        }
+        localStorage.setItem('user_phone_' + (userProfileData.userId || 'default'), clean);
+        localStorage.setItem('user_phone_default', clean);
+        localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
+        localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
         setPhoneInputState(true);
       } else {
-        showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', false);
+        showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (result.message || ''), false);
       }
     } catch (error) {
       console.error('Error saving phone inline:', error);
