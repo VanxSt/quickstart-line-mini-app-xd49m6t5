@@ -543,14 +543,50 @@ export default {
           const rawPhone = url.pathname.startsWith('/api/pospos/member/') ? url.pathname.split('/')[4] : url.searchParams.get('phone');
           const clean = cleanPhoneNumber(rawPhone);
 
+          if (!clean || !isValidThaiPhone(clean)) {
+            return jsonResponse({ status: 'error', message: 'กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง' }, 400);
+          }
+
           try {
             const res = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${clean}`, {
-              headers: { 'apikey': apiKey }
+              headers: {
+                'apikey': apiKey,
+                'Accept': 'application/json',
+                'User-Agent': 'Kuekoonkan-App/1.0'
+              }
             });
+
+            if (res.status === 404) {
+              return jsonResponse({ status: 'success', found: false, member: null });
+            }
+
+            if (!res.ok) {
+              const errTxt = await res.text();
+              return jsonResponse({ status: 'error', message: `POSPOS status ${res.status}: ${errTxt}` }, res.status);
+            }
+
             const data = await res.json();
-            return jsonResponse({ status: 'success', member: data });
+            const rawMember = data.data || data.member || data;
+
+            // ตรวจสอบว่าพบสมาชิกจริงหรือไม่
+            const isFound = Boolean(rawMember && (rawMember.name || rawMember.phonenumber || rawMember.phone || rawMember.id || rawMember.point !== undefined));
+
+            if (!isFound) {
+              return jsonResponse({ status: 'success', found: false, member: null });
+            }
+
+            // จัดรูปแบบข้อมูลสมาชิกมาตรฐานสำหรับร้านเกื้อกูลกัน
+            const member = {
+              name: rawMember.name || rawMember.fullname || rawMember.first_name || 'ลูกค้าสมาชิก',
+              phone: clean,
+              point: Number(rawMember.point ?? rawMember.points ?? rawMember.score ?? rawMember.reward_points ?? rawMember.total_point ?? 0),
+              code: rawMember.code || rawMember.member_code || rawMember.id || '',
+              group: rawMember.group || rawMember.member_group || rawMember.group_name || 'ทั่วไป'
+            };
+
+            return jsonResponse({ status: 'success', found: true, member });
           } catch (e) {
-            return jsonResponse({ status: 'error', message: e.message }, 500);
+            return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
           }
         }
 
