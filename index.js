@@ -777,8 +777,6 @@ setTimeout(updateTrackOrdersBadge, 100);
 
 // DOM Selectors สำหรับปุ่มเปิด Modal และเมนูนำทาง
 const btnCheckMemberPoints = document.querySelector('#btnCheckMemberPoints');
-const btnPointsNav = document.querySelector('#btnPointsNav');
-const navPointsText = document.querySelector('#navPointsText');
 
 // DOM Selectors สำหรับ Modal บัตรสมาชิก & แต้มสะสม
 const memberPointsModal = document.querySelector('#memberPointsModal');
@@ -1001,13 +999,6 @@ if (btnCheckMemberPoints) {
   });
 }
 
-if (btnPointsNav) {
-  btnPointsNav.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openMemberPointsModal();
-  });
-}
 
 if (btnClosePointsModal) {
   btnClosePointsModal.addEventListener('click', (e) => {

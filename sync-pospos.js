@@ -144,6 +144,9 @@ function normalizePosposItem(item) {
   else if (Array.isArray(item.images) && item.images.length > 0) {
     img = typeof item.images[0] === 'string' ? item.images[0] : (item.images[0]?.url || '');
   } else if (typeof item.img === 'string' && item.img) img = item.img;
+  if (img && img.includes('1779018898541-98193691087.jpg')) {
+    img = '';
+  }
 
   return { barcode, name, price, stock, img, raw: item };
 }

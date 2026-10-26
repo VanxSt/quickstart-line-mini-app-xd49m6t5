@@ -28,8 +28,8 @@ for (let i = 0; i < products.length; i++) {
   const name = escapeSql(p.name);
   const category = escapeSql(p.category || 'ทั่วไป');
   const price = Number(p.price || 0);
-  const desc = escapeSql(p.desc || '');
-  const img = escapeSql(p.img || '');
+  const cleanImgUrl = (p.img && typeof p.img === 'string' && p.img.includes('1779018898541-98193691087.jpg')) ? '' : (p.img || '');
+  const img = escapeSql(cleanImgUrl);
   const tag = escapeSql(p.tag || '');
   const status = escapeSql(p.status || 'active');
 

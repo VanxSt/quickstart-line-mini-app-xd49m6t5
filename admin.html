@@ -5897,6 +5897,9 @@
         return 'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';
       }
       let optimizedUrl = url.trim();
+      if (optimizedUrl.includes('1779018898541-98193691087.jpg')) {
+        return 'https://placehold.co/400x400/f3f0ec/a88b62?text=No+Image';
+      }
       if (optimizedUrl.includes('drive.google.com') || optimizedUrl.includes('docs.google.com')) {
         let driveId = '';
         const match1 = optimizedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);

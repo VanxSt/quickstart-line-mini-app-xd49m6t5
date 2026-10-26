@@ -73,7 +73,10 @@ for (let i = 1; i < lines.length; i++) {
   const cleanPrice = rawPrice ? Number(String(rawPrice).replace(/[^0-9.]/g, '')) : null;
 
   const rawImg = cols[colImg];
-  const cleanImg = rawImg ? String(rawImg).replace(/["']/g, '').trim() : '';
+  let cleanImg = rawImg ? String(rawImg).replace(/["']/g, '').trim() : '';
+  if (cleanImg && cleanImg.includes('1779018898541-98193691087.jpg')) {
+    cleanImg = '';
+  }
 
   testApiMap.set(cleanId, {
     price: (!isNaN(cleanPrice) && cleanPrice !== null) ? cleanPrice : null,

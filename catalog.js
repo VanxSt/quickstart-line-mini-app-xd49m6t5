@@ -436,6 +436,11 @@ function getOptimizedImageUrl(url) {
 
   let optimizedUrl = url.trim();
 
+  // ดักจับรูปเก่า / รูปเทป B.K. ที่เคยติดค้างในระบบ (1779018898541-98193691087.jpg) ไม่ให้แสดงผลเด็ดขาด
+  if (optimizedUrl.includes('1779018898541-98193691087.jpg')) {
+    return 'https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';
+  }
+
   // แปลง Google Drive link ให้เป็น Direct Image Link เพื่อให้โหลดได้และเร็วขึ้น
   if (optimizedUrl.includes('drive.google.com') || optimizedUrl.includes('docs.google.com')) {
     let driveId = '';
@@ -3329,7 +3334,7 @@ async function syncInactiveProductStatuses() {
         });
         if (anyChanged) {
           try {
-            localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+            localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
           } catch (e) { }
           initCategoryFilters();
           renderProducts();
@@ -3378,22 +3383,39 @@ async function loadProducts() {
   finally { catalogRefreshInFlight = null; }
 }
 
+// กรองรูปที่ไม่ต้องการ/รูปเทปเก่าออกจากรายการสินค้าทุกรายการ
+function sanitizeProductList(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map(p => {
+    if (p && p.img && typeof p.img === 'string' && p.img.includes('1779018898541-98193691087.jpg')) {
+      return { ...p, img: '' };
+    }
+    return p;
+  });
+}
+
 async function doLoadProducts() {
   const grid = document.getElementById('productsGrid');
+
+  // ล้างแคชเก่า v1 และ v2 ที่อาจเคยบันทึกรูปเทป B.K. ค้างอยู่ในเบราว์เซอร์ของลูกค้า
+  try {
+    localStorage.removeItem('cached_products');
+    localStorage.removeItem('cached_products_v2');
+  } catch (e) {}
 
   // 1. ระดับที่ 1: ดึงจาก Cache ทันที (0ms) เพื่อให้สินค้าขึ้นทันทีตั้งแต่เปิดหน้า
   if (!catalogLoaded) {
     try {
-      const cached = localStorage.getItem('cached_products_v2') || localStorage.getItem('cached_products');
+      const cached = localStorage.getItem('cached_products_v3');
       if (cached) {
         const parsed = JSON.parse(cached);
         const cachedProducts = Array.isArray(parsed) ? parsed : (parsed.products || []);
         if (cachedProducts && cachedProducts.length > 0) {
-          PRODUCTS = cachedProducts;
+          PRODUCTS = sanitizeProductList(cachedProducts);
           catalogLoaded = true;
           initCategoryFilters();
           renderProducts();
-          console.log(`Loaded ${PRODUCTS.length} products from local cache (0ms)`);
+          console.log(`Loaded ${PRODUCTS.length} products from local cache v3 (0ms)`);
         }
       }
     } catch (e) {
@@ -3412,12 +3434,12 @@ async function doLoadProducts() {
         const staticData = await staticRes.json();
         const staticProducts = Array.isArray(staticData) ? staticData : (staticData.products || []);
         if (staticProducts && staticProducts.length > 0) {
-          PRODUCTS = staticProducts;
+          PRODUCTS = sanitizeProductList(staticProducts);
           catalogLoaded = true;
           initCategoryFilters();
           renderProducts();
           try {
-            localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+            localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
           } catch (e) {}
           console.log(`Loaded ${PRODUCTS.length} products from products.json`);
         }
@@ -3440,11 +3462,12 @@ async function doLoadProducts() {
     if (response.ok) {
       const data = await response.json();
       if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-        const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(data.products);
-        PRODUCTS = data.products;
+        const cleaned = sanitizeProductList(data.products);
+        const changed = !catalogLoaded || JSON.stringify(PRODUCTS) !== JSON.stringify(cleaned);
+        PRODUCTS = cleaned;
         catalogLoaded = true;
         try {
-          localStorage.setItem('cached_products_v2', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
+          localStorage.setItem('cached_products_v3', JSON.stringify({ products: PRODUCTS, cachedAt: Date.now() }));
         } catch (e) {}
         if (changed) {
           initCategoryFilters();

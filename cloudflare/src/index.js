@@ -428,10 +428,17 @@ export default {
           const stmt = bindings.length > 0 ? db.prepare(query).bind(...bindings) : db.prepare(query);
           const { results } = await stmt.all();
 
+          const cleanedProducts = (results || []).map((row) => {
+            if (row.img && typeof row.img === 'string' && row.img.includes('1779018898541-98193691087.jpg')) {
+              return { ...row, img: '' };
+            }
+            return row;
+          });
+
           return jsonResponse({
             status: 'success',
-            products: results || [],
-            total: results ? results.length : 0,
+            products: cleanedProducts,
+            total: cleanedProducts.length,
             cachedAt: Date.now(),
           });
         }
