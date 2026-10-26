@@ -15,6 +15,7 @@ const btnSaveData = document.querySelector('#btnSaveData');
 const btnNextPage = document.querySelector('#btnNextPage');
 const btnSavePhoneInline = document.querySelector('#btnSavePhoneInline');
 const btnFavoriteOrders = document.querySelector('#btnFavoriteOrders');
+const btnTrackOrders = document.querySelector('#btnTrackOrders');
 
 // Store profile data temporarily
 let userProfileData = null;
@@ -636,8 +637,8 @@ window.showCatalogView = function(mode) {
       window.loadProducts();
     }
 
-    if (window.location.hash !== '#catalog' && window.location.hash !== '#favorites') {
-      history.pushState({ view: 'catalog' }, '', '#catalog');
+    if (window.location.hash !== '#catalog' && window.location.hash !== '#favorites' && window.location.hash !== '#orders') {
+      history.pushState({ view: 'catalog' }, '', mode === 'orders' ? '#orders' : (mode === 'favorites' ? '#favorites' : '#catalog'));
     }
 
     if (mode === 'favorites') {
@@ -648,11 +649,21 @@ window.showCatalogView = function(mode) {
           if (tabFav) tabFav.click();
         }
       }, 100);
+    } else if (mode === 'orders') {
+      setTimeout(() => {
+        if (typeof window.openOrdersModal === 'function') {
+          window.openOrdersModal();
+          const tabAll = document.getElementById('tabAllOrders');
+          if (tabAll) tabAll.click();
+        }
+      }, 100);
     }
   } else {
     // กรณีที่ไม่ได้เปิดในหน้าที่มี Catalog View
     if (mode === 'favorites') {
       window.location.href = 'second.html?open=favorites';
+    } else if (mode === 'orders') {
+      window.location.href = 'second.html?open=orders';
     } else {
       window.location.href = 'second.html';
     }
@@ -687,6 +698,8 @@ function handleHashNavigation() {
     window.showCatalogView();
   } else if (hash === '#favorites') {
     window.showCatalogView('favorites');
+  } else if (hash === '#orders') {
+    window.showCatalogView('orders');
   } else {
     // ถ้าไม่มี hash และมี viewProfile ให้แสดง profile
     const profileView = document.getElementById('viewProfile');
@@ -714,6 +727,17 @@ if (btnNextPage) {
   });
 }
 
+// ทางลัด: ติดตามสถานะ / ดูประวัติคำสั่งซื้อ
+if (btnTrackOrders) {
+  btnTrackOrders.addEventListener('click', () => {
+    if (phone && phone.value.trim()) {
+      localStorage.setItem('user_phone_default', phone.value.trim());
+      if (userProfileData) userProfileData.phone = phone.value.trim();
+    }
+    window.showCatalogView('orders');
+  });
+}
+
 if (btnFavoriteOrders) {
   btnFavoriteOrders.addEventListener('click', () => {
     if (phone && phone.value.trim()) {
@@ -723,4 +747,28 @@ if (btnFavoriteOrders) {
     window.showCatalogView('favorites');
   });
 }
+
+// อัปเดตตัวเลขแจ้งเตือนออเดอร์ที่กำลังดำเนินการอยู่บนปุ่มทางลัดหน้าแรก
+function updateTrackOrdersBadge() {
+  try {
+    const badge = document.getElementById('trackOrdersBadge');
+    if (!badge) return;
+    const raw = localStorage.getItem('myOrdersCache');
+    if (raw) {
+      const orders = JSON.parse(raw);
+      if (Array.isArray(orders)) {
+        const activeOrders = orders.filter(o => o.status && o.status !== 'จัดส่งสำเร็จ' && o.status !== 'ยกเลิก');
+        if (activeOrders.length > 0) {
+          badge.style.display = 'inline-flex';
+          badge.textContent = `${activeOrders.length}`;
+          return;
+        }
+      }
+    }
+    badge.style.display = 'none';
+  } catch (e) {}
+}
+window.updateTrackOrdersBadge = updateTrackOrdersBadge;
+setTimeout(updateTrackOrdersBadge, 100);
+
 

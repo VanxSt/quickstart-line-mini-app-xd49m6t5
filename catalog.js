@@ -2369,6 +2369,9 @@ async function loadMyOrders() {
     if (data.status === 'success') {
       // เซฟทับ Cache ด้วยข้อมูลใหม่สุด
       localStorage.setItem('myOrdersCache', JSON.stringify(data.orders || []));
+      if (typeof window.updateTrackOrdersBadge === 'function') {
+        window.updateTrackOrdersBadge();
+      }
       // วาด UI ใหม่อีกรอบ
       renderOrdersUI(data.orders);
     }
@@ -2906,6 +2909,9 @@ if (btnSubmitOrder) {
           status: 'รอตรวจสอบ'
         });
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
+        if (typeof window.updateTrackOrdersBadge === 'function') {
+          window.updateTrackOrdersBadge();
+        }
       } catch (e) { }
 
       // ไม่มีการบันทึกที่อยู่อัตโนมัติอีกต่อไป ผู้ใช้ต้องกดปุ่ม "บันทึกที่อยู่นี้ทันที" เอง
@@ -3459,6 +3465,14 @@ async function start() {
       openOrdersModal();
       const tabFav = document.getElementById('tabFavOrders');
       if (tabFav) tabFav.click();
+    }
+  } else if (openParam === 'orders') {
+    if (typeof window.showCatalogView === 'function') {
+      window.showCatalogView('orders');
+    } else {
+      openOrdersModal();
+      const tabAll = document.getElementById('tabAllOrders');
+      if (tabAll) tabAll.click();
     }
   }
 }

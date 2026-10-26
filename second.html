@@ -12,7 +12,7 @@
     (function() {
       try {
         var search = window.location.search || '';
-        var hash = search.includes('open=favorites') ? '#favorites' : '#catalog';
+        var hash = search.includes('open=favorites') ? '#favorites' : (search.includes('open=orders') ? '#orders' : '#catalog');
         window.location.replace('index.html' + search + hash);
       } catch (e) {}
     })();
@@ -204,7 +204,7 @@
   <div class="modal" id="ordersModal">
     <div class="modal-content">
       <div class="modal-header">
-        <span style="font-weight: 600; color: var(--text-light);">ประวัติการสั่งซื้อ</span>
+        <span style="font-weight: 700; color: var(--text-main); font-size: 15px;">📦 ติดตามสถานะ / ดูประวัติคำสั่งซื้อ</span>
         <button class="btn-close" id="btnCloseOrdersModal" aria-label="ปิด">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -563,7 +563,7 @@
     </div>
   </div>
 
-  <script src="catalog.js?v=24"></script>
+  <script src="catalog.js?v=25"></script>
 </body>
 
 </html>

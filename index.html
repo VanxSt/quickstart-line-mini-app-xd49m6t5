@@ -180,6 +180,26 @@
           ดูแค็ตตาล็อกสินค้า (Catalog)
         </button>
 
+        <!-- ทางลัด: ติดตามสถานะ / ดูประวัติคำสั่งซื้อ (อยู่ในปุ่มเดียวกัน) -->
+        <button id="btnTrackOrders" class="btn-premium" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: none; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35); position: relative;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+          <span>🚚 ติดตามสถานะ / ดูประวัติคำสั่งซื้อ</span>
+          <span id="trackOrdersBadge" style="display: none; background: #ef4444; color: white; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; margin-left: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">0</span>
+        </button>
+
+        <button id="btnFavoriteOrders" class="btn-premium btn-secondary-outline" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          ⭐ รายการโปรดที่ถูกใจ
+        </button>
+
         <button id="btnSaveData" class="btn-premium btn-secondary-outline">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -188,13 +208,6 @@
             <polyline points="7 3 7 8 15 8"></polyline>
           </svg>
           อัปเดตข้อมูลลูกค้า
-        </button>
-
-        <button id="btnFavoriteOrders" class="btn-premium btn-secondary-outline" style="margin-top: 10px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-          </svg>
-          รายการโปรดที่ถูกใจ
         </button>
       </div>
     </div>
@@ -365,7 +378,7 @@
     <div class="modal" id="ordersModal">
       <div class="modal-content">
         <div class="modal-header">
-          <span style="font-weight: 600; color: var(--text-light);">ประวัติการสั่งซื้อ</span>
+          <span style="font-weight: 700; color: var(--text-main); font-size: 15px;">📦 ติดตามสถานะ / ดูประวัติคำสั่งซื้อ</span>
           <button class="btn-close" id="btnCloseOrdersModal" aria-label="ปิด">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -730,7 +743,7 @@
   </div>
 
   <!-- Catalog Logic Script -->
-  <script src="catalog.js?v=24"></script>
+  <script src="catalog.js?v=25"></script>
 </body>
 
 </html>
