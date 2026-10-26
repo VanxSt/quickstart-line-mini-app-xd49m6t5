@@ -2132,6 +2132,7 @@ async function fetchProducts(showLoading = true) {
   let fetchedData = null;
 
   // ดึงจาก Cloudflare D1 โดยตรงเสมอทุกครั้ง
+  // 1. ลองดึงข้อมูลสดจาก Cloudflare D1
   try {
     const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getProducts&all=true&_t=${Date.now()}`, { cache: 'no-store' });
     if (res.ok) {
@@ -2141,16 +2142,25 @@ async function fetchProducts(showLoading = true) {
       }
     }
   } catch (err) {
-    console.warn('Fetch products from D1 failed (blocked/error), fallback to products.json:', err);
+    console.warn('Fetch products from D1 error:', err);
+  }
+
+  // 2. ถ้า D1 โดนบล็อกโควตาหรือคืนค่าผิดพลาด ให้สลับมาใช้ products.json สำรองทันที
+  if (!fetchedData || fetchedData.length === 0) {
+    console.warn('D1 unavailable or blocked, loading fallback products.json');
     try {
       const res = await fetch(`./products.json?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.status === 'success' && Array.isArray(data.products) && data.products.length > 0) {
-          fetchedData = data.products;
+        const list = Array.isArray(data) ? data : (data.products || []);
+        if (Array.isArray(list) && list.length > 0) {
+          fetchedData = list;
+          console.log(`✅ โหลดสินค้าสำรองจาก products.json สำเร็จ: ${fetchedData.length} รายการ`);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Fallback products.json error:', e);
+    }
   }
 
   if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
