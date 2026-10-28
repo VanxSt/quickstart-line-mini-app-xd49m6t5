@@ -392,7 +392,7 @@ export default {
                 'Access-Control-Allow-Origin': '*',
               },
             });
-          } catch(err) {
+          } catch (err) {
             return new Response('Error loading slip: ' + err.message, { status: 500 });
           }
         }
@@ -457,7 +457,7 @@ export default {
             // ตรวจสอบและเพิ่มคอลัมน์ stock ในตาราง products อัตโนมัติ (Self-healing Schema)
             try {
               await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
-            } catch (e) {}
+            } catch (e) { }
 
             const posRes = await fetch('https://go.pospos.co/developer/api/stock', {
               headers: {
@@ -497,7 +497,7 @@ export default {
                 if (body && Array.isArray(body.productIds)) {
                   clientProductIds = body.productIds;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
 
             let appProducts = [];
@@ -506,7 +506,7 @@ export default {
               if (Array.isArray(results) && results.length > 0) {
                 appProducts = results;
               }
-            } catch (e) {}
+            } catch (e) { }
 
             // ถ้า D1 ว่าง แต่ Client ส่งรายการสินค้ามา ให้ใช้รายการของ Client
             if (appProducts.length === 0 && clientProductIds && clientProductIds.length > 0) {
@@ -631,161 +631,208 @@ export default {
             return jsonResponse({ status: 'error', message: 'กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง' }, 400);
           }
 
-          try {
-            const res = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${clean}`, {
-              headers: {
-                'apikey': apiKey,
-                'Accept': 'application/json',
-                'User-Agent': 'Kuekoonkan-App/1.0'
+              const fetchPosposByPhone = async (phoneQuery) => {
+                const res = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(phoneQuery)}`, {
+                  headers: {
+                    'apikey': apiKey,
+                    'Accept': 'application/json',
+                    'User-Agent': 'Kuekoonkan-App/1.0'
+                  }
+                });
+
+                  if (res.status === 404 || res.status === 204) {
+                    return { ok: true, member: null };
+                  }
+
+                  const rawText = await res.text();
+                  if (!res.ok) {
+                    // กรณี POSPOS ตอบ 400 เมื่อไม่พบข้อมูลสมาชิก
+                    if (res.status === 400 && (!rawText || rawText.toLowerCase().includes('not found') || rawText.includes('ไม่พบ'))) {
+                      return { ok: true, member: null };
+                    }
+                    return { ok: false, status: res.status, errorText: rawText };
+                  }
+
+                  if (!rawText || !rawText.trim()) {
+                    return { ok: true, member: null };
+                  }
+
+                  let data = null;
+                  try {
+                    data = JSON.parse(rawText);
+                  } catch (parseErr) {
+                    return { ok: true, member: null };
+                  }
+
+                  if (!data) return { ok: true, member: null };
+
+                  let rawMember = data.data ?? data.member ?? data.result ?? data;
+                  if (Array.isArray(rawMember)) {
+                    rawMember = rawMember.length > 0 ? rawMember[0] : null;
+                  }
+
+                  const isFound = Boolean(
+                    rawMember &&
+                    typeof rawMember === 'object' &&
+                    (rawMember._id || rawMember.id || rawMember.name || rawMember.fullname || rawMember.phonenumber || rawMember.phone || rawMember.tel || rawMember.code || rawMember.member_code || rawMember.point !== undefined || rawMember.points !== undefined)
+                  );
+
+                  if (!isFound) {
+                    return { ok: true, member: null };
+                  }
+
+                  return { ok: true, member: rawMember };
+                };
+
+                try {
+                  // 1. ค้นหาด้วยเบอร์ติดกัน 10 หลัก (เช่น 0957579454)
+                  let lookup = await fetchPosposByPhone(clean);
+
+                  // 2. หากไม่พบ ลองค้นหาแบบมีขีดคั่น (เช่น 095-757-9454) เผื่อพนักงานหน้าร้านคีย์มีขีด
+                  if (lookup.ok && !lookup.member && clean.length === 10) {
+                    const dashedPhone = `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
+                    const retryLookup = await fetchPosposByPhone(dashedPhone);
+                    if (retryLookup.ok && retryLookup.member) {
+                      lookup = retryLookup;
+                    }
+                  }
+
+                  if (!lookup.ok) {
+                    return jsonResponse({ status: 'error', message: `POSPOS status ${lookup.status}: ${lookup.errorText}` }, lookup.status || 502);
+                  }
+
+                  const rawMember = lookup.member;
+                  if (!rawMember) {
+                    return jsonResponse({ status: 'success', found: false, member: null });
+                  }
+
+                  // จัดรูปแบบข้อมูลสมาชิกมาตรฐานสำหรับร้านเกื้อกูลกัน
+                  const member = {
+                    name: rawMember.name || rawMember.fullname || rawMember.first_name || 'ลูกค้าสมาชิก',
+                    phone: clean,
+                    point: Number(rawMember.point ?? rawMember.points ?? rawMember.score ?? rawMember.reward_points ?? rawMember.total_point ?? 0),
+              code: rawMember.code || rawMember.member_code || rawMember.id || rawMember._id || '',
+                    group: rawMember.group || rawMember.member_group || rawMember.group_name || 'สมาชิกทั่วไป'
+                  };
+
+                  return jsonResponse({ status: 'success', found: true, member });
+                } catch (e) {
+                  return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
+                }
               }
-            });
-
-            if (res.status === 404) {
-              return jsonResponse({ status: 'success', found: false, member: null });
-            }
-
-            if (!res.ok) {
-              const errTxt = await res.text();
-              return jsonResponse({ status: 'error', message: `POSPOS status ${res.status}: ${errTxt}` }, res.status);
-            }
-
-            const data = await res.json();
-            const rawMember = data.data || data.member || data;
-
-            // ตรวจสอบว่าพบสมาชิกจริงหรือไม่
-            const isFound = Boolean(rawMember && (rawMember.name || rawMember.phonenumber || rawMember.phone || rawMember.id || rawMember.point !== undefined));
-
-            if (!isFound) {
-              return jsonResponse({ status: 'success', found: false, member: null });
-            }
-
-            // จัดรูปแบบข้อมูลสมาชิกมาตรฐานสำหรับร้านเกื้อกูลกัน
-            const member = {
-              name: rawMember.name || rawMember.fullname || rawMember.first_name || 'ลูกค้าสมาชิก',
-              phone: clean,
-              point: Number(rawMember.point ?? rawMember.points ?? rawMember.score ?? rawMember.reward_points ?? rawMember.total_point ?? 0),
-              code: rawMember.code || rawMember.member_code || rawMember.id || '',
-              group: rawMember.group || rawMember.member_group || rawMember.group_name || 'ทั่วไป'
-            };
-
-            return jsonResponse({ status: 'success', found: true, member });
-          } catch (e) {
-            return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
-          }
-        }
 
         // Action: getAllOrders OR GET /api/orders (Admin)
-        if (action === 'getAllOrders' || (url.pathname === '/api/orders' && !url.searchParams.get('userId'))) {
-          const { results } = await db.prepare('SELECT * FROM orders ORDER BY timestamp DESC').all();
-          const orders = (results || []).map((row) => {
-            let items = [];
-            try {
-              if (row.items_json) items = JSON.parse(row.items_json);
-            } catch (e) {}
+        if(action === 'getAllOrders' || (url.pathname === '/api/orders' && !url.searchParams.get('userId'))) {
+                const { results } = await db.prepare('SELECT * FROM orders ORDER BY timestamp DESC').all();
+            const orders = (results || []).map((row) => {
+              let items = [];
+              try {
+                if (row.items_json) items = JSON.parse(row.items_json);
+              } catch (e) { }
 
-            return {
-              timestamp: row.timestamp,
-              orderId: row.order_id,
-              userId: row.user_id,
-              customerName: row.customer_name,
-              phone: row.phone,
-              gpsLocation: row.gps_location,
-              addressDetails: row.address_details,
-              slipUrl: row.slip_url,
-              totalPrice: Number(row.total_price || 0),
-              status: row.status || 'รอตรวจสอบ',
-              paymentMethod: row.payment_method || 'ปลายทาง',
-              items,
-              itemsText: row.items_text,
-              deliveryType: row.delivery_type || 'ทันที',
-              preorderTime: row.preorder_time || '',
-              shippingOption: row.shipping_option || 'จัดส่ง',
-              note: row.note || '',
-            };
-          });
+              return {
+                timestamp: row.timestamp,
+                orderId: row.order_id,
+                userId: row.user_id,
+                customerName: row.customer_name,
+                phone: row.phone,
+                gpsLocation: row.gps_location,
+                addressDetails: row.address_details,
+                slipUrl: row.slip_url,
+                totalPrice: Number(row.total_price || 0),
+                status: row.status || 'รอตรวจสอบ',
+                paymentMethod: row.payment_method || 'ปลายทาง',
+                items,
+                itemsText: row.items_text,
+                deliveryType: row.delivery_type || 'ทันที',
+                preorderTime: row.preorder_time || '',
+                shippingOption: row.shipping_option || 'จัดส่ง',
+                note: row.note || '',
+              };
+            });
 
-          return jsonResponse({ status: 'success', orders });
-        }
+            return jsonResponse({ status: 'success', orders });
+          }
 
         // Action: getMyOrders OR GET /api/orders?userId=...
         if (action === 'getMyOrders' || (url.pathname === '/api/orders' && url.searchParams.get('userId'))) {
-          const userId = url.searchParams.get('userId');
-          if (!userId) {
-            return jsonResponse({ status: 'error', message: 'Missing userId' }, 400);
+            const userId = url.searchParams.get('userId');
+            if (!userId) {
+              return jsonResponse({ status: 'error', message: 'Missing userId' }, 400);
+            }
+
+            const { results } = await db
+              .prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY timestamp DESC')
+              .bind(userId)
+              .all();
+
+            const orders = (results || []).map((row) => {
+              let items = [];
+              try {
+                if (row.items_json) items = JSON.parse(row.items_json);
+              } catch (e) { }
+              return {
+                timestamp: row.timestamp,
+                orderId: row.order_id,
+                totalPrice: Number(row.total_price || 0),
+                status: row.status || 'รอตรวจสอบ',
+                slipUrl: row.slip_url || '',
+                items,
+              };
+            });
+
+            return jsonResponse({ status: 'success', orders });
           }
 
-          const { results } = await db
-            .prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY timestamp DESC')
-            .bind(userId)
-            .all();
-
-          const orders = (results || []).map((row) => {
-            let items = [];
-            try {
-              if (row.items_json) items = JSON.parse(row.items_json);
-            } catch (e) {}
-            return {
-              timestamp: row.timestamp,
-              orderId: row.order_id,
-              totalPrice: Number(row.total_price || 0),
-              status: row.status || 'รอตรวจสอบ',
-              slipUrl: row.slip_url || '',
-              items,
-            };
-          });
-
-          return jsonResponse({ status: 'success', orders });
-        }
-
-        // Action: getAllMembers OR GET /api/members
-        if (action === 'getAllMembers' || (url.pathname === '/api/members' && !url.searchParams.get('userId'))) {
-          const { results } = await db.prepare('SELECT * FROM members ORDER BY registered_at DESC').all();
-          const members = (results || []).map((m) => ({
-            registeredAt: m.registered_at,
-            userId: m.user_id,
-            displayName: m.display_name,
-            statusMessage: m.status_message,
-            email: m.email,
-            pictureUrl: m.picture_url,
-            phone: m.phone,
-            gpsLocation: m.gps_location,
-            addressDetails: m.address_details,
-            addressLabel: m.address_label,
-            savedAddresses: m.saved_addresses_json || '[]',
-          }));
-          return jsonResponse({ status: 'success', members });
-        }
-
-        // Action: Member Profile Lookup (via ?userId=... OR /api/members?userId=...)
-        if (url.searchParams.get('userId') && (!action || action === 'getMember')) {
-          const userId = url.searchParams.get('userId');
-          const member = await db.prepare('SELECT * FROM members WHERE user_id = ?').bind(userId).first();
-          if (!member) {
-            return jsonResponse({ status: 'success', found: false });
+          // Action: getAllMembers OR GET /api/members
+          if (action === 'getAllMembers' || (url.pathname === '/api/members' && !url.searchParams.get('userId'))) {
+            const { results } = await db.prepare('SELECT * FROM members ORDER BY registered_at DESC').all();
+            const members = (results || []).map((m) => ({
+              registeredAt: m.registered_at,
+              userId: m.user_id,
+              displayName: m.display_name,
+              statusMessage: m.status_message,
+              email: m.email,
+              pictureUrl: m.picture_url,
+              phone: m.phone,
+              gpsLocation: m.gps_location,
+              addressDetails: m.address_details,
+              addressLabel: m.address_label,
+              savedAddresses: m.saved_addresses_json || '[]',
+            }));
+            return jsonResponse({ status: 'success', members });
           }
-          return jsonResponse({
-            status: 'success',
-            found: true,
-            userId: member.user_id,
-            displayName: member.display_name,
-            statusMessage: member.status_message,
-            email: member.email,
-            pictureUrl: member.picture_url,
-            phone: member.phone,
-            gpsLocation: member.gps_location,
-            addressDetails: member.address_details,
-            addressLabel: member.address_label,
-            savedAddresses: member.saved_addresses_json || '[]',
-          });
-        }
 
-        // Action: confirmOrder (เปิดผ่านลิงก์ LINE ใน Browser)
-        if (action === 'confirmOrder' || url.pathname === '/confirmOrder') {
-          const orderId = url.searchParams.get('orderId');
-          if (orderId) {
-            await db.prepare("UPDATE orders SET status = 'ชำระเงิน' WHERE order_id = ?").bind(orderId).run();
+          // Action: Member Profile Lookup (via ?userId=... OR /api/members?userId=...)
+          if (url.searchParams.get('userId') && (!action || action === 'getMember')) {
+            const userId = url.searchParams.get('userId');
+            const member = await db.prepare('SELECT * FROM members WHERE user_id = ?').bind(userId).first();
+            if (!member) {
+              return jsonResponse({ status: 'success', found: false });
+            }
+            return jsonResponse({
+              status: 'success',
+              found: true,
+              userId: member.user_id,
+              displayName: member.display_name,
+              statusMessage: member.status_message,
+              email: member.email,
+              pictureUrl: member.picture_url,
+              phone: member.phone,
+              gpsLocation: member.gps_location,
+              addressDetails: member.address_details,
+              addressLabel: member.address_label,
+              savedAddresses: member.saved_addresses_json || '[]',
+            });
           }
-          return htmlResponse(`
+
+          // Action: confirmOrder (เปิดผ่านลิงก์ LINE ใน Browser)
+          if (action === 'confirmOrder' || url.pathname === '/confirmOrder') {
+            const orderId = url.searchParams.get('orderId');
+            if (orderId) {
+              await db.prepare("UPDATE orders SET status = 'ชำระเงิน' WHERE order_id = ?").bind(orderId).run();
+            }
+            return htmlResponse(`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <div style="text-align:center; padding:50px 20px; font-family:sans-serif;">
               <h1 style="color:#22c55e; font-size:48px; margin-bottom:10px;">✅</h1>
@@ -794,15 +841,15 @@ export default {
               <p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชท LINE ได้เลยครับ</p>
             </div>
           `);
-        }
-
-        // Action: cancelOrder (เปิดผ่านลิงก์ LINE ใน Browser)
-        if (action === 'cancelOrder' || url.pathname === '/cancelOrder') {
-          const orderId = url.searchParams.get('orderId');
-          if (orderId) {
-            await db.prepare("UPDATE orders SET status = 'ยกเลิก' WHERE order_id = ?").bind(orderId).run();
           }
-          return htmlResponse(`
+
+          // Action: cancelOrder (เปิดผ่านลิงก์ LINE ใน Browser)
+          if (action === 'cancelOrder' || url.pathname === '/cancelOrder') {
+            const orderId = url.searchParams.get('orderId');
+            if (orderId) {
+              await db.prepare("UPDATE orders SET status = 'ยกเลิก' WHERE order_id = ?").bind(orderId).run();
+            }
+            return htmlResponse(`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <div style="text-align:center; padding:50px 20px; font-family:sans-serif;">
               <h1 style="color:#ef4444; font-size:48px; margin-bottom:10px;">❌</h1>
@@ -811,16 +858,16 @@ export default {
               <p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชท LINE ได้เลยครับ</p>
             </div>
           `);
-        }
+          }
 
-        // Action: clearProductCache
-        if (action === 'clearProductCache') {
-          return jsonResponse({ status: 'success', message: 'ล้าง Cache เรียบร้อย' });
-        }
+          // Action: clearProductCache
+          if (action === 'clearProductCache') {
+            return jsonResponse({ status: 'success', message: 'ล้าง Cache เรียบร้อย' });
+          }
 
-        // Action: getInactiveProducts OR GET /api/products/inactive (ดึงเฉพาะรหัสสินค้าที่ถูกปิด เพื่อซ่อนจากลูกค้าทันที)
-        if (action === 'getInactiveProducts' || url.pathname === '/api/products/inactive') {
-          await db.prepare(`
+          // Action: getInactiveProducts OR GET /api/products/inactive (ดึงเฉพาะรหัสสินค้าที่ถูกปิด เพื่อซ่อนจากลูกค้าทันที)
+          if (action === 'getInactiveProducts' || url.pathname === '/api/products/inactive') {
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS product_statuses (
               id TEXT PRIMARY KEY,
               status TEXT DEFAULT 'active',
@@ -828,32 +875,32 @@ export default {
             )
           `).run();
 
-          const { results: fromStatuses } = await db.prepare("SELECT id FROM product_statuses WHERE status = 'inactive'").all();
-          let inactiveIds = (fromStatuses || []).map(r => String(r.id));
+            const { results: fromStatuses } = await db.prepare("SELECT id FROM product_statuses WHERE status = 'inactive'").all();
+            let inactiveIds = (fromStatuses || []).map(r => String(r.id));
 
-          try {
-            const { results: fromProducts } = await db.prepare("SELECT id FROM products WHERE status = 'inactive'").all();
-            if (fromProducts && fromProducts.length > 0) {
-              const set = new Set(inactiveIds);
-              fromProducts.forEach(r => set.add(String(r.id)));
-              inactiveIds = Array.from(set);
-            }
-          } catch(e) {}
+            try {
+              const { results: fromProducts } = await db.prepare("SELECT id FROM products WHERE status = 'inactive'").all();
+              if (fromProducts && fromProducts.length > 0) {
+                const set = new Set(inactiveIds);
+                fromProducts.forEach(r => set.add(String(r.id)));
+                inactiveIds = Array.from(set);
+              }
+            } catch (e) { }
 
-          return jsonResponse({
-            status: 'success',
-            inactiveIds: inactiveIds,
-            total: inactiveIds.length
-          });
-        }
+            return jsonResponse({
+              status: 'success',
+              inactiveIds: inactiveIds,
+              total: inactiveIds.length
+            });
+          }
 
-        // Action: updateProductStatus (GET fallback)
-        if (action === 'updateProductStatus') {
-          const targetId = url.searchParams.get('id') || url.searchParams.get('productId');
-          const rawStatus = url.searchParams.get('status');
-          const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
-          if (targetId) {
-            await db.prepare(`
+          // Action: updateProductStatus (GET fallback)
+          if (action === 'updateProductStatus') {
+            const targetId = url.searchParams.get('id') || url.searchParams.get('productId');
+            const rawStatus = url.searchParams.get('status');
+            const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
+            if (targetId) {
+              await db.prepare(`
               CREATE TABLE IF NOT EXISTS product_statuses (
                 id TEXT PRIMARY KEY,
                 status TEXT DEFAULT 'active',
@@ -861,24 +908,24 @@ export default {
               )
             `).run();
 
-            await db.prepare(`
+              await db.prepare(`
               INSERT INTO product_statuses (id, status, updated_at)
               VALUES (?, ?, CURRENT_TIMESTAMP)
               ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP
             `).bind(String(targetId), newStatus).run();
 
-            try {
-              await db.prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-                .bind(newStatus, String(targetId))
-                .run();
-            } catch(e) {}
+              try {
+                await db.prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                  .bind(newStatus, String(targetId))
+                  .run();
+              } catch (e) { }
+            }
+            return jsonResponse({ status: 'success', id: targetId, productStatus: newStatus });
           }
-          return jsonResponse({ status: 'success', id: targetId, productStatus: newStatus });
-        }
 
-        // Action: getPromoCodes OR GET /api/promos
-        if (action === 'getPromoCodes' || url.pathname === '/api/promos') {
-          await db.prepare(`
+          // Action: getPromoCodes OR GET /api/promos
+          if (action === 'getPromoCodes' || url.pathname === '/api/promos') {
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS promo_codes (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               code TEXT UNIQUE,
@@ -895,10 +942,10 @@ export default {
             )
           `).run();
 
-          // Auto-seed defaults if table is empty
-          const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM promo_codes').first();
-          if (!countRow || countRow.cnt === 0) {
-            const seedQuery = `
+            // Auto-seed defaults if table is empty
+            const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM promo_codes').first();
+            if (!countRow || countRow.cnt === 0) {
+              const seedQuery = `
               INSERT OR IGNORE INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active)
               VALUES 
                 ('WELCOME50', 'fixed', 50, 0, 100, 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100', '', '', 1),
@@ -906,158 +953,158 @@ export default {
                 ('KUE10', 'percent', 0, 10, 150, 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150', '', '', 1),
                 ('BAKERY20', 'fixed', 20, 0, 60, 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่', '', '', 1)
             `;
-            await db.prepare(seedQuery).run();
-          }
+              await db.prepare(seedQuery).run();
+            }
 
-          const activeOnly = url.searchParams.get('activeOnly') === 'true';
-          const { results } = await db.prepare('SELECT * FROM promo_codes ORDER BY id DESC').all();
-          let promos = results || [];
+            const activeOnly = url.searchParams.get('activeOnly') === 'true';
+            const { results } = await db.prepare('SELECT * FROM promo_codes ORDER BY id DESC').all();
+            let promos = results || [];
 
-          if (activeOnly) {
-            const todayStr = new Date().toISOString().slice(0, 10);
-            promos = promos.filter(p => {
-              if (Number(p.is_active) !== 1) return false;
-              if (p.start_date && p.start_date.trim() !== '' && todayStr < p.start_date.trim()) return false;
-              if (p.end_date && p.end_date.trim() !== '' && todayStr > p.end_date.trim()) return false;
-              return true;
+            if (activeOnly) {
+              const todayStr = new Date().toISOString().slice(0, 10);
+              promos = promos.filter(p => {
+                if (Number(p.is_active) !== 1) return false;
+                if (p.start_date && p.start_date.trim() !== '' && todayStr < p.start_date.trim()) return false;
+                if (p.end_date && p.end_date.trim() !== '' && todayStr > p.end_date.trim()) return false;
+                return true;
+              });
+            }
+
+            return jsonResponse({
+              status: 'success',
+              promos: promos,
+              total: promos.length
             });
           }
-
-          return jsonResponse({
-            status: 'success',
-            promos: promos,
-            total: promos.length
-          });
-        }
-      }
-
-      // ==========================================
-      // POST REQUEST ROUTING (GAS Compatibility & REST)
-      // ==========================================
-      if (method === 'POST') {
-        let postData = {};
-        try {
-          const rawText = await request.text();
-          if (rawText) postData = JSON.parse(rawText);
-        } catch (e) {
-          postData = {};
         }
 
-        const postAction = postData.action || '';
+        // ==========================================
+        // POST REQUEST ROUTING (GAS Compatibility & REST)
+        // ==========================================
+        if (method === 'POST') {
+          let postData = {};
+          try {
+            const rawText = await request.text();
+            if (rawText) postData = JSON.parse(rawText);
+          } catch (e) {
+            postData = {};
+          }
 
-        // 1. ตรวจสอบ LINE Webhook Events
-        if (url.pathname === '/webhook' || (postData.events && Array.isArray(postData.events))) {
-          const events = postData.events || [];
-          for (const ev of events) {
-            // A. ลูกค้าส่งสลิปโอนเงิน (Image Message)
-            if (ev.type === 'message' && ev.message && ev.message.type === 'image') {
-              const userId = ev.source ? ev.source.userId : '';
-              const messageId = ev.message.id;
+          const postAction = postData.action || '';
 
-              if (userId && messageId) {
-                try {
-                  // ค้นหาออเดอร์ของลูกค้ารายนี้ที่รอชำระเงินหรือรอตรวจสอบ
-                  let order = await db
-                    .prepare(`
+          // 1. ตรวจสอบ LINE Webhook Events
+          if (url.pathname === '/webhook' || (postData.events && Array.isArray(postData.events))) {
+            const events = postData.events || [];
+            for (const ev of events) {
+              // A. ลูกค้าส่งสลิปโอนเงิน (Image Message)
+              if (ev.type === 'message' && ev.message && ev.message.type === 'image') {
+                const userId = ev.source ? ev.source.userId : '';
+                const messageId = ev.message.id;
+
+                if (userId && messageId) {
+                  try {
+                    // ค้นหาออเดอร์ของลูกค้ารายนี้ที่รอชำระเงินหรือรอตรวจสอบ
+                    let order = await db
+                      .prepare(`
                       SELECT order_id, status, customer_name FROM orders 
                       WHERE user_id = ? AND status IN ('ชำระเงิน', 'รอชำระเงิน', 'รอตรวจสอบ', 'กำลังตรวจสอบออเดอร์')
                       ORDER BY timestamp DESC LIMIT 1
                     `)
-                    .bind(userId)
-                    .first();
+                      .bind(userId)
+                      .first();
 
-                  if (!order) {
-                    order = await db
-                      .prepare(`
+                    if (!order) {
+                      order = await db
+                        .prepare(`
                         SELECT order_id, status, customer_name FROM orders 
                         WHERE user_id = ? AND status != 'ยกเลิก'
                         ORDER BY timestamp DESC LIMIT 1
                       `)
-                      .bind(userId)
-                      .first();
-                  }
-
-                  if (order && order.order_id) {
-                    // ⚡ 1. ส่ง Flex Message ตอบกลับลูกค้ายืนยันทันที! (< 0.5 วินาที ลูกค้าจะเห็นข้อความทันที ไม่ต้องรอโหลดรูป)
-                    if (ev.replyToken) {
-                      await sendLineReply(env, ev.replyToken, [
-                        {
-                          type: 'flex',
-                          altText: `🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (${order.order_id})`,
-                          contents: {
-                            type: 'bubble',
-                            header: {
-                              type: 'box',
-                              layout: 'vertical',
-                              backgroundColor: '#16a34a',
-                              paddingAll: '16px',
-                              contents: [
-                                {
-                                  type: 'text',
-                                  text: '🧾 ได้รับสลิปโอนเงินแล้ว',
-                                  color: '#ffffff',
-                                  weight: 'bold',
-                                  size: 'md',
-                                },
-                                {
-                                  type: 'text',
-                                  text: `เลขออเดอร์: ${order.order_id}`,
-                                  color: '#ffffff',
-                                  size: 'xs',
-                                  margin: 'xs',
-                                },
-                              ],
-                            },
-                            body: {
-                              type: 'box',
-                              layout: 'vertical',
-                              spacing: 'sm',
-                              contents: [
-                                {
-                                  type: 'text',
-                                  text: `ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของ ${order.customer_name || 'คุณลูกค้า'} เรียบร้อยแล้ว ✨`,
-                                  size: 'sm',
-                                  weight: 'bold',
-                                  color: '#0f172a',
-                                },
-                                {
-                                  type: 'text',
-                                  text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
-                                  size: 'xs',
-                                  wrap: true,
-                                  color: '#64748b',
-                                },
-                              ],
-                            },
-                          },
-                        },
-                      ]);
+                        .bind(userId)
+                        .first();
                     }
 
-                    // ⚡ 2. ทำงานดาวน์โหลดรูปจาก LINE + บันทึกลง D1 ใน Background ผ่าน ctx.waitUntil ไม่บล็อกการตอบกลับ
-                    const saveSlipTask = async () => {
-                      try {
-                        const imgRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
-                          headers: { Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}` },
-                        });
+                    if (order && order.order_id) {
+                      // ⚡ 1. ส่ง Flex Message ตอบกลับลูกค้ายืนยันทันที! (< 0.5 วินาที ลูกค้าจะเห็นข้อความทันที ไม่ต้องรอโหลดรูป)
+                      if (ev.replyToken) {
+                        await sendLineReply(env, ev.replyToken, [
+                          {
+                            type: 'flex',
+                            altText: `🧾 ได้รับสลิปโอนเงินเรียบร้อยแล้ว (${order.order_id})`,
+                            contents: {
+                              type: 'bubble',
+                              header: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#16a34a',
+                                paddingAll: '16px',
+                                contents: [
+                                  {
+                                    type: 'text',
+                                    text: '🧾 ได้รับสลิปโอนเงินแล้ว',
+                                    color: '#ffffff',
+                                    weight: 'bold',
+                                    size: 'md',
+                                  },
+                                  {
+                                    type: 'text',
+                                    text: `เลขออเดอร์: ${order.order_id}`,
+                                    color: '#ffffff',
+                                    size: 'xs',
+                                    margin: 'xs',
+                                  },
+                                ],
+                              },
+                              body: {
+                                type: 'box',
+                                layout: 'vertical',
+                                spacing: 'sm',
+                                contents: [
+                                  {
+                                    type: 'text',
+                                    text: `ขอบคุณครับ! ระบบบันทึกสลิปโอนเงินของ ${order.customer_name || 'คุณลูกค้า'} เรียบร้อยแล้ว ✨`,
+                                    size: 'sm',
+                                    weight: 'bold',
+                                    color: '#0f172a',
+                                  },
+                                  {
+                                    type: 'text',
+                                    text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
+                                    size: 'xs',
+                                    wrap: true,
+                                    color: '#64748b',
+                                  },
+                                ],
+                              },
+                            },
+                          },
+                        ]);
+                      }
 
-                        if (imgRes.ok) {
-                          const arrayBuffer = await imgRes.arrayBuffer();
-                          const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+                      // ⚡ 2. ทำงานดาวน์โหลดรูปจาก LINE + บันทึกลง D1 ใน Background ผ่าน ctx.waitUntil ไม่บล็อกการตอบกลับ
+                      const saveSlipTask = async () => {
+                        try {
+                          const imgRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+                            headers: { Authorization: `Bearer ${env.LINE_ACCESS_TOKEN}` },
+                          });
 
-                          // แปลง Binary ArrayBuffer เป็น Base64 อย่างรวดเร็ว
-                          let binary = '';
-                          const bytes = new Uint8Array(arrayBuffer);
-                          const len = bytes.byteLength;
-                          const chunkSize = 32768;
-                          for (let i = 0; i < len; i += chunkSize) {
-                            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
-                          }
-                          const base64 = btoa(binary);
+                          if (imgRes.ok) {
+                            const arrayBuffer = await imgRes.arrayBuffer();
+                            const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
 
-                          // บันทึกลงตาราง order_slips ใน Cloudflare D1
-                          await db
-                            .prepare(`
+                            // แปลง Binary ArrayBuffer เป็น Base64 อย่างรวดเร็ว
+                            let binary = '';
+                            const bytes = new Uint8Array(arrayBuffer);
+                            const len = bytes.byteLength;
+                            const chunkSize = 32768;
+                            for (let i = 0; i < len; i += chunkSize) {
+                              binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+                            }
+                            const base64 = btoa(binary);
+
+                            // บันทึกลงตาราง order_slips ใน Cloudflare D1
+                            await db
+                              .prepare(`
                               INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
                               VALUES (?, ?, ?, ?)
                               ON CONFLICT(order_id) DO UPDATE SET
@@ -1065,72 +1112,72 @@ export default {
                                 image_base64 = excluded.image_base64,
                                 created_at = excluded.created_at
                             `)
-                            .bind(order.order_id, mimeType, base64, new Date().toISOString())
-                            .run();
+                              .bind(order.order_id, mimeType, base64, new Date().toISOString())
+                              .run();
 
-                          // URL รูปภาพสลิปของ Cloudflare Worker
-                          const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
+                            // URL รูปภาพสลิปของ Cloudflare Worker
+                            const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
 
-                          // อัปเดตตาราง orders
-                          await db
-                            .prepare(`
+                            // อัปเดตตาราง orders
+                            await db
+                              .prepare(`
                               UPDATE orders SET slip_url = ?, status = 'ชำระเงิน' WHERE order_id = ?
                             `)
-                            .bind(slipUrl, order.order_id)
-                            .run();
+                              .bind(slipUrl, order.order_id)
+                              .run();
+                          }
+                        } catch (err) {
+                          console.error('Background slip save error:', err);
                         }
-                      } catch (err) {
-                        console.error('Background slip save error:', err);
-                      }
-                    };
+                      };
 
-                    if (ctx && typeof ctx.waitUntil === 'function') {
-                      ctx.waitUntil(saveSlipTask());
+                      if (ctx && typeof ctx.waitUntil === 'function') {
+                        ctx.waitUntil(saveSlipTask());
+                      } else {
+                        await saveSlipTask();
+                      }
                     } else {
-                      await saveSlipTask();
+                      if (ev.replyToken) {
+                        await sendLineReply(env, ev.replyToken, [
+                          {
+                            type: 'text',
+                            text: 'ได้รับรูปภาพสลิปเรียบร้อยแล้วครับ! หากต้องการระบุเลขออเดอร์ สามารถพิมพ์เลขออเดอร์ (เช่น ORD-...) ส่งมาในแชทนี้ได้เลยนะครับ แอดมินจะรีบตรวจสอบให้ครับ 🙏',
+                          },
+                        ]);
+                      }
                     }
-                  } else {
-                    if (ev.replyToken) {
-                      await sendLineReply(env, ev.replyToken, [
-                        {
-                          type: 'text',
-                          text: 'ได้รับรูปภาพสลิปเรียบร้อยแล้วครับ! หากต้องการระบุเลขออเดอร์ สามารถพิมพ์เลขออเดอร์ (เช่น ORD-...) ส่งมาในแชทนี้ได้เลยนะครับ แอดมินจะรีบตรวจสอบให้ครับ 🙏',
-                        },
-                      ]);
-                    }
+                  } catch (e) {
+                    console.error('Error handling line slip in cloudflare:', e);
                   }
-                } catch (e) {
-                  console.error('Error handling line slip in cloudflare:', e);
+                }
+              }
+
+              // B. ลูกค้ากดปุ่มยืนยัน/ยกเลิกจาก Flex Message
+              if (ev.type === 'postback' && ev.postback && ev.postback.data) {
+                const params = new URLSearchParams(ev.postback.data);
+                const pbAction = params.get('action');
+                const pbOrderId = params.get('orderId');
+
+                if (pbOrderId && (pbAction === 'cancelOrder' || pbAction === 'confirmOrder')) {
+                  const newStatus = pbAction === 'cancelOrder' ? 'ยกเลิก' : 'ชำระเงิน';
+                  await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(newStatus, pbOrderId).run();
                 }
               }
             }
+            return jsonResponse({ status: 'ok' });
+          }
 
-            // B. ลูกค้ากดปุ่มยืนยัน/ยกเลิกจาก Flex Message
-            if (ev.type === 'postback' && ev.postback && ev.postback.data) {
-              const params = new URLSearchParams(ev.postback.data);
-              const pbAction = params.get('action');
-              const pbOrderId = params.get('orderId');
+          // 1.5 Action: uploadSlip OR POST /api/orders/upload-slip (สำหรับแอดมินหรือหน้าเว็บแนบสลิป)
+          if (postAction === 'uploadSlip' || url.pathname === '/api/orders/upload-slip') {
+            const orderId = postData.orderId;
+            const slipUrlInput = postData.slipUrl || '';
+            const base64Data = postData.base64 || '';
 
-              if (pbOrderId && (pbAction === 'cancelOrder' || pbAction === 'confirmOrder')) {
-                const newStatus = pbAction === 'cancelOrder' ? 'ยกเลิก' : 'ชำระเงิน';
-                await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(newStatus, pbOrderId).run();
-              }
+            if (!orderId) {
+              return jsonResponse({ status: 'error', message: 'Missing orderId' }, 400);
             }
-          }
-          return jsonResponse({ status: 'ok' });
-        }
 
-        // 1.5 Action: uploadSlip OR POST /api/orders/upload-slip (สำหรับแอดมินหรือหน้าเว็บแนบสลิป)
-        if (postAction === 'uploadSlip' || url.pathname === '/api/orders/upload-slip') {
-          const orderId = postData.orderId;
-          const slipUrlInput = postData.slipUrl || '';
-          const base64Data = postData.base64 || '';
-
-          if (!orderId) {
-            return jsonResponse({ status: 'error', message: 'Missing orderId' }, 400);
-          }
-
-          await db.prepare(`
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS order_slips (
               order_id TEXT PRIMARY KEY,
               mime_type TEXT DEFAULT 'image/jpeg',
@@ -1139,15 +1186,15 @@ export default {
             )
           `).run();
 
-          let finalSlipUrl = slipUrlInput;
+            let finalSlipUrl = slipUrlInput;
 
-          if (base64Data) {
-            const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
-            const mimeMatch = base64Data.match(/^data:(image\/\w+);base64,/);
-            const mimeType = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : 'image/jpeg';
+            if (base64Data) {
+              const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+              const mimeMatch = base64Data.match(/^data:(image\/\w+);base64,/);
+              const mimeType = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : 'image/jpeg';
 
-            await db
-              .prepare(`
+              await db
+                .prepare(`
                 INSERT INTO order_slips (order_id, mime_type, image_base64, created_at)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(order_id) DO UPDATE SET
@@ -1155,71 +1202,70 @@ export default {
                   image_base64 = excluded.image_base64,
                   created_at = excluded.created_at
               `)
-              .bind(orderId, mimeType, cleanedBase64, new Date().toISOString())
-              .run();
+                .bind(orderId, mimeType, cleanedBase64, new Date().toISOString())
+                .run();
 
-            finalSlipUrl = `${url.origin}/api/orders/${orderId}/slip`;
-          }
+              finalSlipUrl = `${url.origin}/api/orders/${orderId}/slip`;
+            }
 
-          if (finalSlipUrl) {
-            await db
-              .prepare(`
+            if (finalSlipUrl) {
+              await db
+                .prepare(`
                 UPDATE orders SET slip_url = ?, status = CASE WHEN status IN ('รอชำระเงิน', 'รอตรวจสอบ') THEN 'ชำระเงิน' ELSE status END 
                 WHERE order_id = ?
               `)
-              .bind(finalSlipUrl, orderId)
-              .run();
+                .bind(finalSlipUrl, orderId)
+                .run();
 
-            return jsonResponse({ status: 'success', slipUrl: finalSlipUrl });
+              return jsonResponse({ status: 'success', slipUrl: finalSlipUrl });
+            }
+
+            return jsonResponse({ status: 'error', message: 'No slip URL or file provided' }, 400);
           }
 
-          return jsonResponse({ status: 'error', message: 'No slip URL or file provided' }, 400);
-        }
+          // 2. Action: createOrder OR POST /api/orders
+          if (postAction === 'createOrder' || url.pathname === '/api/orders') {
+            const data = postData;
 
-        // 2. Action: createOrder OR POST /api/orders
-        if (postAction === 'createOrder' || url.pathname === '/api/orders') {
-          const data = postData;
+            // บังคับตรวจสอบเบอร์โทรศัพท์ให้ถูกต้อง (ห้ามเว้นวรรค หรือ 001)
+            const rawPhone = data.phone || '';
+            const cleanPhone = cleanPhoneNumber(rawPhone);
+            if (!rawPhone || !isValidThaiPhone(cleanPhone)) {
+              return jsonResponse({
+                status: 'error',
+                message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
+              }, 400);
+            }
 
-          // บังคับตรวจสอบเบอร์โทรศัพท์ให้ถูกต้อง (ห้ามเว้นวรรค หรือ 001)
-          const rawPhone = data.phone || '';
-          const cleanPhone = cleanPhoneNumber(rawPhone);
-          if (!rawPhone || !isValidThaiPhone(cleanPhone)) {
-            return jsonResponse({
-              status: 'error',
-              message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
-            }, 400);
-          }
+            const timestamp = new Date();
+            const rand = Math.floor(Math.random() * 1000);
+            const orderId =
+              data.orderId ||
+              `ORD-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(
+                timestamp.getDate()
+              ).padStart(2, '0')}-${String(timestamp.getHours()).padStart(2, '0')}${String(
+                timestamp.getMinutes()
+              ).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}-${rand}`;
 
-          const timestamp = new Date();
-          const rand = Math.floor(Math.random() * 1000);
-          const orderId =
-            data.orderId ||
-            `ORD-${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(
-              timestamp.getDate()
-            ).padStart(2, '0')}-${String(timestamp.getHours()).padStart(2, '0')}${String(
-              timestamp.getMinutes()
-            ).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}-${rand}`;
+            const items = data.items || [];
+            const itemsText = items.map((it) => `${it.name} x${it.qty}`).join(', ');
+            const itemsJson = JSON.stringify(items);
 
-          const items = data.items || [];
-          const itemsText = items.map((it) => `${it.name} x${it.qty}`).join(', ');
-          const itemsJson = JSON.stringify(items);
+            let displayAddress = data.addressDetails || '';
+            if (data.shippingOption === 'รับหน้าร้าน') {
+              displayAddress = `🏪 [รับหน้าร้าน] ${data.deliveryType === 'ล่วงหน้า' && data.preorderTime ? `🕒 สั่งล่วงหน้า: ${data.preorderTime} น.` : 'รับทันที'
+                }`;
+            } else if (data.deliveryType === 'ล่วงหน้า' && data.preorderTime) {
+              displayAddress = `🕒 [สั่งล่วงหน้า: ${data.preorderTime} น.] ${data.addressDetails || ''}`;
+            }
+            if (data.couponCode && Number(data.discountAmount) > 0) {
+              displayAddress += `\n🎟️ โค้ดส่วนลด: ${data.couponCode} (-฿${Number(data.discountAmount).toLocaleString()})`;
+            }
+            if (data.note) {
+              displayAddress += `\n📝 หมายเหตุ: ${data.note.trim()}`;
+            }
 
-          let displayAddress = data.addressDetails || '';
-          if (data.shippingOption === 'รับหน้าร้าน') {
-            displayAddress = `🏪 [รับหน้าร้าน] ${
-              data.deliveryType === 'ล่วงหน้า' && data.preorderTime ? `🕒 สั่งล่วงหน้า: ${data.preorderTime} น.` : 'รับทันที'
-            }`;
-          } else if (data.deliveryType === 'ล่วงหน้า' && data.preorderTime) {
-            displayAddress = `🕒 [สั่งล่วงหน้า: ${data.preorderTime} น.] ${data.addressDetails || ''}`;
-          }
-          if (data.couponCode && Number(data.discountAmount) > 0) {
-            displayAddress += `\n🎟️ โค้ดส่วนลด: ${data.couponCode} (-฿${Number(data.discountAmount).toLocaleString()})`;
-          }
-          if (data.note) {
-            displayAddress += `\n📝 หมายเหตุ: ${data.note.trim()}`;
-          }
-
-          const insertQuery = `
+            const insertQuery = `
             INSERT INTO orders (
               order_id, user_id, customer_name, phone, gps_location, address_details,
               slip_url, total_price, status, payment_method, items_text, items_json,
@@ -1227,54 +1273,54 @@ export default {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
-          await db
-            .prepare(insertQuery)
-            .bind(
-              orderId,
-              data.userId || 'unknown',
-              data.displayName || data.customerName || '',
-              cleanPhone,
-              data.gpsLocation || '',
-              displayAddress,
-              data.slipUrl || '',
-              Number(data.totalPrice || 0),
-              'รอตรวจสอบ',
-              data.paymentMethod || 'ปลายทาง',
-              itemsText,
-              itemsJson,
-              data.deliveryType || 'ทันที',
-              data.preorderTime || '',
-              data.shippingOption || 'จัดส่ง',
-              data.note || ''
-            )
-            .run();
+            await db
+              .prepare(insertQuery)
+              .bind(
+                orderId,
+                data.userId || 'unknown',
+                data.displayName || data.customerName || '',
+                cleanPhone,
+                data.gpsLocation || '',
+                displayAddress,
+                data.slipUrl || '',
+                Number(data.totalPrice || 0),
+                'รอตรวจสอบ',
+                data.paymentMethod || 'ปลายทาง',
+                itemsText,
+                itemsJson,
+                data.deliveryType || 'ทันที',
+                data.preorderTime || '',
+                data.shippingOption || 'จัดส่ง',
+                data.note || ''
+              )
+              .run();
 
-          // บันทึก/อัปเดตที่อยู่สมาชิกล่าสุด
-          if (data.userId && data.userId !== 'unknown' && data.userId !== 'web-test-user') {
-            try {
-              const member = await db.prepare('SELECT * FROM members WHERE user_id = ?').bind(data.userId).first();
-              let savedAddresses = [];
-              if (member && member.saved_addresses_json) {
-                try {
-                  savedAddresses = JSON.parse(member.saved_addresses_json);
-                } catch (e) {}
-              }
-
-              if (data.shippingOption !== 'รับหน้าร้าน' && data.gpsLocation) {
-                const exists = savedAddresses.some(
-                  (a) => a.gpsLocation === data.gpsLocation && a.addressDetails === data.addressDetails
-                );
-                if (!exists) {
-                  savedAddresses.unshift({
-                    label: data.addressLabel || 'ที่อยู่ของฉัน',
-                    gpsLocation: data.gpsLocation,
-                    addressDetails: data.addressDetails,
-                  });
-                  if (savedAddresses.length > 5) savedAddresses.pop();
+            // บันทึก/อัปเดตที่อยู่สมาชิกล่าสุด
+            if (data.userId && data.userId !== 'unknown' && data.userId !== 'web-test-user') {
+              try {
+                const member = await db.prepare('SELECT * FROM members WHERE user_id = ?').bind(data.userId).first();
+                let savedAddresses = [];
+                if (member && member.saved_addresses_json) {
+                  try {
+                    savedAddresses = JSON.parse(member.saved_addresses_json);
+                  } catch (e) { }
                 }
-              }
 
-              const memberQuery = `
+                if (data.shippingOption !== 'รับหน้าร้าน' && data.gpsLocation) {
+                  const exists = savedAddresses.some(
+                    (a) => a.gpsLocation === data.gpsLocation && a.addressDetails === data.addressDetails
+                  );
+                  if (!exists) {
+                    savedAddresses.unshift({
+                      label: data.addressLabel || 'ที่อยู่ของฉัน',
+                      gpsLocation: data.gpsLocation,
+                      addressDetails: data.addressDetails,
+                    });
+                    if (savedAddresses.length > 5) savedAddresses.pop();
+                  }
+                }
+
+                const memberQuery = `
                 INSERT INTO members (user_id, display_name, phone, gps_location, address_details, address_label, saved_addresses_json, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
@@ -1287,273 +1333,273 @@ export default {
                   updated_at = CURRENT_TIMESTAMP
               `;
 
-              await db
-                .prepare(memberQuery)
-                .bind(
-                  data.userId,
-                  data.displayName || '',
-                  cleanPhone,
-                  data.gpsLocation || '',
-                  data.addressDetails || '',
-                  data.addressLabel || '',
-                  JSON.stringify(savedAddresses)
+                await db
+                  .prepare(memberQuery)
+                  .bind(
+                    data.userId,
+                    data.displayName || '',
+                    cleanPhone,
+                    data.gpsLocation || '',
+                    data.addressDetails || '',
+                    data.addressLabel || '',
+                    JSON.stringify(savedAddresses)
+                  )
+                  .run();
+              } catch (e) {
+                console.error('Member address update error:', e);
+              }
+            }
+
+            return jsonResponse({ status: 'success', orderId });
+          }
+
+          // 3. Action: updateOrderStatus OR POST /api/orders/status
+          if (postAction === 'updateOrderStatus' || url.pathname === '/api/orders/status') {
+            const { orderId, status } = postData;
+            if (!orderId || !status) {
+              return jsonResponse({ status: 'error', message: 'Missing orderId or status' }, 400);
+            }
+
+            const order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
+            if (!order) {
+              return jsonResponse({ status: 'error', message: 'Order not found' }, 404);
+            }
+
+            await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(status, orderId).run();
+
+            // ส่ง LINE Message แจ้งเตือนลูกค้า
+            let items = [];
+            try {
+              if (order.items_json) items = JSON.parse(order.items_json);
+            } catch (e) { }
+
+            const messages = [];
+            const pm = order.payment_method || '';
+
+            if (
+              (status === 'ชำระเงิน' || status === 'รอชำระเงิน') &&
+              (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))
+            ) {
+              messages.push(
+                buildStatusFlexMessage(
+                  '💳 ยืนยันออเดอร์ & แจ้งชำระเงิน',
+                  orderId,
+                  'แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨',
+                  '#2563eb',
+                  order.customer_name,
+                  order.phone,
+                  order.shipping_option,
+                  order.delivery_type,
+                  order.preorder_time,
+                  items,
+                  order.total_price,
+                  pm
                 )
-                .run();
-            } catch (e) {
-              console.error('Member address update error:', e);
-            }
-          }
+              );
 
-          return jsonResponse({ status: 'success', orderId });
-        }
+              let qrAmount = Number(order.total_price || 0);
+              if (pm.includes('โอนเงินผสมเงินสด')) {
+                const match = pm.match(/- โอน (\d+(?:\.\d+)?) บาท/);
+                if (match && match[1]) qrAmount = Number(match[1]);
+              }
 
-        // 3. Action: updateOrderStatus OR POST /api/orders/status
-        if (postAction === 'updateOrderStatus' || url.pathname === '/api/orders/status') {
-          const { orderId, status } = postData;
-          if (!orderId || !status) {
-            return jsonResponse({ status: 'error', message: 'Missing orderId or status' }, 400);
-          }
+              const dynamicQrUrl = `https://promptpay.io/${env.SHOP_PROMPTPAY_ID || '0957579454'}/${qrAmount}.png`;
+              messages.push({
+                type: 'image',
+                originalContentUrl: dynamicQrUrl,
+                previewImageUrl: dynamicQrUrl,
+              });
 
-          const order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
-          if (!order) {
-            return jsonResponse({ status: 'error', message: 'Order not found' }, 404);
-          }
-
-          await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(status, orderId).run();
-
-          // ส่ง LINE Message แจ้งเตือนลูกค้า
-          let items = [];
-          try {
-            if (order.items_json) items = JSON.parse(order.items_json);
-          } catch (e) {}
-
-          const messages = [];
-          const pm = order.payment_method || '';
-
-          if (
-            (status === 'ชำระเงิน' || status === 'รอชำระเงิน') &&
-            (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))
-          ) {
-            messages.push(
-              buildStatusFlexMessage(
-                '💳 ยืนยันออเดอร์ & แจ้งชำระเงิน',
-                orderId,
-                'แอดมินยืนยันออเดอร์แล้วครับ คุณลูกค้าสามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨',
-                '#2563eb',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
-
-            let qrAmount = Number(order.total_price || 0);
-            if (pm.includes('โอนเงินผสมเงินสด')) {
-              const match = pm.match(/- โอน (\d+(?:\.\d+)?) บาท/);
-              if (match && match[1]) qrAmount = Number(match[1]);
-            }
-
-            const dynamicQrUrl = `https://promptpay.io/${env.SHOP_PROMPTPAY_ID || '0957579454'}/${qrAmount}.png`;
-            messages.push({
-              type: 'image',
-              originalContentUrl: dynamicQrUrl,
-              previewImageUrl: dynamicQrUrl,
-            });
-
-            // Quick Reply ให้ลูกค้ากดแนบสลิปจากอัลบั้มหรือกล้อง
-            messages.push({
-              type: 'text',
-              text: '💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇',
-              quickReply: {
-                items: [
-                  {
-                    type: 'action',
-                    action: {
-                      type: 'cameraRoll',
-                      label: '📸 แนบสลิปจากอัลบั้ม',
+              // Quick Reply ให้ลูกค้ากดแนบสลิปจากอัลบั้มหรือกล้อง
+              messages.push({
+                type: 'text',
+                text: '💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇',
+                quickReply: {
+                  items: [
+                    {
+                      type: 'action',
+                      action: {
+                        type: 'cameraRoll',
+                        label: '📸 แนบสลิปจากอัลบั้ม',
+                      },
                     },
-                  },
-                  {
-                    type: 'action',
-                    action: {
-                      type: 'camera',
-                      label: '📷 ถ่ายรูปสลิป',
+                    {
+                      type: 'action',
+                      action: {
+                        type: 'camera',
+                        label: '📷 ถ่ายรูปสลิป',
+                      },
                     },
-                  },
-                ],
-              },
-            });
-          } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
-            messages.push(
-              buildStatusFlexMessage(
-                '📦 กำลังจัดเตรียมสินค้า',
-                orderId,
-                'แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨',
-                '#f59e0b',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
-          } else if (status === 'กำลังจัดส่ง') {
-            messages.push(
-              buildStatusFlexMessage(
-                '🚚 สินค้าอยู่ระหว่างจัดส่ง',
-                orderId,
-                'พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵',
-                '#8b5cf6',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
-          } else if (status === 'จัดส่งสำเร็จ' || status === 'ยืนยันแล้ว') {
-            messages.push(
-              buildStatusFlexMessage(
-                '🎉 จัดส่งสินค้าสำเร็จเรียบร้อย',
-                orderId,
-                'สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️',
-                '#16a34a',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
-          } else if (status === 'ยกเลิก') {
-            messages.push(
-              buildStatusFlexMessage(
-                '🥺 แจ้งยกเลิกออเดอร์',
-                orderId,
-                'ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨',
-                '#dc2626',
-                order.customer_name,
-                order.phone,
-                order.shipping_option,
-                order.delivery_type,
-                order.preorder_time,
-                items,
-                order.total_price,
-                pm
-              )
-            );
-          }
-
-          if (messages.length > 0 && order.user_id) {
-            if (ctx && typeof ctx.waitUntil === 'function') {
-              ctx.waitUntil(sendLinePush(env, order.user_id, messages));
-            } else {
-              await sendLinePush(env, order.user_id, messages);
-            }
-          }
-
-          return jsonResponse({ status: 'success' });
-        }
-
-        // 4. Action: updateOrderItems OR POST /api/orders/items
-        if (postAction === 'updateOrderItems' || url.pathname === '/api/orders/items') {
-          const { orderId, items, totalPrice, changeNote } = postData;
-          const order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
-          if (!order) {
-            return jsonResponse({ status: 'error', message: 'Order not found' }, 404);
-          }
-
-          const newItems = items || [];
-          const itemsText = newItems.map((it) => `${it.name} x${it.qty}`).join(', ');
-          const itemsJson = JSON.stringify(newItems);
-          const newTotal = Number(totalPrice || 0);
-
-          await db
-            .prepare(
-              "UPDATE orders SET items_text = ?, items_json = ?, total_price = ?, status = 'รอการยืนยัน' WHERE order_id = ?"
-            )
-            .bind(itemsText, itemsJson, newTotal, orderId)
-            .run();
-
-          // แจ้งเตือนลูกค้าพร้อมปุ่ม Postback ให้กดยืนยันหรือยกเลิก
-          if (order.user_id && order.user_id !== 'unknown' && order.user_id !== 'web-test-user') {
-            let bodyText = 'ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ';
-            if (changeNote && changeNote.trim()) {
-              bodyText += ` (หมายเหตุ: ${changeNote.trim()})`;
+                  ],
+                },
+              });
+            } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
+              messages.push(
+                buildStatusFlexMessage(
+                  '📦 กำลังจัดเตรียมสินค้า',
+                  orderId,
+                  'แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨',
+                  '#f59e0b',
+                  order.customer_name,
+                  order.phone,
+                  order.shipping_option,
+                  order.delivery_type,
+                  order.preorder_time,
+                  items,
+                  order.total_price,
+                  pm
+                )
+              );
+            } else if (status === 'กำลังจัดส่ง') {
+              messages.push(
+                buildStatusFlexMessage(
+                  '🚚 สินค้าอยู่ระหว่างจัดส่ง',
+                  orderId,
+                  'พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵',
+                  '#8b5cf6',
+                  order.customer_name,
+                  order.phone,
+                  order.shipping_option,
+                  order.delivery_type,
+                  order.preorder_time,
+                  items,
+                  order.total_price,
+                  pm
+                )
+              );
+            } else if (status === 'จัดส่งสำเร็จ' || status === 'ยืนยันแล้ว') {
+              messages.push(
+                buildStatusFlexMessage(
+                  '🎉 จัดส่งสินค้าสำเร็จเรียบร้อย',
+                  orderId,
+                  'สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️',
+                  '#16a34a',
+                  order.customer_name,
+                  order.phone,
+                  order.shipping_option,
+                  order.delivery_type,
+                  order.preorder_time,
+                  items,
+                  order.total_price,
+                  pm
+                )
+              );
+            } else if (status === 'ยกเลิก') {
+              messages.push(
+                buildStatusFlexMessage(
+                  '🥺 แจ้งยกเลิกออเดอร์',
+                  orderId,
+                  'ทางร้านจำเป็นต้องขออนุญาตยกเลิกออเดอร์นี้ชั่วคราวครับ 🙏❤️ ต้องขออภัยในความไม่สะดวกเป็นอย่างยิ่งเลยนะครับ หวังว่าจะได้รับโอกาสดูแลคุณลูกค้าใหม่ในโอกาสหน้านะครับ 🥰✨',
+                  '#dc2626',
+                  order.customer_name,
+                  order.phone,
+                  order.shipping_option,
+                  order.delivery_type,
+                  order.preorder_time,
+                  items,
+                  order.total_price,
+                  pm
+                )
+              );
             }
 
-            const flexMsg = buildStatusFlexMessage(
-              '✏️ แจ้งปรับเปลี่ยนออเดอร์',
-              orderId,
-              bodyText,
-              '#0f766e',
-              order.customer_name,
-              order.phone,
-              order.shipping_option,
-              order.delivery_type,
-              order.preorder_time,
-              newItems,
-              newTotal,
-              order.payment_method
-            );
-
-            const confirmTemplate = {
-              type: 'template',
-              altText: 'กรุณายืนยันการเปลี่ยนแปลงออเดอร์',
-              template: {
-                type: 'buttons',
-                text: 'คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?',
-                actions: [
-                  {
-                    type: 'postback',
-                    label: '✅ ยืนยันรายการสั่งซื้อ',
-                    data: `action=confirmOrder&orderId=${orderId}`,
-                    displayText: 'ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ',
-                  },
-                  {
-                    type: 'postback',
-                    label: '❌ ยกเลิกคำสั่งซื้อ',
-                    data: `action=cancelOrder&orderId=${orderId}`,
-                    displayText: 'ลูกค้าขอยกเลิกออเดอร์นี้ครับ',
-                  },
-                ],
-              },
-            };
-
-            if (ctx && typeof ctx.waitUntil === 'function') {
-              ctx.waitUntil(sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]));
-            } else {
-              await sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]);
+            if (messages.length > 0 && order.user_id) {
+              if (ctx && typeof ctx.waitUntil === 'function') {
+                ctx.waitUntil(sendLinePush(env, order.user_id, messages));
+              } else {
+                await sendLinePush(env, order.user_id, messages);
+              }
             }
+
+            return jsonResponse({ status: 'success' });
           }
 
-          return jsonResponse({ status: 'success', message: 'Order items updated' });
-        }
+          // 4. Action: updateOrderItems OR POST /api/orders/items
+          if (postAction === 'updateOrderItems' || url.pathname === '/api/orders/items') {
+            const { orderId, items, totalPrice, changeNote } = postData;
+            const order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
+            if (!order) {
+              return jsonResponse({ status: 'error', message: 'Order not found' }, 404);
+            }
 
-        // 4.1 Action: updateProductStatus OR POST /api/products/status
-        if (postAction === 'updateProductStatus' || url.pathname === '/api/products/status') {
-          const targetId = postData.id || postData.productId;
-          const rawStatus = postData.status;
-          const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
+            const newItems = items || [];
+            const itemsText = newItems.map((it) => `${it.name} x${it.qty}`).join(', ');
+            const itemsJson = JSON.stringify(newItems);
+            const newTotal = Number(totalPrice || 0);
 
-          if (!targetId) {
-            return jsonResponse({ status: 'error', message: 'Missing product id' }, 400);
+            await db
+              .prepare(
+                "UPDATE orders SET items_text = ?, items_json = ?, total_price = ?, status = 'รอการยืนยัน' WHERE order_id = ?"
+              )
+              .bind(itemsText, itemsJson, newTotal, orderId)
+              .run();
+
+            // แจ้งเตือนลูกค้าพร้อมปุ่ม Postback ให้กดยืนยันหรือยกเลิก
+            if (order.user_id && order.user_id !== 'unknown' && order.user_id !== 'web-test-user') {
+              let bodyText = 'ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ';
+              if (changeNote && changeNote.trim()) {
+                bodyText += ` (หมายเหตุ: ${changeNote.trim()})`;
+              }
+
+              const flexMsg = buildStatusFlexMessage(
+                '✏️ แจ้งปรับเปลี่ยนออเดอร์',
+                orderId,
+                bodyText,
+                '#0f766e',
+                order.customer_name,
+                order.phone,
+                order.shipping_option,
+                order.delivery_type,
+                order.preorder_time,
+                newItems,
+                newTotal,
+                order.payment_method
+              );
+
+              const confirmTemplate = {
+                type: 'template',
+                altText: 'กรุณายืนยันการเปลี่ยนแปลงออเดอร์',
+                template: {
+                  type: 'buttons',
+                  text: 'คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?',
+                  actions: [
+                    {
+                      type: 'postback',
+                      label: '✅ ยืนยันรายการสั่งซื้อ',
+                      data: `action=confirmOrder&orderId=${orderId}`,
+                      displayText: 'ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ',
+                    },
+                    {
+                      type: 'postback',
+                      label: '❌ ยกเลิกคำสั่งซื้อ',
+                      data: `action=cancelOrder&orderId=${orderId}`,
+                      displayText: 'ลูกค้าขอยกเลิกออเดอร์นี้ครับ',
+                    },
+                  ],
+                },
+              };
+
+              if (ctx && typeof ctx.waitUntil === 'function') {
+                ctx.waitUntil(sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]));
+              } else {
+                await sendLinePush(env, order.user_id, [flexMsg, confirmTemplate]);
+              }
+            }
+
+            return jsonResponse({ status: 'success', message: 'Order items updated' });
           }
 
-          await db.prepare(`
+          // 4.1 Action: updateProductStatus OR POST /api/products/status
+          if (postAction === 'updateProductStatus' || url.pathname === '/api/products/status') {
+            const targetId = postData.id || postData.productId;
+            const rawStatus = postData.status;
+            const newStatus = (rawStatus === 'inactive' || rawStatus === false || rawStatus === '0') ? 'inactive' : 'active';
+
+            if (!targetId) {
+              return jsonResponse({ status: 'error', message: 'Missing product id' }, 400);
+            }
+
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS product_statuses (
               id TEXT PRIMARY KEY,
               status TEXT DEFAULT 'active',
@@ -1561,39 +1607,39 @@ export default {
             )
           `).run();
 
-          await db.prepare(`
+            await db.prepare(`
             INSERT INTO product_statuses (id, status, updated_at)
             VALUES (?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP
           `).bind(String(targetId), newStatus).run();
 
-          try {
-            await db
-              .prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-              .bind(newStatus, String(targetId))
-              .run();
-          } catch(e) {}
+            try {
+              await db
+                .prepare("UPDATE products SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(newStatus, String(targetId))
+                .run();
+            } catch (e) { }
 
-          return jsonResponse({
-            status: 'success',
-            message: `Product ${targetId} status updated to ${newStatus}`,
-            id: targetId,
-            productStatus: newStatus
-          });
-        }
-
-        // 4.3 Action: syncProductsBatch OR POST /api/products/batch (Migrate/Sync Products from POSPOS/Sheets)
-        if (postAction === 'syncProductsBatch' || url.pathname === '/api/products/batch') {
-          const products = postData.products || [];
-          if (!Array.isArray(products) || products.length === 0) {
-            return jsonResponse({ status: 'success', imported: 0, message: 'No products provided' });
+            return jsonResponse({
+              status: 'success',
+              message: `Product ${targetId} status updated to ${newStatus}`,
+              id: targetId,
+              productStatus: newStatus
+            });
           }
 
-          try {
-            await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
-          } catch (e) {}
+          // 4.3 Action: syncProductsBatch OR POST /api/products/batch (Migrate/Sync Products from POSPOS/Sheets)
+          if (postAction === 'syncProductsBatch' || url.pathname === '/api/products/batch') {
+            const products = postData.products || [];
+            if (!Array.isArray(products) || products.length === 0) {
+              return jsonResponse({ status: 'success', imported: 0, message: 'No products provided' });
+            }
 
-          const insertStmt = db.prepare(`
+            try {
+              await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
+            } catch (e) { }
+
+            const insertStmt = db.prepare(`
             INSERT INTO products (id, name, category, price, desc, img, tag, status, stock, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET
@@ -1608,39 +1654,39 @@ export default {
               updated_at = CURRENT_TIMESTAMP
           `);
 
-          const batch = [];
-          for (const p of products) {
-            if (!p.id) continue;
-            batch.push(
-              insertStmt.bind(
-                String(p.id).trim(),
-                p.name || '',
-                p.category || 'ทั่วไป',
-                Number(p.price || 0),
-                p.desc || '',
-                p.img || '',
-                p.tag || '',
-                p.status || 'active',
-                Number(p.stock ?? 0)
-              )
-            );
+            const batch = [];
+            for (const p of products) {
+              if (!p.id) continue;
+              batch.push(
+                insertStmt.bind(
+                  String(p.id).trim(),
+                  p.name || '',
+                  p.category || 'ทั่วไป',
+                  Number(p.price || 0),
+                  p.desc || '',
+                  p.img || '',
+                  p.tag || '',
+                  p.status || 'active',
+                  Number(p.stock ?? 0)
+                )
+              );
+            }
+
+            if (batch.length > 0) {
+              await db.batch(batch);
+            }
+
+            return jsonResponse({ status: 'success', imported: batch.length });
           }
 
-          if (batch.length > 0) {
-            await db.batch(batch);
-          }
+          // 4.5 Action: syncOrdersBatch OR POST /api/orders/batch (Migrate/Sync Orders from Sheets)
+          if (postAction === 'syncOrdersBatch' || url.pathname === '/api/orders/batch') {
+            const orders = postData.orders || [];
+            if (!Array.isArray(orders) || orders.length === 0) {
+              return jsonResponse({ status: 'success', imported: 0, message: 'No orders provided' });
+            }
 
-          return jsonResponse({ status: 'success', imported: batch.length });
-        }
-
-        // 4.5 Action: syncOrdersBatch OR POST /api/orders/batch (Migrate/Sync Orders from Sheets)
-        if (postAction === 'syncOrdersBatch' || url.pathname === '/api/orders/batch') {
-          const orders = postData.orders || [];
-          if (!Array.isArray(orders) || orders.length === 0) {
-            return jsonResponse({ status: 'success', imported: 0, message: 'No orders provided' });
-          }
-
-          const insertStmt = db.prepare(`
+            const insertStmt = db.prepare(`
             INSERT INTO orders (
               order_id, timestamp, user_id, customer_name, phone, gps_location, address_details,
               slip_url, total_price, status, payment_method, items_text, items_json,
@@ -1654,51 +1700,51 @@ export default {
               items_json = excluded.items_json
           `);
 
-          const batch = [];
-          for (const o of orders) {
-            if (!o.orderId) continue;
-            const items = o.items || [];
-            const itemsText = o.itemsText || (Array.isArray(items) ? items.map((it) => `${it.name || ''} x${it.qty || 1}`).join(', ') : '');
-            const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
+            const batch = [];
+            for (const o of orders) {
+              if (!o.orderId) continue;
+              const items = o.items || [];
+              const itemsText = o.itemsText || (Array.isArray(items) ? items.map((it) => `${it.name || ''} x${it.qty || 1}`).join(', ') : '');
+              const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
 
-            batch.push(
-              insertStmt.bind(
-                o.orderId,
-                o.timestamp || new Date().toISOString(),
-                o.userId || 'unknown',
-                o.customerName || o.displayName || '',
-                o.phone || '',
-                o.gpsLocation || '',
-                o.addressDetails || '',
-                o.slipUrl || '',
-                Number(o.totalPrice || 0),
-                o.status || 'รอตรวจสอบ',
-                o.paymentMethod || 'ปลายทาง',
-                itemsText,
-                itemsJson,
-                o.deliveryType || 'ทันที',
-                o.preorderTime || '',
-                o.shippingOption || 'จัดส่ง',
-                o.note || ''
-              )
-            );
+              batch.push(
+                insertStmt.bind(
+                  o.orderId,
+                  o.timestamp || new Date().toISOString(),
+                  o.userId || 'unknown',
+                  o.customerName || o.displayName || '',
+                  o.phone || '',
+                  o.gpsLocation || '',
+                  o.addressDetails || '',
+                  o.slipUrl || '',
+                  Number(o.totalPrice || 0),
+                  o.status || 'รอตรวจสอบ',
+                  o.paymentMethod || 'ปลายทาง',
+                  itemsText,
+                  itemsJson,
+                  o.deliveryType || 'ทันที',
+                  o.preorderTime || '',
+                  o.shippingOption || 'จัดส่ง',
+                  o.note || ''
+                )
+              );
+            }
+
+            if (batch.length > 0) {
+              await db.batch(batch);
+            }
+
+            return jsonResponse({ status: 'success', imported: batch.length });
           }
 
-          if (batch.length > 0) {
-            await db.batch(batch);
-          }
+          // 4.6 Action: syncMembersBatch OR POST /api/members/batch (Migrate/Sync Members from Sheets)
+          if (postAction === 'syncMembersBatch' || url.pathname === '/api/members/batch') {
+            const members = postData.members || [];
+            if (!Array.isArray(members) || members.length === 0) {
+              return jsonResponse({ status: 'success', imported: 0, message: 'No members provided' });
+            }
 
-          return jsonResponse({ status: 'success', imported: batch.length });
-        }
-
-        // 4.6 Action: syncMembersBatch OR POST /api/members/batch (Migrate/Sync Members from Sheets)
-        if (postAction === 'syncMembersBatch' || url.pathname === '/api/members/batch') {
-          const members = postData.members || [];
-          if (!Array.isArray(members) || members.length === 0) {
-            return jsonResponse({ status: 'success', imported: 0, message: 'No members provided' });
-          }
-
-          const insertStmt = db.prepare(`
+            const insertStmt = db.prepare(`
             INSERT INTO members (
               user_id, display_name, status_message, email, picture_url, phone,
               gps_location, address_details, address_label, saved_addresses_json, registered_at, updated_at
@@ -1710,41 +1756,41 @@ export default {
               updated_at = CURRENT_TIMESTAMP
           `);
 
-          const batch = [];
-          for (const m of members) {
-            if (!m.userId) continue;
-            batch.push(
-              insertStmt.bind(
-                m.userId,
-                m.displayName || '',
-                m.statusMessage || '',
-                m.email || '',
-                m.pictureUrl || '',
-                m.phone || '',
-                m.gpsLocation || '',
-                m.addressDetails || '',
-                m.addressLabel || '',
-                m.savedAddresses || m.saved_addresses_json || '[]',
-                m.registeredAt || new Date().toISOString()
-              )
-            );
+            const batch = [];
+            for (const m of members) {
+              if (!m.userId) continue;
+              batch.push(
+                insertStmt.bind(
+                  m.userId,
+                  m.displayName || '',
+                  m.statusMessage || '',
+                  m.email || '',
+                  m.pictureUrl || '',
+                  m.phone || '',
+                  m.gpsLocation || '',
+                  m.addressDetails || '',
+                  m.addressLabel || '',
+                  m.savedAddresses || m.saved_addresses_json || '[]',
+                  m.registeredAt || new Date().toISOString()
+                )
+              );
+            }
+
+            if (batch.length > 0) {
+              await db.batch(batch);
+            }
+
+            return jsonResponse({ status: 'success', imported: batch.length });
           }
 
-          if (batch.length > 0) {
-            await db.batch(batch);
-          }
+          // 4.7 Action: savePromoCode OR POST /api/promos
+          if (postAction === 'savePromoCode' || (url.pathname === '/api/promos' && method === 'POST')) {
+            const rawCode = (postData.code || '').trim().toUpperCase();
+            if (!rawCode) {
+              return jsonResponse({ status: 'error', message: 'กรุณาระบุรหัสโค้ดส่วนลด' }, 400);
+            }
 
-          return jsonResponse({ status: 'success', imported: batch.length });
-        }
-
-        // 4.7 Action: savePromoCode OR POST /api/promos
-        if (postAction === 'savePromoCode' || (url.pathname === '/api/promos' && method === 'POST')) {
-          const rawCode = (postData.code || '').trim().toUpperCase();
-          if (!rawCode) {
-            return jsonResponse({ status: 'error', message: 'กรุณาระบุรหัสโค้ดส่วนลด' }, 400);
-          }
-
-          await db.prepare(`
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS promo_codes (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               code TEXT UNIQUE,
@@ -1761,16 +1807,16 @@ export default {
             )
           `).run();
 
-          const type = postData.type || 'fixed'; // fixed, percent, shipping
-          const amount = Number(postData.amount) || 0;
-          const percent = Number(postData.percent) || 0;
-          const minSpend = Number(postData.minSpend || postData.min_spend) || 0;
-          const description = (postData.description || '').trim();
-          const startDate = (postData.startDate || postData.start_date || '').trim();
-          const endDate = (postData.endDate || postData.end_date || '').trim();
-          const isActive = (postData.isActive !== undefined ? (postData.isActive ? 1 : 0) : (postData.is_active !== undefined ? (postData.is_active ? 1 : 0) : 1));
+            const type = postData.type || 'fixed'; // fixed, percent, shipping
+            const amount = Number(postData.amount) || 0;
+            const percent = Number(postData.percent) || 0;
+            const minSpend = Number(postData.minSpend || postData.min_spend) || 0;
+            const description = (postData.description || '').trim();
+            const startDate = (postData.startDate || postData.start_date || '').trim();
+            const endDate = (postData.endDate || postData.end_date || '').trim();
+            const isActive = (postData.isActive !== undefined ? (postData.isActive ? 1 : 0) : (postData.is_active !== undefined ? (postData.is_active ? 1 : 0) : 1));
 
-          const query = `
+            const query = `
             INSERT INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(code) DO UPDATE SET
@@ -1785,19 +1831,19 @@ export default {
               updated_at = CURRENT_TIMESTAMP
           `;
 
-          await db.prepare(query).bind(rawCode, type, amount, percent, minSpend, description, startDate, endDate, isActive).run();
-          return jsonResponse({ status: 'success', message: 'บันทึกโค้ดส่วนลดเรียบร้อย', code: rawCode });
-        }
-
-        // 4.8 Action: togglePromoCode OR POST /api/promos/toggle
-        if (postAction === 'togglePromoCode' || url.pathname === '/api/promos/toggle') {
-          const rawCode = (postData.code || '').trim().toUpperCase();
-          const isActive = postData.isActive ? 1 : 0;
-          if (!rawCode) {
-            return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+            await db.prepare(query).bind(rawCode, type, amount, percent, minSpend, description, startDate, endDate, isActive).run();
+            return jsonResponse({ status: 'success', message: 'บันทึกโค้ดส่วนลดเรียบร้อย', code: rawCode });
           }
 
-          await db.prepare(`
+          // 4.8 Action: togglePromoCode OR POST /api/promos/toggle
+          if (postAction === 'togglePromoCode' || url.pathname === '/api/promos/toggle') {
+            const rawCode = (postData.code || '').trim().toUpperCase();
+            const isActive = postData.isActive ? 1 : 0;
+            if (!rawCode) {
+              return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+            }
+
+            await db.prepare(`
             CREATE TABLE IF NOT EXISTS promo_codes (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               code TEXT UNIQUE,
@@ -1814,46 +1860,46 @@ export default {
             )
           `).run();
 
-          await db.prepare('UPDATE promo_codes SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE code = ?')
-            .bind(isActive, rawCode)
-            .run();
+            await db.prepare('UPDATE promo_codes SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE code = ?')
+              .bind(isActive, rawCode)
+              .run();
 
-          return jsonResponse({ status: 'success', code: rawCode, isActive });
-        }
-
-        // 4.9 Action: deletePromoCode OR POST /api/promos/delete
-        if (postAction === 'deletePromoCode' || url.pathname === '/api/promos/delete') {
-          const rawCode = (postData.code || '').trim().toUpperCase();
-          if (!rawCode) {
-            return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+            return jsonResponse({ status: 'success', code: rawCode, isActive });
           }
 
-          await db.prepare('DELETE FROM promo_codes WHERE code = ?')
-            .bind(rawCode)
-            .run();
+          // 4.9 Action: deletePromoCode OR POST /api/promos/delete
+          if (postAction === 'deletePromoCode' || url.pathname === '/api/promos/delete') {
+            const rawCode = (postData.code || '').trim().toUpperCase();
+            if (!rawCode) {
+              return jsonResponse({ status: 'error', message: 'Missing code' }, 400);
+            }
 
-          return jsonResponse({ status: 'success', message: 'ลบโค้ดส่วนลดแล้ว', code: rawCode });
-        }
+            await db.prepare('DELETE FROM promo_codes WHERE code = ?')
+              .bind(rawCode)
+              .run();
 
-        // 5. Action: register (หรือ Default Member Upsert) OR POST /api/members
-        if (postAction === 'register' || url.pathname === '/api/members' || postData.userId) {
-          const userId = postData.userId;
-          if (!userId) {
-            return jsonResponse({ status: 'error', message: 'Missing userId' }, 400);
+            return jsonResponse({ status: 'success', message: 'ลบโค้ดส่วนลดแล้ว', code: rawCode });
           }
 
-          const rawPhone = postData.phone || '';
-          const cleanPhone = cleanPhoneNumber(rawPhone);
-          // ถ้ามี phone ส่งมาแต่ไม่ถูกต้อง (เช่น 001 หรือช่องว่าง) ให้ปฏิเสธเพื่อป้องกันข้อมูลเสีย
-          if (rawPhone && !isValidThaiPhone(cleanPhone)) {
-            return jsonResponse({
-              status: 'error',
-              message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
-            }, 400);
-          }
-          const validPhoneToSave = isValidThaiPhone(cleanPhone) ? cleanPhone : '';
+          // 5. Action: register (หรือ Default Member Upsert) OR POST /api/members
+          if (postAction === 'register' || url.pathname === '/api/members' || postData.userId) {
+            const userId = postData.userId;
+            if (!userId) {
+              return jsonResponse({ status: 'error', message: 'Missing userId' }, 400);
+            }
 
-          const query = `
+            const rawPhone = postData.phone || '';
+            const cleanPhone = cleanPhoneNumber(rawPhone);
+            // ถ้ามี phone ส่งมาแต่ไม่ถูกต้อง (เช่น 001 หรือช่องว่าง) ให้ปฏิเสธเพื่อป้องกันข้อมูลเสีย
+            if (rawPhone && !isValidThaiPhone(cleanPhone)) {
+              return jsonResponse({
+                status: 'error',
+                message: 'กรุณาระบุเบอร์โทรศัพท์ที่ถูกต้อง (10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)'
+              }, 400);
+            }
+            const validPhoneToSave = isValidThaiPhone(cleanPhone) ? cleanPhone : '';
+
+            const query = `
             INSERT INTO members (user_id, display_name, status_message, email, picture_url, phone, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET
@@ -1865,33 +1911,33 @@ export default {
               updated_at = CURRENT_TIMESTAMP
           `;
 
-          await db
-            .prepare(query)
-            .bind(
-              userId,
-              postData.displayName || '',
-              postData.statusMessage || '',
-              postData.email || '',
-              postData.pictureUrl || '',
-              validPhoneToSave
-            )
-            .run();
+            await db
+              .prepare(query)
+              .bind(
+                userId,
+                postData.displayName || '',
+                postData.statusMessage || '',
+                postData.email || '',
+                postData.pictureUrl || '',
+                validPhoneToSave
+              )
+              .run();
 
-          return jsonResponse({ status: 'success' });
+            return jsonResponse({ status: 'success' });
+          }
         }
-      }
 
-      // DELETE /api/products/:id
-      if (url.pathname.startsWith('/api/products/') && method === 'DELETE') {
-        const id = url.pathname.split('/')[3];
-        await db.prepare('DELETE FROM products WHERE id = ?').bind(id).run();
-        return jsonResponse({ status: 'success', message: `Product ${id} deleted` });
-      }
+        // DELETE /api/products/:id
+        if (url.pathname.startsWith('/api/products/') && method === 'DELETE') {
+          const id = url.pathname.split('/')[3];
+          await db.prepare('DELETE FROM products WHERE id = ?').bind(id).run();
+          return jsonResponse({ status: 'success', message: `Product ${id} deleted` });
+        }
 
-      return jsonResponse({ status: 'error', message: `Route ${url.pathname} not found` }, 404);
-    } catch (err) {
-      console.error('Worker error:', err);
-      return jsonResponse({ status: 'error', message: err.message }, 500);
-    }
-  },
-};
+        return jsonResponse({ status: 'error', message: `Route ${url.pathname} not found` }, 404);
+      } catch (err) {
+        console.error('Worker error:', err);
+        return jsonResponse({ status: 'error', message: err.message }, 500);
+      }
+    },
+  };
