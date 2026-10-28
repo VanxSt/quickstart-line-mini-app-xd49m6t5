@@ -316,6 +316,8 @@ async function sendLineReply(env, replyToken, messages) {
 }
 
 // Router หลักของ Cloudflare Worker
+const DEFAULT_POSPOS_API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzMjAwMWM4MGNmOTMwODA4ZjE1NDUyNiIsImVtcGxveW1lbnRfdHlwZSI6IjViZDZjOGVkZTFhNDM3NTgwNzkwODUwZiIsInVzZXJuYW1lIjoicHJpbWVzdWtwcmltZXN1a0BnbWFpbC5jb20iLCJzaG9wIjoiMTY2NzIyNDcxMjc4NyIsInZlcnNpb24iOiIxLjAiLCJsZXZlbCI6MSwiaWF0IjoxNzY4MjkyMTEzLCJleHAiOjQ5MjQwNTIxMTMsImF1ZCI6Imh0dHBzOi8vcG9zcG9zZ28uY28iLCJpc3MiOiJDb2RlTW9iaWxlcyBMdGQifQ.XNg2jc2jQCYmd47ykEW37t7bsQnw4M2avwQ33xRJBhfrPMXTaFdZTwflJUmpGVykkNwUCB_NhNH3_ornqLSR8YXo_ARfQtT8t5WRVJqP5QWAMU95ftx_ZP1aQadJE2EBpWoAmsHVBTbSC86x0cBZO9qLDABKzVrYEFBm9ZQWVPs';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -336,9 +338,90 @@ export default {
     }
 
     try {
+      // ==========================================
+      // POSPOS MEMBER & STOCK API (ไม่ต้องพึ่งพา D1 Database)
+      // ==========================================
+      if (method === 'GET' && (action === 'getPosposMember' || url.pathname.startsWith('/api/pospos/member'))) {
+        const apiKey = (env && env.POSPOS_API_KEY) || DEFAULT_POSPOS_API_KEY;
+        const rawPhone = url.pathname.startsWith('/api/pospos/member/') ? url.pathname.split('/')[4] : url.searchParams.get('phone');
+        const clean = cleanPhoneNumber(rawPhone);
+
+        if (!clean || !isValidThaiPhone(clean)) {
+          return jsonResponse({ status: 'error', message: 'กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง' }, 400);
+        }
+
+        const fetchByPhoneFormat = async (phoneQuery) => {
+          try {
+            const r = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(phoneQuery)}`, {
+              headers: {
+                'apikey': apiKey,
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache',
+                'User-Agent': 'Kuekoonkan-App/2.0'
+              }
+            });
+            if (!r.ok) return [];
+            const parsed = await r.json();
+            const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : (parsed && parsed.data ? [parsed.data] : []));
+            return list.filter(item => item && typeof item === 'object' && (item._id || item.code || item.phonenumber));
+          } catch (e) {
+            return [];
+          }
+        };
+
+        try {
+          const dashedPhone = clean.length === 10 ? `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}` : clean;
+          let records = await fetchByPhoneFormat(dashedPhone);
+
+          if (records.length === 0 && dashedPhone !== clean) {
+            records = await fetchByPhoneFormat(clean);
+          }
+
+          if (records.length === 0) {
+            return jsonResponse({ status: 'success', schemaVersion: 2, found: false, member: null });
+          }
+
+          const rm = records[0];
+          const first = String(rm.firstname || '').trim();
+          const last = String(rm.lastname || '').trim();
+          const fullName = `${first} ${last}`.trim() || String(rm.name || rm.nickname || '').trim() || 'ลูกค้าสมาชิก';
+          const pointVal = Number(rm.point_value ?? rm.point ?? 0);
+          const codeVal = String(rm.code || rm.key_card_id || rm._id || '').trim();
+          const groupVal = (rm.type && rm.type.name_th) ? String(rm.type.name_th).trim() : String(rm.group || 'สมาชิกทั่วไป').trim();
+
+          const member = {
+            name: fullName,
+            phone: clean,
+            point: Number.isFinite(pointVal) ? pointVal : 0,
+            code: codeVal,
+            group: groupVal || 'สมาชิกทั่วไป'
+          };
+
+          return jsonResponse({ status: 'success', schemaVersion: 2, found: true, member, rawPospos: records });
+        } catch (e) {
+          return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
+        }
+      }
+
+      if (method === 'GET' && (action === 'getPosposStockById' || url.pathname.startsWith('/api/pospos/stock/'))) {
+        const apiKey = (env && env.POSPOS_API_KEY) || DEFAULT_POSPOS_API_KEY;
+        const posId = url.pathname.startsWith('/api/pospos/stock/') ? url.pathname.split('/')[4] : url.searchParams.get('id');
+        if (!posId) return jsonResponse({ status: 'error', message: 'Missing product ID' }, 400);
+
+        try {
+          const res = await fetch(`https://go.pospos.co/developer/api/stock/${encodeURIComponent(posId)}`, {
+            headers: { 'apikey': apiKey }
+          });
+          const data = await res.json();
+          return jsonResponse({ status: 'success', data });
+        } catch (e) {
+          return jsonResponse({ status: 'error', message: e.message }, 500);
+        }
+      }
+
       const db = env.DB || env.kuekoonkan_db;
       if (!db) {
-        return jsonResponse({ status: 'error', message: 'D1 Database binding (env.DB or env.kuekoonkan_db) not found' }, 500);
+        return jsonResponse({ status: 'fallback', products: [], inactiveIds: [], promos: [], message: 'D1 Database binding not found' }, 200);
       }
 
       // ==========================================
@@ -399,48 +482,57 @@ export default {
 
         // Action: getProducts OR GET /api/products
         if (action === 'getProducts' || url.pathname === '/api/products') {
-          const includeAll = url.searchParams.get('all') === 'true';
-          const category = url.searchParams.get('category');
-          const search = url.searchParams.get('search');
+          try {
+            const includeAll = url.searchParams.get('all') === 'true';
+            const category = url.searchParams.get('category');
+            const search = url.searchParams.get('search');
 
-          let query = 'SELECT * FROM products';
-          const conditions = [];
-          const bindings = [];
+            let query = 'SELECT * FROM products';
+            const conditions = [];
+            const bindings = [];
 
-          if (!includeAll) {
-            conditions.push("status != 'inactive'");
-          }
-          if (category && category !== 'ทั้งหมด') {
-            conditions.push('category = ?');
-            bindings.push(category);
-          }
-          if (search) {
-            conditions.push('(name LIKE ? OR desc LIKE ? OR tag LIKE ?)');
-            const term = `%${search}%`;
-            bindings.push(term, term, term);
-          }
-
-          if (conditions.length > 0) {
-            query += ' WHERE ' + conditions.join(' AND ');
-          }
-          query += ' ORDER BY id ASC';
-
-          const stmt = bindings.length > 0 ? db.prepare(query).bind(...bindings) : db.prepare(query);
-          const { results } = await stmt.all();
-
-          const cleanedProducts = (results || []).map((row) => {
-            if (row.img && typeof row.img === 'string' && row.img.includes('1779018898541-98193691087.jpg')) {
-              return { ...row, img: '' };
+            if (!includeAll) {
+              conditions.push("status != 'inactive'");
             }
-            return row;
-          });
+            if (category && category !== 'ทั้งหมด') {
+              conditions.push('category = ?');
+              bindings.push(category);
+            }
+            if (search) {
+              conditions.push('(name LIKE ? OR desc LIKE ? OR tag LIKE ?)');
+              const term = `%${search}%`;
+              bindings.push(term, term, term);
+            }
 
-          return jsonResponse({
-            status: 'success',
-            products: cleanedProducts,
-            total: cleanedProducts.length,
-            cachedAt: Date.now(),
-          });
+            if (conditions.length > 0) {
+              query += ' WHERE ' + conditions.join(' AND ');
+            }
+            query += ' ORDER BY id ASC';
+
+            const stmt = bindings.length > 0 ? db.prepare(query).bind(...bindings) : db.prepare(query);
+            const { results } = await stmt.all();
+
+            const cleanedProducts = (results || []).map((row) => {
+              if (row.img && typeof row.img === 'string' && row.img.includes('1779018898541-98193691087.jpg')) {
+                return { ...row, img: '' };
+              }
+              return row;
+            });
+
+            return jsonResponse({
+              status: 'success',
+              products: cleanedProducts,
+              total: cleanedProducts.length,
+              cachedAt: Date.now(),
+            });
+          } catch (d1Err) {
+            return jsonResponse({
+              status: 'fallback',
+              products: [],
+              total: 0,
+              message: d1Err.message,
+            });
+          }
         }
 
         // ==========================================
@@ -448,7 +540,7 @@ export default {
         // ==========================================
         // Action: syncPospos OR GET/POST /api/pospos/sync
         if (action === 'syncPospos' || url.pathname === '/api/pospos/sync') {
-          const apiKey = env.POSPOS_API_KEY;
+          const apiKey = (env && env.POSPOS_API_KEY) || DEFAULT_POSPOS_API_KEY;
           if (!apiKey) {
             return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY ยังไม่ได้ตั้งค่าใน Cloudflare Worker vars' }, 500);
           }
@@ -602,90 +694,6 @@ export default {
           }
         }
 
-        // Action: getPosposStockById OR GET /api/pospos/stock/:id
-        if (action === 'getPosposStockById' || url.pathname.startsWith('/api/pospos/stock/')) {
-          const apiKey = env.POSPOS_API_KEY;
-          if (!apiKey) return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY missing' }, 500);
-          const posId = url.pathname.startsWith('/api/pospos/stock/') ? url.pathname.split('/')[4] : url.searchParams.get('id');
-          if (!posId) return jsonResponse({ status: 'error', message: 'Missing product ID' }, 400);
-
-          try {
-            const res = await fetch(`https://go.pospos.co/developer/api/stock/${encodeURIComponent(posId)}`, {
-              headers: { 'apikey': apiKey }
-            });
-            const data = await res.json();
-            return jsonResponse({ status: 'success', data });
-          } catch (e) {
-            return jsonResponse({ status: 'error', message: e.message }, 500);
-          }
-        }
-
-        // Action: getPosposMember OR GET /api/pospos/member/:phone
-        if (action === 'getPosposMember' || url.pathname.startsWith('/api/pospos/member/')) {
-          const apiKey = env.POSPOS_API_KEY;
-          if (!apiKey) return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY missing' }, 500);
-          const rawPhone = url.pathname.startsWith('/api/pospos/member/') ? url.pathname.split('/')[4] : url.searchParams.get('phone');
-          const clean = cleanPhoneNumber(rawPhone);
-
-          if (!clean || !isValidThaiPhone(clean)) {
-            return jsonResponse({ status: 'error', message: 'กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง' }, 400);
-          }
-
-          const fetchByPhoneFormat = async (phoneQuery) => {
-            try {
-              const r = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(phoneQuery)}`, {
-                headers: {
-                  'apikey': apiKey,
-                  'Accept': 'application/json',
-                  'Cache-Control': 'no-cache',
-                  'User-Agent': 'Kuekoonkan-App/2.0'
-                }
-              });
-              if (!r.ok) return [];
-              const parsed = await r.json();
-              const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : (parsed && parsed.data ? [parsed.data] : []));
-              return list.filter(item => item && typeof item === 'object' && (item._id || item.code || item.phonenumber));
-            } catch (e) {
-              return [];
-            }
-          };
-
-          try {
-            // 1. ค้นหาแบบมีขีด (เช่น 095-757-9454) ซึ่งเป็นรูปแบบหลักที่ POSPOS เก็บในฟิลด์ phonenumber
-            const dashedPhone = clean.length === 10 ? `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}` : clean;
-            let records = await fetchByPhoneFormat(dashedPhone);
-
-            // 2. หากไม่พบ ลองค้นหาด้วยเบอร์ติดกัน 10 หลัก (เช่น 0957579454)
-            if (records.length === 0 && dashedPhone !== clean) {
-              records = await fetchByPhoneFormat(clean);
-            }
-
-            if (records.length === 0) {
-              return jsonResponse({ status: 'success', schemaVersion: 2, found: false, member: null });
-            }
-
-            const rm = records[0];
-            const first = String(rm.firstname || '').trim();
-            const last = String(rm.lastname || '').trim();
-            const fullName = `${first} ${last}`.trim() || String(rm.name || rm.nickname || '').trim() || 'ลูกค้าสมาชิก';
-            const pointVal = Number(rm.point_value ?? rm.point ?? 0);
-            const codeVal = String(rm.code || rm.key_card_id || rm._id || '').trim();
-            const groupVal = (rm.type && rm.type.name_th) ? String(rm.type.name_th).trim() : String(rm.group || 'สมาชิกทั่วไป').trim();
-
-            const member = {
-              name: fullName,
-              phone: clean,
-              point: Number.isFinite(pointVal) ? pointVal : 0,
-              code: codeVal,
-              group: groupVal || 'สมาชิกทั่วไป'
-            };
-
-            return jsonResponse({ status: 'success', schemaVersion: 2, found: true, member, rawPospos: records });
-          } catch (e) {
-            return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
-          }
-        }
-
         // Action: getAllOrders OR GET /api/orders (Admin)
         if(action === 'getAllOrders' || (url.pathname === '/api/orders' && !url.searchParams.get('userId'))) {
                 const { results } = await db.prepare('SELECT * FROM orders ORDER BY timestamp DESC').all();
@@ -832,31 +840,40 @@ export default {
 
           // Action: getInactiveProducts OR GET /api/products/inactive (ดึงเฉพาะรหัสสินค้าที่ถูกปิด เพื่อซ่อนจากลูกค้าทันที)
           if (action === 'getInactiveProducts' || url.pathname === '/api/products/inactive') {
-            await db.prepare(`
-            CREATE TABLE IF NOT EXISTS product_statuses (
-              id TEXT PRIMARY KEY,
-              status TEXT DEFAULT 'active',
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-          `).run();
-
-            const { results: fromStatuses } = await db.prepare("SELECT id FROM product_statuses WHERE status = 'inactive'").all();
-            let inactiveIds = (fromStatuses || []).map(r => String(r.id));
-
             try {
-              const { results: fromProducts } = await db.prepare("SELECT id FROM products WHERE status = 'inactive'").all();
-              if (fromProducts && fromProducts.length > 0) {
-                const set = new Set(inactiveIds);
-                fromProducts.forEach(r => set.add(String(r.id)));
-                inactiveIds = Array.from(set);
-              }
-            } catch (e) { }
+              await db.prepare(`
+              CREATE TABLE IF NOT EXISTS product_statuses (
+                id TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'active',
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              )
+            `).run();
 
-            return jsonResponse({
-              status: 'success',
-              inactiveIds: inactiveIds,
-              total: inactiveIds.length
-            });
+              const { results: fromStatuses } = await db.prepare("SELECT id FROM product_statuses WHERE status = 'inactive'").all();
+              let inactiveIds = (fromStatuses || []).map(r => String(r.id));
+
+              try {
+                const { results: fromProducts } = await db.prepare("SELECT id FROM products WHERE status = 'inactive'").all();
+                if (fromProducts && fromProducts.length > 0) {
+                  const set = new Set(inactiveIds);
+                  fromProducts.forEach(r => set.add(String(r.id)));
+                  inactiveIds = Array.from(set);
+                }
+              } catch (e) { }
+
+              return jsonResponse({
+                status: 'success',
+                inactiveIds: inactiveIds,
+                total: inactiveIds.length
+              });
+            } catch (d1Err) {
+              return jsonResponse({
+                status: 'fallback',
+                inactiveIds: [],
+                total: 0,
+                message: d1Err.message
+              });
+            }
           }
 
           // Action: updateProductStatus (GET fallback)

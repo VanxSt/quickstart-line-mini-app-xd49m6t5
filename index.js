@@ -995,7 +995,8 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
         });
         if (res.ok) {
           const workerData = await res.json();
-          if (workerData && workerData.status === 'success') {
+          // ยอมรับผลลัพธ์เฉพาะกรณีพบสมาชิก หรือเป็น Worker รุ่นใหม่ (schemaVersion: 2) ที่ค้นหาแบบมีขีดแล้วเท่านั้น
+          if (workerData && workerData.status === 'success' && (workerData.found || workerData.schemaVersion === 2)) {
             candidateResponses.push(workerData);
           }
         }
@@ -1010,6 +1011,7 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
     if (candidateResponses.length === 0 || (stillZeroPoints && !hasSchemaV2)) {
       try {
         const posposKey = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzMjAwMWM4MGNmOTMwODA4ZjE1NDUyNiIsImVtcGxveW1lbnRfdHlwZSI6IjViZDZjOGVkZTFhNDM3NTgwNzkwODUwZiIsInVzZXJuYW1lIjoicHJpbWVzdWtwcmltZXN1a0BnbWFpbC5jb20iLCJzaG9wIjoiMTY2NzIyNDcxMjc4NyIsInZlcnNpb24iOiIxLjAiLCJsZXZlbCI6MSwiaWF0IjoxNzY4MjkyMTEzLCJleHAiOjQ5MjQwNTIxMTMsImF1ZCI6Imh0dHBzOi8vcG9zcG9zZ28uY28iLCJpc3MiOiJDb2RlTW9iaWxlcyBMdGQifQ.XNg2jc2jQCYmd47ykEW37t7bsQnw4M2avwQ33xRJBhfrPMXTaFdZTwflJUmpGVykkNwUCB_NhNH3_ornqLSR8YXo_ARfQtT8t5WRVJqP5QWAMU95ftx_ZP1aQadJE2EBpWoAmsHVBTbSC86x0cBZO9qLDABKzVrYEFBm9ZQWVPs';
+        let anyDirectHttpOk = false;
         const fetchDirectPospos = async (url) => {
           try {
             const r = await fetch(url, {
@@ -1017,6 +1019,7 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
               signal: controller.signal
             });
             if (!r.ok) return null;
+            anyDirectHttpOk = true;
             const t = await r.text();
             return t && t.trim() ? JSON.parse(t) : null;
           } catch (e) {
@@ -1066,8 +1069,8 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
             },
             rawPospos: rawRecords
           });
-        } else if (candidateResponses.length === 0) {
-          candidateResponses.push({ status: 'success', found: false, member: null });
+        } else if (candidateResponses.length === 0 && anyDirectHttpOk) {
+          candidateResponses.push({ status: 'success', schemaVersion: 2, found: false, member: null });
         }
       } catch (directErr) {
         console.warn('Direct POSPOS fallback:', directErr);
