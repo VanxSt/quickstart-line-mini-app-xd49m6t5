@@ -631,95 +631,60 @@ export default {
             return jsonResponse({ status: 'error', message: 'กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง' }, 400);
           }
 
-              const fetchPosposByPhone = async (phoneQuery) => {
-                const res = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(phoneQuery)}`, {
-                  headers: {
-                    'apikey': apiKey,
-                    'Accept': 'application/json',
-                    'User-Agent': 'Kuekoonkan-App/1.0'
-                  }
-                });
-
-                  if (res.status === 404 || res.status === 204) {
-                    return { ok: true, member: null };
-                  }
-
-                  const rawText = await res.text();
-                  if (!res.ok) {
-                    // กรณี POSPOS ตอบ 400 เมื่อไม่พบข้อมูลสมาชิก
-                    if (res.status === 400 && (!rawText || rawText.toLowerCase().includes('not found') || rawText.includes('ไม่พบ'))) {
-                      return { ok: true, member: null };
-                    }
-                    return { ok: false, status: res.status, errorText: rawText };
-                  }
-
-                  if (!rawText || !rawText.trim()) {
-                    return { ok: true, member: null };
-                  }
-
-                  let data = null;
-                  try {
-                    data = JSON.parse(rawText);
-                  } catch (parseErr) {
-                    return { ok: true, member: null };
-                  }
-
-                  if (!data) return { ok: true, member: null };
-
-                  let rawMember = data.data ?? data.member ?? data.result ?? data;
-                  if (Array.isArray(rawMember)) {
-                    rawMember = rawMember.length > 0 ? rawMember[0] : null;
-                  }
-
-                  const isFound = Boolean(
-                    rawMember &&
-                    typeof rawMember === 'object' &&
-                    (rawMember._id || rawMember.id || rawMember.name || rawMember.fullname || rawMember.phonenumber || rawMember.phone || rawMember.tel || rawMember.code || rawMember.member_code || rawMember.point !== undefined || rawMember.points !== undefined)
-                  );
-
-                  if (!isFound) {
-                    return { ok: true, member: null };
-                  }
-
-                  return { ok: true, member: rawMember };
-                };
-
-                try {
-                  // 1. ค้นหาด้วยเบอร์ติดกัน 10 หลัก (เช่น 0957579454)
-                  let lookup = await fetchPosposByPhone(clean);
-
-                  // 2. หากไม่พบ ลองค้นหาแบบมีขีดคั่น (เช่น 095-757-9454) เผื่อพนักงานหน้าร้านคีย์มีขีด
-                  if (lookup.ok && !lookup.member && clean.length === 10) {
-                    const dashedPhone = `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
-                    const retryLookup = await fetchPosposByPhone(dashedPhone);
-                    if (retryLookup.ok && retryLookup.member) {
-                      lookup = retryLookup;
-                    }
-                  }
-
-                  if (!lookup.ok) {
-                    return jsonResponse({ status: 'error', message: `POSPOS status ${lookup.status}: ${lookup.errorText}` }, lookup.status || 502);
-                  }
-
-                  const rawMember = lookup.member;
-                  if (!rawMember) {
-                    return jsonResponse({ status: 'success', found: false, member: null });
-                  }
-
-                  // จัดรูปแบบข้อมูลสมาชิกมาตรฐานสำหรับร้านเกื้อกูลกัน
-                  const member = {
-                    name: rawMember.name || rawMember.fullname || rawMember.first_name || 'ลูกค้าสมาชิก',
-                    phone: clean,
-                    point: Number(rawMember.point ?? rawMember.points ?? rawMember.score ?? rawMember.reward_points ?? rawMember.total_point ?? 0),
-              code: rawMember.code || rawMember.member_code || rawMember.id || rawMember._id || '',
-                    group: rawMember.group || rawMember.member_group || rawMember.group_name || 'สมาชิกทั่วไป'
-                  };
-
-                  return jsonResponse({ status: 'success', found: true, member });
-                } catch (e) {
-                  return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
+          const fetchByPhoneFormat = async (phoneQuery) => {
+            try {
+              const r = await fetch(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(phoneQuery)}`, {
+                headers: {
+                  'apikey': apiKey,
+                  'Accept': 'application/json',
+                  'Cache-Control': 'no-cache',
+                  'User-Agent': 'Kuekoonkan-App/2.0'
                 }
-              }
+              });
+              if (!r.ok) return [];
+              const parsed = await r.json();
+              const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : (parsed && parsed.data ? [parsed.data] : []));
+              return list.filter(item => item && typeof item === 'object' && (item._id || item.code || item.phonenumber));
+            } catch (e) {
+              return [];
+            }
+          };
+
+          try {
+            // 1. ค้นหาแบบมีขีด (เช่น 095-757-9454) ซึ่งเป็นรูปแบบหลักที่ POSPOS เก็บในฟิลด์ phonenumber
+            const dashedPhone = clean.length === 10 ? `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}` : clean;
+            let records = await fetchByPhoneFormat(dashedPhone);
+
+            // 2. หากไม่พบ ลองค้นหาด้วยเบอร์ติดกัน 10 หลัก (เช่น 0957579454)
+            if (records.length === 0 && dashedPhone !== clean) {
+              records = await fetchByPhoneFormat(clean);
+            }
+
+            if (records.length === 0) {
+              return jsonResponse({ status: 'success', schemaVersion: 2, found: false, member: null });
+            }
+
+            const rm = records[0];
+            const first = String(rm.firstname || '').trim();
+            const last = String(rm.lastname || '').trim();
+            const fullName = `${first} ${last}`.trim() || String(rm.name || rm.nickname || '').trim() || 'ลูกค้าสมาชิก';
+            const pointVal = Number(rm.point_value ?? rm.point ?? 0);
+            const codeVal = String(rm.code || rm.key_card_id || rm._id || '').trim();
+            const groupVal = (rm.type && rm.type.name_th) ? String(rm.type.name_th).trim() : String(rm.group || 'สมาชิกทั่วไป').trim();
+
+            const member = {
+              name: fullName,
+              phone: clean,
+              point: Number.isFinite(pointVal) ? pointVal : 0,
+              code: codeVal,
+              group: groupVal || 'สมาชิกทั่วไป'
+            };
+
+            return jsonResponse({ status: 'success', schemaVersion: 2, found: true, member, rawPospos: records });
+          } catch (e) {
+            return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
+          }
+        }
 
         // Action: getAllOrders OR GET /api/orders (Admin)
         if(action === 'getAllOrders' || (url.pathname === '/api/orders' && !url.searchParams.get('userId'))) {

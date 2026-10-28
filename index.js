@@ -846,6 +846,90 @@ function renderMemberPointsUI(member) {
   }
 }
 
+// Helper: ดึงตัวเลขแต้มสะสมจากค่าทุกรูปแบบใน POSPOS (ป้องกันค่า 0 บังฟิลด์จริง)
+function extractPosposNumericPoint(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number' && Number.isFinite(val)) return val;
+  if (typeof val === 'string') {
+    const cleaned = val.replace(/,/g, '').trim();
+    if (/^-?\d+(\.\d+)?$/.test(cleaned)) return Number(cleaned);
+    const match = cleaned.match(/-?\d+(\.\d+)?/);
+    if (match) return Number(match[0]);
+    return null;
+  }
+  if (typeof val === 'object' && !Array.isArray(val)) {
+    const subKeys = ['remain', 'remaining', 'balance', 'current', 'available', 'net', 'point', 'points', 'total', 'value', 'amount', 'score', 'collect'];
+    for (const k of subKeys) {
+      if (val[k] !== undefined) {
+        const sub = extractPosposNumericPoint(val[k]);
+        if (sub !== null && sub > 0) return sub;
+      }
+    }
+    for (const k of subKeys) {
+      if (val[k] !== undefined) {
+        const sub = extractPosposNumericPoint(val[k]);
+        if (sub !== null) return sub;
+      }
+    }
+  }
+  return null;
+}
+
+function extractPosposPointsFromRecord(rm) {
+  if (!rm || typeof rm !== 'object') return 0;
+
+  if (rm.point_value !== undefined && rm.point_value !== null) {
+    const pv = extractPosposNumericPoint(rm.point_value);
+    if (pv !== null) return pv;
+  }
+
+  if (rm.point !== undefined && rm.point !== null) {
+    const p = extractPosposNumericPoint(rm.point);
+    if (p !== null) return p;
+  }
+
+  return 0;
+}
+
+function extractPosposNameFromRecord(rm) {
+  if (!rm || typeof rm !== 'object') return '';
+  const first = String(rm.firstname ?? rm.first_name ?? rm.firstName ?? rm.fname ?? '').trim();
+  const last = String(rm.lastname ?? rm.last_name ?? rm.lastName ?? rm.lname ?? rm.surname ?? '').trim();
+  if (first || last) return `${first} ${last}`.trim();
+  const nameKeys = ['name', 'fullname', 'full_name', 'fullName', 'member_name', 'memberName', 'membername', 'customer_name', 'customerName', 'customername', 'cust_name', 'display_name', 'displayName', 'nickname', 'nick_name', 'title'];
+  for (const k of nameKeys) {
+    if (rm[k] && typeof rm[k] === 'string' && rm[k].trim()) return rm[k].trim();
+  }
+  return '';
+}
+
+function extractPosposGroupFromRecord(rm) {
+  if (!rm || typeof rm !== 'object') return '';
+  if (rm.type && typeof rm.type === 'object' && rm.type.name_th) {
+    return String(rm.type.name_th).trim();
+  }
+  const g = rm.group ?? rm.member_group ?? rm.group_name ?? rm.groupName ?? rm.tier ?? rm.level_name;
+  if (typeof g === 'string' && g.trim()) return g.trim();
+  if (g && typeof g === 'object' && (g.name_th || g.name || g.title || g.group_name)) {
+    return String(g.name_th || g.name || g.title || g.group_name).trim();
+  }
+  return '';
+}
+
+function unwrapPosposRecords(parsed) {
+  if (!parsed) return [];
+  if (Array.isArray(parsed)) return parsed;
+  const candidate = parsed.data ?? parsed.member ?? parsed.members ?? parsed.result ?? parsed.results ?? parsed.items ?? parsed.docs ?? parsed;
+  if (Array.isArray(candidate)) return candidate;
+  if (candidate && typeof candidate === 'object') {
+    if (Array.isArray(candidate.data)) return candidate.data;
+    if (Array.isArray(candidate.docs)) return candidate.docs;
+    if (Array.isArray(candidate.items)) return candidate.items;
+    return [candidate];
+  }
+  return [];
+}
+
 // ฟังก์ชันตรวจสอบแต้มสะสมจาก POSPOS พร้อม Timeout ป้องกันค้าง 100%
 async function checkPosposMemberPoints(targetPhone, options = {}) {
   const { silent = false } = options;
@@ -882,102 +966,201 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
   const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
-    let data = null;
+    const candidateResponses = [];
 
-    // 1. เรียกผ่าน Cloudflare Worker API
+    // 1. เรียกผ่าน Local Proxy (/api/pospos/member) ก่อนเพื่อความแม่นยำสูงสุดบน Dev Server
     try {
-      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPosposMember&phone=${clean}&_t=${Date.now()}`, {
+      const localRes = await fetch(`/api/pospos/member?phone=${clean}&_t=${Date.now()}`, {
         signal: controller.signal
       });
-      if (res.ok) {
-        data = await res.json();
-      }
-    } catch (workerErr) {
-      console.warn('Worker POSPOS lookup fallback:', workerErr);
-    }
-
-    // 2. Fallback: เรียกผ่าน Local Proxy (/api/pospos/member) กรณีรันบน Dev Server หรือ Worker ยังไม่ได้ Deploy
-    if (!data || data.status !== 'success') {
-      try {
-        const localRes = await fetch(`/api/pospos/member?phone=${clean}&_t=${Date.now()}`, {
-          signal: controller.signal
-        });
-        if (localRes.ok) {
-          const contentType = localRes.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            data = await localRes.json();
+      if (localRes.ok) {
+        const contentType = localRes.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const localData = await localRes.json();
+          if (localData && localData.status === 'success') {
+            candidateResponses.push(localData);
           }
         }
-      } catch (localErr) {
-        console.warn('Local proxy POSPOS fallback:', localErr);
+      }
+    } catch (localErr) {
+      console.warn('Local proxy POSPOS lookup:', localErr);
+    }
+
+    // 2. เรียกผ่าน Cloudflare Worker API (หากยังไม่ได้ผลลัพธ์ที่มีแต้ม > 0)
+    const hasPositivePointsSoFar = candidateResponses.some(d => d.found && d.member && Number(d.member.point) > 0);
+    if (candidateResponses.length === 0 || !hasPositivePointsSoFar) {
+      try {
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPosposMember&phone=${clean}&_t=${Date.now()}`, {
+          signal: controller.signal
+        });
+        if (res.ok) {
+          const workerData = await res.json();
+          if (workerData && workerData.status === 'success') {
+            candidateResponses.push(workerData);
+          }
+        }
+      } catch (workerErr) {
+        console.warn('Worker POSPOS lookup:', workerErr);
+      }
+    }
+
+    // 3. หากแต้มยังเป็น 0 หรือยังไม่ได้ข้อมูลจาก Schema ใหม่ ให้ดึงตรงจาก POSPOS API
+    const stillZeroPoints = !candidateResponses.some(d => d.found && d.member && Number(d.member.point) > 0);
+    const hasSchemaV2 = candidateResponses.some(d => d.schemaVersion === 2);
+    if (candidateResponses.length === 0 || (stillZeroPoints && !hasSchemaV2)) {
+      try {
+        const posposKey = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzMjAwMWM4MGNmOTMwODA4ZjE1NDUyNiIsImVtcGxveW1lbnRfdHlwZSI6IjViZDZjOGVkZTFhNDM3NTgwNzkwODUwZiIsInVzZXJuYW1lIjoicHJpbWVzdWtwcmltZXN1a0BnbWFpbC5jb20iLCJzaG9wIjoiMTY2NzIyNDcxMjc4NyIsInZlcnNpb24iOiIxLjAiLCJsZXZlbCI6MSwiaWF0IjoxNzY4MjkyMTEzLCJleHAiOjQ5MjQwNTIxMTMsImF1ZCI6Imh0dHBzOi8vcG9zcG9zZ28uY28iLCJpc3MiOiJDb2RlTW9iaWxlcyBMdGQifQ.XNg2jc2jQCYmd47ykEW37t7bsQnw4M2avwQ33xRJBhfrPMXTaFdZTwflJUmpGVykkNwUCB_NhNH3_ornqLSR8YXo_ARfQtT8t5WRVJqP5QWAMU95ftx_ZP1aQadJE2EBpWoAmsHVBTbSC86x0cBZO9qLDABKzVrYEFBm9ZQWVPs';
+        const fetchDirectPospos = async (url) => {
+          try {
+            const r = await fetch(url, {
+              headers: { apikey: posposKey, Accept: 'application/json' },
+              signal: controller.signal
+            });
+            if (!r.ok) return null;
+            const t = await r.text();
+            return t && t.trim() ? JSON.parse(t) : null;
+          } catch (e) {
+            return null;
+          }
+        };
+
+        const rawRecords = [];
+        const addRecords = (parsed) => {
+          for (const item of unwrapPosposRecords(parsed)) {
+            if (!item || typeof item !== 'object') continue;
+            if (item._id || item.id || item.code || item.key_card_id || item.phonenumber || item.firstname || item.point_value !== undefined || item.point !== undefined) {
+              rawRecords.push(item);
+            }
+          }
+        };
+
+        // 1. ค้นหาด้วยเบอร์โทรมีขีดก่อน (รูปแบบมาตรฐานของ POSPOS เช่น 095-757-9454)
+        if (clean.length === 10) {
+          const dashed = `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
+          const pDashed = await fetchDirectPospos(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(dashed)}`);
+          addRecords(pDashed);
+        }
+
+        // 2. สำรอง: ค้นหาด้วยเบอร์โทรไม่มีขีด
+        if (rawRecords.length === 0) {
+          const pClean = await fetchDirectPospos(`https://go.pospos.co/developer/api/member/find/phonenumber/${encodeURIComponent(clean)}`);
+          addRecords(pClean);
+        }
+
+        if (rawRecords.length > 0) {
+          const rec = rawRecords[0];
+          const bestPoint = extractPosposPointsFromRecord(rec);
+          const bestName = extractPosposNameFromRecord(rec);
+          const bestCode = String(rec.code || rec.key_card_id || rec._id || '').trim();
+          const bestGroup = extractPosposGroupFromRecord(rec);
+          candidateResponses.push({
+            status: 'success',
+            schemaVersion: 2,
+            found: true,
+            member: {
+              name: bestName || 'ลูกค้าสมาชิก',
+              phone: clean,
+              point: bestPoint,
+              code: bestCode,
+              group: bestGroup || 'สมาชิกทั่วไป'
+            },
+            rawPospos: rawRecords
+          });
+        } else if (candidateResponses.length === 0) {
+          candidateResponses.push({ status: 'success', found: false, member: null });
+        }
+      } catch (directErr) {
+        console.warn('Direct POSPOS fallback:', directErr);
       }
     }
 
     clearTimeout(timeoutId);
 
-      if (!data || data.status !== 'success') {
-        throw new Error((data && data.message) || 'Cannot connect to POSPOS API');
-      }
+    if (candidateResponses.length === 0) {
+      throw new Error('Cannot connect to POSPOS API');
+    }
 
-      if (data.status === 'success' && data.found && data.member) {
-        const member = {
-          ...data.member,
-          phone: clean,
-          cachedAt: Date.now()
-        };
-
-        // บันทึกแคช
-        localStorage.setItem('kuekoonkan_pospos_member_cache', JSON.stringify(member));
-
-        // แสดงผลข้อมูลสมาชิกบนบัตรทันที
-        renderMemberPointsUI(member);
-
-        if (!silent) {
-          showToast(`⭐ คุณ ${member.name}: ${Number(member.point || 0).toLocaleString()} แต้ม`, true);
+    // เลือกผลลัพธ์ที่ดีที่สุดจากทุกช่องทาง (ให้ความสำคัญกับรายการที่พบสมาชิกและมีแต้มสูงสุด)
+    let data = candidateResponses[0];
+    for (const cand of candidateResponses) {
+      if (cand.found && cand.member) {
+        if (!data.found || !data.member) {
+          data = cand;
+        } else {
+          const candPoint = Number(cand.member.point || 0);
+          const curPoint = Number(data.member.point || 0);
+          if (candPoint > curPoint) {
+            data = cand;
+          } else if (candPoint === curPoint && cand.member.name && cand.member.name !== 'ลูกค้าสมาชิก' && data.member.name === 'ลูกค้าสมาชิก') {
+            data = cand;
+          }
         }
-        return member;
-      } else {
-        // ไม่พบสมาชิกในระบบ POSPOS
-        localStorage.removeItem('kuekoonkan_pospos_member_cache');
-
-        if (modalNotFoundPhoneText) {
-          modalNotFoundPhoneText.textContent = `เบอร์โทรศัพท์ ${formatThaiPhoneNumber(clean)} ยังไม่ได้ลงทะเบียนในระบบ POSPOS`;
-        }
-        if (modalCardNotFound) modalCardNotFound.style.display = 'block';
-        if (modalCardLoading) modalCardLoading.style.display = 'none';
-        if (modalCardLoaded) modalCardLoaded.style.display = 'none';
-
-        if (navPointsText) navPointsText.textContent = 'เช็คแต้ม';
-
-        if (!silent) {
-          showToast('ไม่พบข้อมูลสมาชิกเบอร์นี้ในระบบ POSPOS หน้าร้าน', false);
-        }
-        return null;
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      console.warn('POSPOS member check error:', err);
-
-      if (modalCardLoading) modalCardLoading.style.display = 'none';
-      if (modalCardLoaded) modalCardLoaded.style.display = 'none';
-      if (modalCardNotFound) {
-        modalCardNotFound.style.display = 'block';
-        if (modalNotFoundPhoneText) {
-          modalNotFoundPhoneText.textContent = 'ไม่สามารถเชื่อมต่อกับระบบ POSPOS ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง';
-        }
-      }
-
-      if (!silent) {
-        showToast('ไม่สามารถเชื่อมต่อระบบ POSPOS ได้ชั่วคราว', false);
-      }
-      return null;
-    } finally {
-      if (btnModalCheckPoints) {
-        btnModalCheckPoints.disabled = false;
-        btnModalCheckPoints.textContent = 'ตรวจสอบ';
       }
     }
+
+    if (data && data.rawPospos) {
+      console.log('📦 [POSPOS Raw Member Data]:', data.rawPospos);
+    }
+
+    if (data.status === 'success' && data.found && data.member) {
+      const member = {
+        ...data.member,
+        phone: clean,
+        cachedAt: Date.now()
+      };
+
+      // บันทึกแคช
+      localStorage.setItem('kuekoonkan_pospos_member_cache', JSON.stringify(member));
+
+      // แสดงผลข้อมูลสมาชิกบนบัตรทันที
+      renderMemberPointsUI(member);
+
+      if (!silent) {
+        showToast(`⭐ คุณ ${member.name}: ${Number(member.point || 0).toLocaleString()} แต้ม`, true);
+      }
+      return member;
+    } else {
+      // ไม่พบสมาชิกในระบบ POSPOS
+      localStorage.removeItem('kuekoonkan_pospos_member_cache');
+
+      if (modalNotFoundPhoneText) {
+        modalNotFoundPhoneText.textContent = `เบอร์โทรศัพท์ ${formatThaiPhoneNumber(clean)} ยังไม่ได้ลงทะเบียนในระบบ POSPOS`;
+      }
+      if (modalCardNotFound) modalCardNotFound.style.display = 'block';
+      if (modalCardLoading) modalCardLoading.style.display = 'none';
+      if (modalCardLoaded) modalCardLoaded.style.display = 'none';
+
+      if (navPointsText) navPointsText.textContent = 'เช็คแต้ม';
+
+      if (!silent) {
+        showToast('ไม่พบข้อมูลสมาชิกเบอร์นี้ในระบบ POSPOS หน้าร้าน', false);
+      }
+      return null;
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn('POSPOS member check error:', err);
+
+    if (modalCardLoading) modalCardLoading.style.display = 'none';
+    if (modalCardLoaded) modalCardLoaded.style.display = 'none';
+    if (modalCardNotFound) {
+      modalCardNotFound.style.display = 'block';
+      if (modalNotFoundPhoneText) {
+        modalNotFoundPhoneText.textContent = 'ไม่สามารถเชื่อมต่อกับระบบ POSPOS ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง';
+      }
+    }
+
+    if (!silent) {
+      showToast('ไม่สามารถเชื่อมต่อระบบ POSPOS ได้ชั่วคราว', false);
+    }
+    return null;
+  } finally {
+    if (btnModalCheckPoints) {
+      btnModalCheckPoints.disabled = false;
+      btnModalCheckPoints.textContent = 'ตรวจสอบ';
+    }
   }
+}
 
 // เปิด Modal บัตรสมาชิก & แต้มสะสม
 function openMemberPointsModal(overridePhone) {
