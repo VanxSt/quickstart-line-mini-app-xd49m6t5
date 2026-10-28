@@ -3394,30 +3394,158 @@ async function deletePromoCode(code) {
 window.deletePromoCode = deletePromoCode;
 
 // ==========================================
-// POSPOS STOCK SYNC (Admin Action)
+// POSPOS STOCK SYNC (Admin Action with Progress Modal)
 // ==========================================
+window._isPosposSyncing = false;
+
+function openPosposSyncModal() {
+  const modal = document.getElementById('posposSyncModal');
+  if (!modal) return;
+  modal.classList.add('active');
+  modal.style.display = 'flex';
+
+  const loadingState = document.getElementById('posposSyncLoadingState');
+  const resultState = document.getElementById('posposSyncResultState');
+  const btnDone = document.getElementById('btnPosposSyncDone');
+  const btnClose = document.getElementById('btnClosePosposSyncModal');
+
+  if (loadingState) loadingState.style.display = 'block';
+  if (resultState) resultState.style.display = 'none';
+  if (btnDone) btnDone.style.display = 'none';
+  if (btnClose) btnClose.style.display = 'none';
+}
+window.openPosposSyncModal = openPosposSyncModal;
+
+function closePosposSyncModal(shouldRefresh = false) {
+  if (window._isPosposSyncing) return;
+  const modal = document.getElementById('posposSyncModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+  if (shouldRefresh && typeof fetchProducts === 'function') {
+    fetchProducts(true);
+  }
+}
+window.closePosposSyncModal = closePosposSyncModal;
+
 async function syncPosposFromAdmin() {
   const btn = document.getElementById('btnSyncPospos');
   const originalHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳</span> กำลังซิงค์ POSPOS...';
+    btn.innerHTML = '<span>⏳</span> กำลังซิงค์...';
   }
 
+  window._isPosposSyncing = true;
+  openPosposSyncModal();
+
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=syncPospos&_t=${Date.now()}`);
+    let payload = null;
+    if (Array.isArray(allProducts) && allProducts.length > 0) {
+      payload = {
+        productIds: allProducts.map(p => ({
+          id: String(p.id || '').trim(),
+          price: Number(p.price || 0),
+          stock: Number(p.stock ?? 0),
+          status: String(p.status || 'active')
+        }))
+      };
+    }
+
+    const fetchOptions = {
+      method: payload ? 'POST' : 'GET',
+      headers: payload ? { 'Content-Type': 'application/json' } : {},
+      body: payload ? JSON.stringify(payload) : undefined
+    };
+
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=syncPospos&_t=${Date.now()}`, fetchOptions);
     const data = await res.json();
+
     if (data.status === 'success') {
-      alert(`✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- สินค้าในระบบ Mini App: ${data.totalInApp || 0} รายการ\n- อัปเดตราคาและสต็อกตรงรหัส: ${data.processed || 0} รายการ\n(จากคลังสินค้า POSPOS ทั้งหมด ${data.totalFromPospos || 0} รายการ)\n\nLINE Mini App ได้รับข้อมูลล่าสุดเรียบร้อยครับ`);
-      if (typeof fetchProducts === 'function') {
-        fetchProducts(true);
+      const totalInApp = Number(data.totalInApp || (allProducts ? allProducts.length : 0));
+      const totalFromPospos = Number(data.totalFromPospos || 0);
+      const updated = Number(data.updated || 0);
+      const unchanged = Number(data.unchanged || (data.processed ? Math.max(0, data.processed - updated) : 0));
+      const notFound = Number(data.notFound || Math.max(0, totalInApp - (updated + unchanged)));
+      const failed = Number(data.failed || 0);
+
+      const loadingState = document.getElementById('posposSyncLoadingState');
+      const resultState = document.getElementById('posposSyncResultState');
+      const btnDone = document.getElementById('btnPosposSyncDone');
+      const btnClose = document.getElementById('btnClosePosposSyncModal');
+
+      if (loadingState) loadingState.style.display = 'none';
+      if (resultState) resultState.style.display = 'block';
+      if (btnDone) btnDone.style.display = 'inline-block';
+      if (btnClose) btnClose.style.display = 'block';
+
+      // อัปเดตตัวเลขในการ์ดสรุป
+      const elInApp = document.getElementById('syncStatInApp');
+      const elPospos = document.getElementById('syncStatPospos');
+      const elUpdated = document.getElementById('syncStatUpdated');
+      const elUnchanged = document.getElementById('syncStatUnchanged');
+      if (elInApp) elInApp.textContent = totalInApp.toLocaleString();
+      if (elPospos) elPospos.textContent = totalFromPospos.toLocaleString();
+      if (elUpdated) elUpdated.textContent = updated.toLocaleString();
+      if (elUnchanged) elUnchanged.textContent = unchanged.toLocaleString();
+
+      // อัปเดต Legend
+      const legUpdated = document.getElementById('legendUpdated');
+      const legUnchanged = document.getElementById('legendUnchanged');
+      const legNotFound = document.getElementById('legendNotFound');
+      const legFailed = document.getElementById('legendFailed');
+      const legFailedWrap = document.getElementById('legendFailedWrap');
+      if (legUpdated) legUpdated.textContent = updated.toLocaleString();
+      if (legUnchanged) legUnchanged.textContent = unchanged.toLocaleString();
+      if (legNotFound) legNotFound.textContent = notFound.toLocaleString();
+      if (legFailed) legFailed.textContent = failed.toLocaleString();
+      if (legFailedWrap) legFailedWrap.style.display = failed > 0 ? 'inline-flex' : 'none';
+
+      // คำนวณความกว้างของหลอดความคืบหน้า (Progress Bar)
+      const baseTotal = totalInApp > 0 ? totalInApp : (updated + unchanged + notFound);
+      if (baseTotal > 0) {
+        const pctUpdated = (updated / baseTotal) * 100;
+        const pctUnchanged = (unchanged / baseTotal) * 100;
+        const pctNotFound = (notFound / baseTotal) * 100;
+        const pctFailed = (failed / baseTotal) * 100;
+
+        const barUpdated = document.getElementById('barUpdated');
+        const barUnchanged = document.getElementById('barUnchanged');
+        const barNotFound = document.getElementById('barNotFound');
+        const barFailed = document.getElementById('barFailed');
+
+        if (barUpdated) barUpdated.style.width = `${pctUpdated.toFixed(1)}%`;
+        if (barUnchanged) barUnchanged.style.width = `${pctUnchanged.toFixed(1)}%`;
+        if (barNotFound) barNotFound.style.width = `${pctNotFound.toFixed(1)}%`;
+        if (barFailed) barFailed.style.width = `${pctFailed.toFixed(1)}%`;
+      }
+
+      const badge = document.getElementById('posposProgressBadge');
+      if (badge) {
+        if (failed > 0) {
+          badge.style.background = '#fee2e2';
+          badge.style.color = '#dc2626';
+          badge.textContent = `⚠️ มีรายการบันทึกไม่สำเร็จ ${failed} รายการ`;
+        } else {
+          badge.style.background = '#dcfce7';
+          badge.style.color = '#15803d';
+          badge.textContent = `✅ ตรวจสอบครบ 100% (${(updated + unchanged).toLocaleString()} / ${totalInApp.toLocaleString()} รายการ)`;
+        }
+      }
+
+      if (typeof showToast === 'function') {
+        showToast('✅ ซิงค์สต็อก POSPOS สำเร็จเรียบร้อย!', 'success');
       }
     } else {
       alert(`⚠️ การซิงค์ไม่สำเร็จ: ${data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์'}`);
+      closePosposSyncModal(false);
     }
   } catch (err) {
     alert(`❌ เกิดข้อผิดพลาดในการเชื่อมต่อกับ POSPOS: ${err.message}`);
+    closePosposSyncModal(false);
   } finally {
+    window._isPosposSyncing = false;
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = originalHtml;

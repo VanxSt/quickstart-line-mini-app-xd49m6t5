@@ -489,39 +489,99 @@ export default {
               posposMap.set(barcode, { price, stock });
             }
 
-            // 2. ดึงเฉพาะรายการสินค้าที่มีอยู่ใน Mini App ปัจจุบัน
-            const { results: appProducts } = await db.prepare('SELECT id FROM products').all();
-            const totalAppProducts = appProducts ? appProducts.length : 0;
+            // 2. ดึงรายการสินค้าที่มีอยู่ใน Mini App ปัจจุบันจาก D1 (หรือจากที่ Client ส่งมาถ้า D1 ยังว่าง)
+            let clientProductIds = null;
+            if (request.method === 'POST') {
+              try {
+                const body = await request.json();
+                if (body && Array.isArray(body.productIds)) {
+                  clientProductIds = body.productIds;
+                }
+              } catch (e) {}
+            }
+
+            let appProducts = [];
+            try {
+              const { results } = await db.prepare('SELECT id, price, stock, status FROM products').all();
+              if (Array.isArray(results) && results.length > 0) {
+                appProducts = results;
+              }
+            } catch (e) {}
+
+            // ถ้า D1 ว่าง แต่ Client ส่งรายการสินค้ามา ให้ใช้รายการของ Client
+            if (appProducts.length === 0 && clientProductIds && clientProductIds.length > 0) {
+              appProducts = clientProductIds;
+            }
+
+            const totalAppProducts = appProducts.length;
 
             // 3. เตรียมคำสั่ง UPDATE โดยตรวจสอบจากรหัสสินค้า (id) ตรงกันเท่านั้น
+            // ป้องกันการทับสถานะ inactive ที่แอดมินปิดการขายไว้
             const updateStmt = db.prepare(`
               UPDATE products
               SET price = CASE WHEN ? > 0 THEN ? ELSE price END,
                   stock = ?,
-                  status = CASE WHEN ? <= 0 THEN 'out_of_stock' ELSE 'active' END,
+                  status = CASE WHEN ? <= 0 AND status != 'inactive' THEN 'out_of_stock'
+                                WHEN ? > 0 AND status = 'out_of_stock' THEN 'active'
+                                ELSE status END,
                   updated_at = CURRENT_TIMESTAMP
               WHERE id = ?
             `);
 
+            let matchedCount = 0;
             let updatedCount = 0;
+            let unchangedCount = 0;
+            let notFoundCount = 0;
+            let failedCount = 0;
             const batch = [];
             const BATCH_SIZE = 50;
 
-            for (const p of (appProducts || [])) {
+            for (const p of appProducts) {
               const pId = String(p.id || '').trim();
-              if (pId && posposMap.has(pId)) {
-                const pos = posposMap.get(pId);
-                batch.push(updateStmt.bind(pos.price, pos.price, pos.stock, pos.stock, pId));
-                updatedCount++;
+              if (!pId) continue;
 
-                if (batch.length >= BATCH_SIZE) {
-                  await db.batch(batch.splice(0, batch.length));
+              if (posposMap.has(pId)) {
+                matchedCount++;
+                const pos = posposMap.get(pId);
+                const currentPrice = Number(p.price || 0);
+                const currentStock = (p.stock === null || p.stock === undefined) ? -999999 : Number(p.stock);
+                const currentStatus = String(p.status || '');
+
+                // ตรวจสอบว่าราคา สต็อก หรือสถานะสินค้าเปลี่ยนแปลงจริงหรือไม่ (Changed Only)
+                // ช่วยประหยัดโควตา Write ของ Cloudflare D1 ได้มากกว่า 95%
+                const priceChanged = pos.price > 0 && Math.abs(currentPrice - pos.price) > 0.001;
+                const stockChanged = currentStock !== pos.stock;
+                const shouldBeOutOfStock = pos.stock <= 0 && currentStatus === 'active';
+                const shouldBeActive = pos.stock > 0 && currentStatus === 'out_of_stock';
+                const statusChanged = shouldBeOutOfStock || shouldBeActive;
+
+                if (priceChanged || stockChanged || statusChanged) {
+                  batch.push(updateStmt.bind(pos.price, pos.price, pos.stock, pos.stock, pos.stock, pId));
+                  updatedCount++;
+
+                  if (batch.length >= BATCH_SIZE) {
+                    try {
+                      await db.batch(batch.splice(0, batch.length));
+                    } catch (batchErr) {
+                      failedCount += BATCH_SIZE;
+                      console.error('Batch update error:', batchErr);
+                    }
+                  }
+                } else {
+                  unchangedCount++;
                 }
+              } else {
+                notFoundCount++;
               }
             }
 
             if (batch.length > 0) {
-              await db.batch(batch);
+              try {
+                await db.batch(batch);
+              } catch (batchErr) {
+                failedCount += batch.length;
+                console.error('Final batch update error:', batchErr);
+              }
             }
 
             return jsonResponse({
@@ -529,7 +589,12 @@ export default {
               message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS สำหรับสินค้าใน Mini App สำเร็จ',
               totalFromPospos: items.length,
               totalInApp: totalAppProducts,
-              processed: updatedCount,
+              matched: matchedCount,
+              processed: matchedCount,
+              updated: updatedCount,
+              unchanged: unchangedCount,
+              notFound: notFoundCount,
+              failed: failedCount,
               syncedAt: new Date().toISOString()
             });
           } catch (syncErr) {

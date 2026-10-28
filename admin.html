@@ -994,6 +994,17 @@
       }
     }
 
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes progressIndeterminate {
+      0% { left: -40%; width: 40%; }
+      50% { left: 30%; width: 50%; }
+      100% { left: 100%; width: 40%; }
+    }
+
     /* Product Catalog Styles (Admin View) */
     .view-toggle-group {
       display: flex;
@@ -3538,6 +3549,114 @@
       <div style="padding: 16px; display:flex; justify-content:center; align-items:center; background: #020617; max-height: 80vh; overflow: auto;">
         <img id="slipModalImage" src="" alt="สลิปโอนเงิน" style="max-width: 100%; max-height: 72vh; border-radius: 8px; object-fit: contain; box-shadow: 0 10px 25px rgba(0,0,0,0.5);" />
       </div>
+    </div>
+  </div>
+
+  <!-- POSPOS Stock Sync Modal with Progress Bar & Stats -->
+  <div id="posposSyncModal" class="modal-overlay" style="z-index: 10001; display: none;" onclick="if(event.target === this && !window._isPosposSyncing) closePosposSyncModal();">
+    <div class="modal-content" style="max-width: 580px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+      <header class="modal-header" style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: white; padding: 20px 24px; border-bottom: none;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+            🏪
+          </div>
+          <div>
+            <h2 style="font-size: 18px; font-weight: 700; color: white; margin: 0;">ซิงค์สต็อกและราคา POSPOS</h2>
+            <p style="font-size: 12.5px; opacity: 0.9; margin: 2px 0 0 0;">อัปเดตสต็อกสินค้าตรงจากคลังหน้าร้านเกื้อกูลกัน</p>
+          </div>
+        </div>
+        <button id="btnClosePosposSyncModal" class="close-btn" style="color: white; opacity: 0.8;" onclick="closePosposSyncModal()">✕</button>
+      </header>
+
+      <div class="modal-body" style="padding: 24px;">
+        <!-- Loading State -->
+        <div id="posposSyncLoadingState" style="text-align: center; padding: 24px 12px;">
+          <div style="width: 54px; height: 54px; margin: 0 auto 16px; border: 4px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+          <h3 id="posposSyncLoadingTitle" style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">กำลังเชื่อมต่อกับระบบ POSPOS...</h3>
+          <p id="posposSyncLoadingDesc" style="font-size: 13px; color: #64748b; margin-bottom: 20px;">กำลังดึงข้อมูลคลังสินค้า 14,000+ รายการจากหน้าร้านและคำนวณส่วนต่าง...</p>
+          
+          <!-- Indeterminate Progress Bar during Loading -->
+          <div style="background: #e2e8f0; border-radius: 12px; height: 10px; overflow: hidden; position: relative;">
+            <div style="position: absolute; height: 100%; width: 40%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 12px; animation: progressIndeterminate 1.5s ease-in-out infinite;"></div>
+          </div>
+        </div>
+
+        <!-- Result State (Initially Hidden) -->
+        <div id="posposSyncResultState" style="display: none;">
+          <!-- Progress Bar Header with Status Badge -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 13.5px; font-weight: 700; color: #0f172a;">ความคืบหน้าการตรวจสอบคลัง</span>
+            <span id="posposProgressBadge" style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #dcfce7; color: #15803d;">
+              ✅ เสร็จสมบูรณ์ 100%
+            </span>
+          </div>
+
+          <!-- Multi-segment / Filled Progress Bar (หลอดสถานะ) -->
+          <div style="background: #f1f5f9; border-radius: 12px; height: 14px; overflow: hidden; display: flex; margin-bottom: 8px; border: 1px solid #e2e8f0;">
+            <div id="barUpdated" title="อัปเดตสต็อกใหม่" style="background: #10b981; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+            <div id="barUnchanged" title="สต็อกตรงอยู่แล้ว" style="background: #3b82f6; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+            <div id="barNotFound" title="ไม่พบใน POSPOS" style="background: #f59e0b; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+            <div id="barFailed" title="ผิดพลาด" style="background: #ef4444; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+          </div>
+
+          <!-- Legend Bar -->
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 11.5px; color: #64748b; margin-bottom: 20px;">
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></span> อัปเดตใหม่ (<span id="legendUpdated">0</span>)</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></span> ตรงอยู่แล้ว (<span id="legendUnchanged">0</span>)</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span> ไม่พบใน POSPOS (<span id="legendNotFound">0</span>)</span>
+            <span id="legendFailedWrap" style="display: none; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span> ผิดพลาด (<span id="legendFailed">0</span>)</span>
+          </div>
+
+          <!-- Stats Grid: 4 Cards -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; color: #64748b; margin-bottom: 4px;">📦 สินค้าใน LINE Mini App</div>
+              <div style="display: flex; align-items: baseline; gap: 6px;">
+                <span id="syncStatInApp" style="font-size: 20px; font-weight: 700; color: #0f172a;">0</span>
+                <span style="font-size: 12px; color: #64748b;">รายการ</span>
+              </div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; color: #64748b; margin-bottom: 4px;">🏢 คลังสินค้า POSPOS ทั้งหมด</div>
+              <div style="display: flex; align-items: baseline; gap: 6px;">
+                <span id="syncStatPospos" style="font-size: 20px; font-weight: 700; color: #0f172a;">0</span>
+                <span style="font-size: 12px; color: #64748b;">รายการ</span>
+              </div>
+            </div>
+
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; color: #065f46; margin-bottom: 4px;">✅ อัปเดตสต็อกสำเร็จ</div>
+              <div style="display: flex; align-items: baseline; gap: 6px;">
+                <span id="syncStatUpdated" style="font-size: 20px; font-weight: 700; color: #059669;">0</span>
+                <span style="font-size: 12px; color: #065f46;">รายการ</span>
+              </div>
+            </div>
+
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; color: #1e40af; margin-bottom: 4px;">🛡️ ตรงอยู่แล้ว (ประหยัดโควตา)</div>
+              <div style="display: flex; align-items: baseline; gap: 6px;">
+                <span id="syncStatUnchanged" style="font-size: 20px; font-weight: 700; color: #2563eb;">0</span>
+                <span style="font-size: 12px; color: #1e40af;">รายการ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notice Callout -->
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; color: #166534; display: flex; align-items: flex-start; gap: 8px;">
+            <span style="font-size: 16px; line-height: 1;">💡</span>
+            <div>
+              ระบบตรวจสอบเฉพาะสินค้าที่มีอยู่ใน Mini App และบันทึกเฉพาะตัวที่สต็อก/ราคามีการเปลี่ยนแปลงจริง ช่วยประหยัดโควตาฐานข้อมูล Cloudflare D1 ได้อย่างมีประสิทธิภาพครับ
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer" style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+        <button id="btnPosposSyncDone" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 10px; padding: 10px 22px; font-size: 13.5px; font-weight: 600; color: white; cursor: pointer; display: none;" onclick="closePosposSyncModal(true)">
+          ✨ ตกลงและรีเฟรชสินค้า
+        </button>
+      </footer>
     </div>
   </div>
 
@@ -7183,30 +7302,159 @@
     window.deletePromoCode = deletePromoCode;
 
     // ==========================================
-    // POSPOS STOCK SYNC (Admin Action)
+    // POSPOS STOCK SYNC (Admin Action with Progress Modal)
     // ==========================================
+    window._isPosposSyncing = false;
+
+    function openPosposSyncModal() {
+      const modal = document.getElementById('posposSyncModal');
+      if (!modal) return;
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+
+      const loadingState = document.getElementById('posposSyncLoadingState');
+      const resultState = document.getElementById('posposSyncResultState');
+      const btnDone = document.getElementById('btnPosposSyncDone');
+      const btnClose = document.getElementById('btnClosePosposSyncModal');
+
+      if (loadingState) loadingState.style.display = 'block';
+      if (resultState) resultState.style.display = 'none';
+      if (btnDone) btnDone.style.display = 'none';
+      if (btnClose) btnClose.style.display = 'none';
+    }
+    window.openPosposSyncModal = openPosposSyncModal;
+
+    function closePosposSyncModal(shouldRefresh = false) {
+      if (window._isPosposSyncing) return;
+      const modal = document.getElementById('posposSyncModal');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+      if (shouldRefresh && typeof fetchProducts === 'function') {
+        fetchProducts(true);
+      }
+    }
+    window.closePosposSyncModal = closePosposSyncModal;
+
     async function syncPosposFromAdmin() {
       const btn = document.getElementById('btnSyncPospos');
       const originalHtml = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span>⏳</span> กำลังซิงค์ POSPOS...';
+        btn.innerHTML = '<span>⏳</span> กำลังซิงค์...';
       }
 
+      window._isPosposSyncing = true;
+      openPosposSyncModal();
+
       try {
-        const res = await fetch(GOOGLE_SCRIPT_URL + '?action=syncPospos&_t=' + Date.now());
+        // เตรียมรายชื่อสินค้าในระบบ Mini App ปัจจุบันส่งไปเพื่อความแม่นยำ 100%
+        let payload = null;
+        if (Array.isArray(allProducts) && allProducts.length > 0) {
+          payload = {
+            productIds: allProducts.map(p => ({
+              id: String(p.id || '').trim(),
+              price: Number(p.price || 0),
+              stock: Number(p.stock ?? 0),
+              status: String(p.status || 'active')
+            }))
+          };
+        }
+
+        const fetchOptions = {
+          method: payload ? 'POST' : 'GET',
+          headers: payload ? { 'Content-Type': 'application/json' } : {},
+          body: payload ? JSON.stringify(payload) : undefined
+        };
+
+        const res = await fetch(GOOGLE_SCRIPT_URL + '?action=syncPospos&_t=' + Date.now(), fetchOptions);
         const data = await res.json();
+
         if (data.status === 'success') {
-          alert('✅ ซิงค์ข้อมูลจาก POSPOS สำเร็จเรียบร้อย!\n- สินค้าในระบบ Mini App: ' + (data.totalInApp || 0) + ' รายการ\n- อัปเดตราคาและสต็อกตรงรหัส: ' + (data.processed || 0) + ' รายการ\n(จากคลังสินค้า POSPOS ทั้งหมด ' + (data.totalFromPospos || 0) + ' รายการ)\n\nระบบจะรีเฟรชข้อมูลสต็อกล่าสุดทันทีครับ');
-          if (typeof fetchProducts === 'function') {
-            fetchProducts(true);
+          const totalInApp = Number(data.totalInApp || (allProducts ? allProducts.length : 0));
+          const totalFromPospos = Number(data.totalFromPospos || 0);
+          const updated = Number(data.updated || 0);
+          const unchanged = Number(data.unchanged || (data.processed ? Math.max(0, data.processed - updated) : 0));
+          const notFound = Number(data.notFound || Math.max(0, totalInApp - (updated + unchanged)));
+          const failed = Number(data.failed || 0);
+
+          const loadingState = document.getElementById('posposSyncLoadingState');
+          const resultState = document.getElementById('posposSyncResultState');
+          const btnDone = document.getElementById('btnPosposSyncDone');
+          const btnClose = document.getElementById('btnClosePosposSyncModal');
+
+          if (loadingState) loadingState.style.display = 'none';
+          if (resultState) resultState.style.display = 'block';
+          if (btnDone) btnDone.style.display = 'inline-block';
+          if (btnClose) btnClose.style.display = 'block';
+
+          // อัปเดตตัวเลขในการ์ดสรุป
+          const elInApp = document.getElementById('syncStatInApp');
+          const elPospos = document.getElementById('syncStatPospos');
+          const elUpdated = document.getElementById('syncStatUpdated');
+          const elUnchanged = document.getElementById('syncStatUnchanged');
+          if (elInApp) elInApp.textContent = totalInApp.toLocaleString();
+          if (elPospos) elPospos.textContent = totalFromPospos.toLocaleString();
+          if (elUpdated) elUpdated.textContent = updated.toLocaleString();
+          if (elUnchanged) elUnchanged.textContent = unchanged.toLocaleString();
+
+          // อัปเดต Legend
+          const legUpdated = document.getElementById('legendUpdated');
+          const legUnchanged = document.getElementById('legendUnchanged');
+          const legNotFound = document.getElementById('legendNotFound');
+          const legFailed = document.getElementById('legendFailed');
+          const legFailedWrap = document.getElementById('legendFailedWrap');
+          if (legUpdated) legUpdated.textContent = updated.toLocaleString();
+          if (legUnchanged) legUnchanged.textContent = unchanged.toLocaleString();
+          if (legNotFound) legNotFound.textContent = notFound.toLocaleString();
+          if (legFailed) legFailed.textContent = failed.toLocaleString();
+          if (legFailedWrap) legFailedWrap.style.display = failed > 0 ? 'inline-flex' : 'none';
+
+          // คำนวณความกว้างของหลอดความคืบหน้า (Progress Bar)
+          const baseTotal = totalInApp > 0 ? totalInApp : (updated + unchanged + notFound);
+          if (baseTotal > 0) {
+            const pctUpdated = (updated / baseTotal) * 100;
+            const pctUnchanged = (unchanged / baseTotal) * 100;
+            const pctNotFound = (notFound / baseTotal) * 100;
+            const pctFailed = (failed / baseTotal) * 100;
+
+            const barUpdated = document.getElementById('barUpdated');
+            const barUnchanged = document.getElementById('barUnchanged');
+            const barNotFound = document.getElementById('barNotFound');
+            const barFailed = document.getElementById('barFailed');
+
+            if (barUpdated) barUpdated.style.width = pctUpdated.toFixed(1) + '%';
+            if (barUnchanged) barUnchanged.style.width = pctUnchanged.toFixed(1) + '%';
+            if (barNotFound) barNotFound.style.width = pctNotFound.toFixed(1) + '%';
+            if (barFailed) barFailed.style.width = pctFailed.toFixed(1) + '%';
+          }
+
+          const badge = document.getElementById('posposProgressBadge');
+          if (badge) {
+            if (failed > 0) {
+              badge.style.background = '#fee2e2';
+              badge.style.color = '#dc2626';
+              badge.textContent = '⚠️ มีรายการบันทึกไม่สำเร็จ ' + failed + ' รายการ';
+            } else {
+              badge.style.background = '#dcfce7';
+              badge.style.color = '#15803d';
+              badge.textContent = '✅ ตรวจสอบครบ 100% (' + (updated + unchanged).toLocaleString() + ' / ' + totalInApp.toLocaleString() + ' รายการ)';
+            }
+          }
+
+          if (typeof showToast === 'function') {
+            showToast('✅ ซิงค์สต็อก POSPOS สำเร็จเรียบร้อย!', 'success');
           }
         } else {
           alert('⚠️ การซิงค์ไม่สำเร็จ: ' + (data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์'));
+          closePosposSyncModal(false);
         }
       } catch (err) {
         alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อกับ POSPOS: ' + err.message);
+        closePosposSyncModal(false);
       } finally {
+        window._isPosposSyncing = false;
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = originalHtml;
