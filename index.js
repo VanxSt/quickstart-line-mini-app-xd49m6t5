@@ -878,14 +878,14 @@ function extractPosposNumericPoint(val) {
 function extractPosposPointsFromRecord(rm) {
   if (!rm || typeof rm !== 'object') return 0;
 
-  if (rm.point_value !== undefined && rm.point_value !== null) {
-    const pv = extractPosposNumericPoint(rm.point_value);
-    if (pv !== null) return pv;
-  }
-
   if (rm.point !== undefined && rm.point !== null) {
     const p = extractPosposNumericPoint(rm.point);
     if (p !== null) return p;
+  }
+
+  if (rm.point_value !== undefined && rm.point_value !== null) {
+    const pv = extractPosposNumericPoint(rm.point_value);
+    if (pv !== null) return pv;
   }
 
   return 0;
@@ -1103,6 +1103,9 @@ async function checkPosposMemberPoints(targetPhone, options = {}) {
 
     if (data && data.rawPospos) {
       console.log('📦 [POSPOS Raw Member Data]:', data.rawPospos);
+      if (Array.isArray(data.rawPospos) && data.rawPospos.length > 0 && data.member) {
+        data.member.point = extractPosposPointsFromRecord(data.rawPospos[0]);
+      }
     }
 
     if (data.status === 'success' && data.found && data.member) {

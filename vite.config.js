@@ -21,7 +21,7 @@ function parsePosposMemberRecord(rm, cleanPhone) {
   const last = String(rm.lastname || '').trim();
   const fullName = `${first} ${last}`.trim() || String(rm.name || rm.nickname || '').trim() || 'ลูกค้าสมาชิก';
 
-  const point = Number(rm.point_value ?? rm.point ?? 0);
+  const point = Number(rm.point ?? rm.point_value ?? 0);
   const code = String(rm.code || rm.key_card_id || rm._id || '').trim();
   const group = (rm.type && rm.type.name_th) ? String(rm.type.name_th).trim() : String(rm.group || 'สมาชิกทั่วไป').trim();
 

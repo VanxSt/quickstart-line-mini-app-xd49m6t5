@@ -385,7 +385,7 @@ export default {
           const first = String(rm.firstname || '').trim();
           const last = String(rm.lastname || '').trim();
           const fullName = `${first} ${last}`.trim() || String(rm.name || rm.nickname || '').trim() || 'ลูกค้าสมาชิก';
-          const pointVal = Number(rm.point_value ?? rm.point ?? 0);
+          const pointVal = Number(rm.point ?? rm.point_value ?? 0);
           const codeVal = String(rm.code || rm.key_card_id || rm._id || '').trim();
           const groupVal = (rm.type && rm.type.name_th) ? String(rm.type.name_th).trim() : String(rm.group || 'สมาชิกทั่วไป').trim();
 
@@ -397,7 +397,7 @@ export default {
             group: groupVal || 'สมาชิกทั่วไป'
           };
 
-          return jsonResponse({ status: 'success', schemaVersion: 2, found: true, member, rawPospos: records });
+          return jsonResponse({ status: 'success', schemaVersion: 3, found: true, member, rawPospos: records });
         } catch (e) {
           return jsonResponse({ status: 'error', message: 'POSPOS API error: ' + e.message }, 500);
         }
