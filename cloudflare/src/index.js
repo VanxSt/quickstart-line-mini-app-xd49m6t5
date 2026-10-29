@@ -425,6 +425,170 @@ export default {
       }
 
       // ==========================================
+      // POSPOS DEVELOPER API (v0.3) INTEGRATION (รองรับทั้ง GET และ POST)
+      // ==========================================
+      if ((method === 'GET' || method === 'POST') && (action === 'syncPospos' || url.pathname === '/api/pospos/sync')) {
+        const apiKey = (env && env.POSPOS_API_KEY) || DEFAULT_POSPOS_API_KEY;
+        if (!apiKey) {
+          return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY ยังไม่ได้ตั้งค่าใน Cloudflare Worker vars' }, 500);
+        }
+
+        try {
+          const posRes = await fetch('https://go.pospos.co/developer/api/stock', {
+            headers: {
+              'apikey': apiKey,
+              'Accept': 'application/json',
+              'User-Agent': 'Kuekoonkan-Worker/1.0'
+            }
+          });
+
+          if (!posRes.ok) {
+            const errText = await posRes.text();
+            return jsonResponse({ status: 'error', message: `POSPOS API ตอบกลับสถานะ ${posRes.status}: ${errText}` }, posRes.status);
+          }
+
+          const rawData = await posRes.json();
+          const items = Array.isArray(rawData) ? rawData : (rawData.data || rawData.stock || rawData.items || []);
+
+          if (!Array.isArray(items) || items.length === 0) {
+            return jsonResponse({ status: 'warning', message: 'POSPOS ตอบกลับข้อมูลสินค้าว่างเปล่า', count: 0 });
+          }
+
+          // 1. จัดทำ Map ข้อมูลสต็อกและราคาจาก POSPOS โดยใช้รหัสสินค้า (Barcode/ID) เป็นคีย์หลักเท่านั้น
+          const posposMap = new Map();
+          for (const item of items) {
+            const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
+            if (!barcode) continue;
+            const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
+            const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+            posposMap.set(barcode, { price, stock });
+          }
+
+          // 2. ดึงรายการสินค้าที่มีอยู่ใน Mini App ปัจจุบันจาก D1 เป็นหลัก (เพื่อเช็คค่าเดิมใน DB จริง ป้องกันการเขียนซ้ำ)
+          let clientProductIds = null;
+          if (method === 'POST') {
+            try {
+              const body = await request.clone().json();
+              if (body && Array.isArray(body.productIds)) {
+                clientProductIds = body.productIds;
+              }
+            } catch (e) { }
+          }
+
+          let appProducts = [];
+          try {
+            const { results } = await db.prepare('SELECT id, price, stock, status FROM products').all();
+            if (Array.isArray(results) && results.length > 0) {
+              appProducts = results;
+            }
+          } catch (dbSelectErr) {
+            // ถ้ายังไม่มีคอลัมน์ stock ค่อยเพิ่มคอลัมน์เฉพาะครั้งแรกครั้งเดียว (ไม่เปลืองโควตา Write ในครั้งถัดไป)
+            if (String(dbSelectErr.message).includes('stock')) {
+              try {
+                await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
+                const { results } = await db.prepare('SELECT id, price, stock, status FROM products').all();
+                if (Array.isArray(results) && results.length > 0) {
+                  appProducts = results;
+                }
+              } catch (e2) { }
+            }
+          }
+
+          // ถ้าในตาราง D1 ไม่มีข้อมูลจริงๆ แต่ Client ส่งรายการสินค้ามา จึงค่อยใช้รายการของ Client
+          if (appProducts.length === 0 && clientProductIds && clientProductIds.length > 0) {
+            appProducts = clientProductIds;
+          }
+
+          const totalAppProducts = appProducts.length;
+
+          // 3. เตรียมคำสั่ง UPDATE โดยตรวจสอบจากรหัสสินค้า (id) ตรงกันเท่านั้น
+          // ป้องกันการทับสถานะ inactive ที่แอดมินปิดการขายไว้
+          const updateStmt = db.prepare(`
+            UPDATE products
+            SET price = CASE WHEN ? > 0 THEN ? ELSE price END,
+                stock = ?,
+                status = CASE WHEN ? <= 0 AND status != 'inactive' THEN 'out_of_stock'
+                              WHEN ? > 0 AND status = 'out_of_stock' THEN 'active'
+                              ELSE status END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `);
+
+          let matchedCount = 0;
+          let updatedCount = 0;
+          let unchangedCount = 0;
+          let notFoundCount = 0;
+          let failedCount = 0;
+          const batch = [];
+          const BATCH_SIZE = 50;
+
+          for (const p of appProducts) {
+            const pId = String(p.id || '').trim();
+            if (!pId) continue;
+
+            if (posposMap.has(pId)) {
+              matchedCount++;
+              const pos = posposMap.get(pId);
+              const currentPrice = Number(p.price || 0);
+              const currentStock = (p.stock === null || p.stock === undefined) ? -999999 : Number(p.stock);
+              const currentStatus = String(p.status || '');
+
+              // ตรวจสอบว่าราคา สต็อก หรือสถานะสินค้าเปลี่ยนแปลงจริงหรือไม่ (Changed Only)
+              // เขียนลง D1 เฉพาะตัวที่เปลี่ยนจริง ช่วยประหยัดโควตา Write ของ Cloudflare D1 ได้มากกว่า 98%
+              const priceChanged = pos.price > 0 && Math.abs(currentPrice - pos.price) > 0.001;
+              const stockChanged = currentStock !== pos.stock;
+              const shouldBeOutOfStock = pos.stock <= 0 && currentStatus === 'active';
+              const shouldBeActive = pos.stock > 0 && currentStatus === 'out_of_stock';
+              const statusChanged = shouldBeOutOfStock || shouldBeActive;
+
+              if (priceChanged || stockChanged || statusChanged) {
+                batch.push(updateStmt.bind(pos.price, pos.price, pos.stock, pos.stock, pos.stock, pId));
+                updatedCount++;
+
+                if (batch.length >= BATCH_SIZE) {
+                  try {
+                    await db.batch(batch.splice(0, batch.length));
+                  } catch (batchErr) {
+                    failedCount += BATCH_SIZE;
+                    console.error('Batch update error:', batchErr);
+                  }
+                }
+              } else {
+                unchangedCount++;
+              }
+            } else {
+              notFoundCount++;
+            }
+          }
+
+          if (batch.length > 0) {
+            try {
+              await db.batch(batch);
+            } catch (batchErr) {
+              failedCount += batch.length;
+              console.error('Final batch update error:', batchErr);
+            }
+          }
+
+          return jsonResponse({
+            status: 'success',
+            message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS สำหรับสินค้าใน Mini App สำเร็จ',
+            totalFromPospos: items.length,
+            totalInApp: totalAppProducts,
+            matched: matchedCount,
+            processed: matchedCount,
+            updated: updatedCount,
+            unchanged: unchangedCount,
+            notFound: notFoundCount,
+            failed: failedCount,
+            syncedAt: new Date().toISOString()
+          });
+        } catch (syncErr) {
+          return jsonResponse({ status: 'error', message: 'Sync POSPOS error: ' + syncErr.message }, 500);
+        }
+      }
+
+      // ==========================================
       // GET REQUEST ROUTING (GAS Compatibility & REST)
       // ==========================================
       if (method === 'GET') {
@@ -532,165 +696,6 @@ export default {
               total: 0,
               message: d1Err.message,
             });
-          }
-        }
-
-        // ==========================================
-        // POSPOS DEVELOPER API (v0.3) INTEGRATION
-        // ==========================================
-        // Action: syncPospos OR GET/POST /api/pospos/sync
-        if (action === 'syncPospos' || url.pathname === '/api/pospos/sync') {
-          const apiKey = (env && env.POSPOS_API_KEY) || DEFAULT_POSPOS_API_KEY;
-          if (!apiKey) {
-            return jsonResponse({ status: 'error', message: 'POSPOS_API_KEY ยังไม่ได้ตั้งค่าใน Cloudflare Worker vars' }, 500);
-          }
-
-          try {
-            // ตรวจสอบและเพิ่มคอลัมน์ stock ในตาราง products อัตโนมัติ (Self-healing Schema)
-            try {
-              await db.prepare('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0').run();
-            } catch (e) { }
-
-            const posRes = await fetch('https://go.pospos.co/developer/api/stock', {
-              headers: {
-                'apikey': apiKey,
-                'Accept': 'application/json',
-                'User-Agent': 'Kuekoonkan-Worker/1.0'
-              }
-            });
-
-            if (!posRes.ok) {
-              const errText = await posRes.text();
-              return jsonResponse({ status: 'error', message: `POSPOS API ตอบกลับสถานะ ${posRes.status}: ${errText}` }, posRes.status);
-            }
-
-            const rawData = await posRes.json();
-            const items = Array.isArray(rawData) ? rawData : (rawData.data || rawData.stock || rawData.items || []);
-
-            if (!Array.isArray(items) || items.length === 0) {
-              return jsonResponse({ status: 'warning', message: 'POSPOS ตอบกลับข้อมูลสินค้าว่างเปล่า', count: 0 });
-            }
-
-            // 1. จัดทำ Map ข้อมูลสต็อกและราคาจาก POSPOS โดยใช้รหัสสินค้า (Barcode/ID) เป็นคีย์หลักเท่านั้น
-            const posposMap = new Map();
-            for (const item of items) {
-              const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
-              if (!barcode) continue;
-              const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
-              const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
-              posposMap.set(barcode, { price, stock });
-            }
-
-            // 2. ดึงรายการสินค้าที่มีอยู่ใน Mini App ปัจจุบันจาก D1 (หรือจากที่ Client ส่งมาถ้า D1 ยังว่าง)
-            let clientProductIds = null;
-            if (request.method === 'POST') {
-              try {
-                const body = await request.json();
-                if (body && Array.isArray(body.productIds)) {
-                  clientProductIds = body.productIds;
-                }
-              } catch (e) { }
-            }
-
-            let appProducts = [];
-            try {
-              const { results } = await db.prepare('SELECT id, price, stock, status FROM products').all();
-              if (Array.isArray(results) && results.length > 0) {
-                appProducts = results;
-              }
-            } catch (e) { }
-
-            // ถ้า D1 ว่าง แต่ Client ส่งรายการสินค้ามา ให้ใช้รายการของ Client
-            if (appProducts.length === 0 && clientProductIds && clientProductIds.length > 0) {
-              appProducts = clientProductIds;
-            }
-
-            const totalAppProducts = appProducts.length;
-
-            // 3. เตรียมคำสั่ง UPDATE โดยตรวจสอบจากรหัสสินค้า (id) ตรงกันเท่านั้น
-            // ป้องกันการทับสถานะ inactive ที่แอดมินปิดการขายไว้
-            const updateStmt = db.prepare(`
-              UPDATE products
-              SET price = CASE WHEN ? > 0 THEN ? ELSE price END,
-                  stock = ?,
-                  status = CASE WHEN ? <= 0 AND status != 'inactive' THEN 'out_of_stock'
-                                WHEN ? > 0 AND status = 'out_of_stock' THEN 'active'
-                                ELSE status END,
-                  updated_at = CURRENT_TIMESTAMP
-              WHERE id = ?
-            `);
-
-            let matchedCount = 0;
-            let updatedCount = 0;
-            let unchangedCount = 0;
-            let notFoundCount = 0;
-            let failedCount = 0;
-            const batch = [];
-            const BATCH_SIZE = 50;
-
-            for (const p of appProducts) {
-              const pId = String(p.id || '').trim();
-              if (!pId) continue;
-
-              if (posposMap.has(pId)) {
-                matchedCount++;
-                const pos = posposMap.get(pId);
-                const currentPrice = Number(p.price || 0);
-                const currentStock = (p.stock === null || p.stock === undefined) ? -999999 : Number(p.stock);
-                const currentStatus = String(p.status || '');
-
-                // ตรวจสอบว่าราคา สต็อก หรือสถานะสินค้าเปลี่ยนแปลงจริงหรือไม่ (Changed Only)
-                // ช่วยประหยัดโควตา Write ของ Cloudflare D1 ได้มากกว่า 95%
-                const priceChanged = pos.price > 0 && Math.abs(currentPrice - pos.price) > 0.001;
-                const stockChanged = currentStock !== pos.stock;
-                const shouldBeOutOfStock = pos.stock <= 0 && currentStatus === 'active';
-                const shouldBeActive = pos.stock > 0 && currentStatus === 'out_of_stock';
-                const statusChanged = shouldBeOutOfStock || shouldBeActive;
-
-                if (priceChanged || stockChanged || statusChanged) {
-                  batch.push(updateStmt.bind(pos.price, pos.price, pos.stock, pos.stock, pos.stock, pId));
-                  updatedCount++;
-
-                  if (batch.length >= BATCH_SIZE) {
-                    try {
-                      await db.batch(batch.splice(0, batch.length));
-                    } catch (batchErr) {
-                      failedCount += BATCH_SIZE;
-                      console.error('Batch update error:', batchErr);
-                    }
-                  }
-                } else {
-                  unchangedCount++;
-                }
-              } else {
-                notFoundCount++;
-              }
-            }
-
-            if (batch.length > 0) {
-              try {
-                await db.batch(batch);
-              } catch (batchErr) {
-                failedCount += batch.length;
-                console.error('Final batch update error:', batchErr);
-              }
-            }
-
-            return jsonResponse({
-              status: 'success',
-              message: 'ซิงค์ข้อมูลสต็อกและราคาจาก POSPOS สำหรับสินค้าใน Mini App สำเร็จ',
-              totalFromPospos: items.length,
-              totalInApp: totalAppProducts,
-              matched: matchedCount,
-              processed: matchedCount,
-              updated: updatedCount,
-              unchanged: unchangedCount,
-              notFound: notFoundCount,
-              failed: failedCount,
-              syncedAt: new Date().toISOString()
-            });
-          } catch (syncErr) {
-            return jsonResponse({ status: 'error', message: 'Sync POSPOS error: ' + syncErr.message }, 500);
           }
         }
 
