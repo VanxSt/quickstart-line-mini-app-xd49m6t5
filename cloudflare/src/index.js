@@ -644,6 +644,49 @@ export default {
           }
         }
 
+        // Endpoint ดูรูปภาพสินค้าพื้นหลังขาว (D1 Storage): GET /api/products/:productId/image หรือ ?action=getProductImage&id=...
+        const productImgMatch = url.pathname.match(/^\/api\/products\/([^\/]+)\/image$/);
+        const productImgId = productImgMatch ? productImgMatch[1] : (action === 'getProductImage' ? (url.searchParams.get('id') || url.searchParams.get('productId')) : null);
+
+        if (productImgId) {
+          try {
+            await db.prepare(`
+              CREATE TABLE IF NOT EXISTS product_images (
+                product_id TEXT PRIMARY KEY,
+                mime_type TEXT DEFAULT 'image/jpeg',
+                image_base64 TEXT,
+                created_at TEXT
+              )
+            `).run();
+
+            const row = await db.prepare('SELECT image_base64, mime_type FROM product_images WHERE product_id = ?').bind(productImgId).first();
+            if (!row || !row.image_base64) {
+              return new Response('ไม่พบรูปภาพสินค้าในระบบ', {
+                status: 404,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
+              });
+            }
+
+            const binaryString = atob(row.image_base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            return new Response(bytes.buffer, {
+              status: 200,
+              headers: {
+                'Content-Type': row.mime_type || 'image/jpeg',
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          } catch (err) {
+            return new Response('Error loading product image: ' + err.message, { status: 500 });
+          }
+        }
+
         // Action: getProducts OR GET /api/products
         if (action === 'getProducts' || url.pathname === '/api/products') {
           try {
@@ -1208,6 +1251,160 @@ export default {
             }
 
             return jsonResponse({ status: 'error', message: 'No slip URL or file provided' }, 400);
+          }
+
+          // 1.6 Action: uploadProductImage OR POST /api/products/image (บันทึกรูปภาพสินค้าพื้นหลังขาวลง D1)
+          if (postAction === 'uploadProductImage' || url.pathname === '/api/products/image') {
+            const productId = postData.productId || postData.id;
+            const base64Data = postData.base64 || '';
+            const mimeType = postData.mimeType || 'image/jpeg';
+
+            if (!productId || !base64Data) {
+              return jsonResponse({ status: 'error', message: 'Missing productId or base64' }, 400);
+            }
+
+            await db.prepare(`
+              CREATE TABLE IF NOT EXISTS product_images (
+                product_id TEXT PRIMARY KEY,
+                mime_type TEXT DEFAULT 'image/jpeg',
+                image_base64 TEXT,
+                created_at TEXT
+              )
+            `).run();
+
+            const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+
+            await db.prepare(`
+              INSERT INTO product_images (product_id, mime_type, image_base64, created_at)
+              VALUES (?, ?, ?, ?)
+              ON CONFLICT(product_id) DO UPDATE SET
+                mime_type = excluded.mime_type,
+                image_base64 = excluded.image_base64,
+                created_at = excluded.created_at
+            `).bind(String(productId).trim(), mimeType, cleanedBase64, new Date().toISOString()).run();
+
+            const imgUrl = `${url.origin}/api/products/${encodeURIComponent(String(productId).trim())}/image`;
+
+            // อัปเดตตาราง products ด้วยทันที
+            try {
+              await db.prepare("UPDATE products SET img = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(imgUrl, String(productId).trim())
+                .run();
+            } catch (e) { }
+
+            return jsonResponse({ status: 'success', imageUrl: imgUrl, productId });
+          }
+
+          // 1.7 Action: deleteProductImage (กู้คืน/ลบรูปที่แต่งออกเฉพาะรายการ)
+          if (postAction === 'deleteProductImage' || url.pathname === '/api/products/image/delete') {
+            const productId = postData.productId || postData.id;
+            const restoreOriginalUrl = postData.originalUrl || '';
+
+            if (productId) {
+              try {
+                await db.prepare('DELETE FROM product_images WHERE product_id = ?').bind(String(productId).trim()).run();
+                if (restoreOriginalUrl) {
+                  await db.prepare('UPDATE products SET img = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                    .bind(restoreOriginalUrl, String(productId).trim())
+                    .run();
+                }
+              } catch (e) { }
+            }
+            return jsonResponse({ status: 'success', message: 'ลบรูปภาพและกู้คืนเรียบร้อย', productId });
+          }
+
+          // 1.8 Action: clearAllCustomImages (Rollback ทั้งหมด ลบรูปภาพที่ตัดแต่งออก 100%)
+          if (postAction === 'clearAllCustomImages' || url.pathname === '/api/products/images/clear') {
+            try {
+              await db.prepare('DROP TABLE IF EXISTS product_images').run();
+            } catch (e) { }
+            return jsonResponse({ status: 'success', message: 'ลบรูปภาพที่ตัดแต่งทั้งหมดเรียบร้อยแล้ว คืนค่าเดิม 100%' });
+          }
+
+          // 1.9 Action: aiRemoveBg OR POST /api/products/ai-remove-bg (ตัดพื้นหลังด้วย Cloudflare Workers AI อัตโนมัติ)
+          if (postAction === 'aiRemoveBg' || url.pathname === '/api/products/ai-remove-bg') {
+            const productId = postData.productId || postData.id;
+            const sourceUrl = postData.sourceUrl || postData.img || '';
+
+            if (!productId || !sourceUrl) {
+              return jsonResponse({ status: 'error', message: 'Missing productId or sourceUrl' }, 400);
+            }
+
+            if (!env.AI) {
+              return jsonResponse({ status: 'error', message: 'Workers AI binding not found' }, 500);
+            }
+
+            try {
+              // 1. เรียกใช้งาน Cloudflare Workers AI RMBG Model
+              const aiRes = await env.AI.run('bria/remove-background', {
+                image: sourceUrl
+              });
+
+              let cutoutUrl = null;
+              if (aiRes && aiRes.result && aiRes.result.image) {
+                cutoutUrl = aiRes.result.image;
+              } else if (aiRes && typeof aiRes === 'string') {
+                cutoutUrl = aiRes;
+              }
+
+              if (!cutoutUrl) {
+                return jsonResponse({ status: 'error', message: 'AI failed to remove background', raw: aiRes }, 500);
+              }
+
+              // 2. ดาวน์โหลดรูป Cutout ที่ได้มาแปลงเป็น Base64
+              const imgFetch = await fetch(cutoutUrl);
+              if (!imgFetch.ok) {
+                return jsonResponse({ status: 'error', message: 'Failed to download cutout image' }, 500);
+              }
+
+              const arrayBuffer = await imgFetch.arrayBuffer();
+              const mimeType = imgFetch.headers.get('content-type') || 'image/png';
+              let binary = '';
+              const bytes = new Uint8Array(arrayBuffer);
+              const len = bytes.byteLength;
+              const chunkSize = 32768;
+              for (let i = 0; i < len; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+              }
+              const base64 = btoa(binary);
+
+              // 3. บันทึกลงตาราง product_images ใน D1
+              await db.prepare(`
+                CREATE TABLE IF NOT EXISTS product_images (
+                  product_id TEXT PRIMARY KEY,
+                  mime_type TEXT DEFAULT 'image/png',
+                  image_base64 TEXT,
+                  created_at TEXT
+                )
+              `).run();
+
+              await db.prepare(`
+                INSERT INTO product_images (product_id, mime_type, image_base64, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(product_id) DO UPDATE SET
+                  mime_type = excluded.mime_type,
+                  image_base64 = excluded.image_base64,
+                  created_at = excluded.created_at
+              `).bind(String(productId).trim(), mimeType, base64, new Date().toISOString()).run();
+
+              const finalImgUrl = `${url.origin}/api/products/${encodeURIComponent(String(productId).trim())}/image`;
+
+              // 4. อัปเดตในตาราง products ด้วย
+              try {
+                await db.prepare("UPDATE products SET img = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                  .bind(finalImgUrl, String(productId).trim())
+                  .run();
+              } catch (e) { }
+
+              return jsonResponse({
+                status: 'success',
+                productId: String(productId).trim(),
+                imageUrl: finalImgUrl,
+                sourceUrl
+              });
+            } catch (aiErr) {
+              return jsonResponse({ status: 'error', message: 'AI Error: ' + aiErr.message }, 500);
+            }
           }
 
           // 2. Action: createOrder OR POST /api/orders
