@@ -460,7 +460,8 @@ export default {
             const barcode = String(item.barcode || item.code || item.product_code || item.sku || item.id || item._id || '').trim();
             if (!barcode) continue;
             const price = Number(item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? 0);
-            const stock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+            const rawStock = Number(item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? 0);
+            const stock = rawStock >= 1 ? Math.floor(rawStock) : 0;
             posposMap.set(barcode, { price, stock });
           }
 
@@ -720,10 +721,14 @@ export default {
             const { results } = await stmt.all();
 
             const cleanedProducts = (results || []).map((row) => {
-              if (row.img && typeof row.img === 'string' && row.img.includes('1779018898541-98193691087.jpg')) {
-                return { ...row, img: '' };
+              const rawStock = (row.stock !== null && row.stock !== undefined) ? Number(row.stock) : 0;
+              const cleanStock = rawStock >= 1 ? Math.floor(rawStock) : 0;
+              const cleanStatus = (cleanStock < 1 && row.status !== 'inactive') ? 'out_of_stock' : row.status;
+              let cleanImg = row.img;
+              if (cleanImg && typeof cleanImg === 'string' && cleanImg.includes('1779018898541-98193691087.jpg')) {
+                cleanImg = '';
               }
-              return row;
+              return { ...row, img: cleanImg, stock: cleanStock, status: cleanStatus };
             });
 
             return jsonResponse({
@@ -1841,6 +1846,9 @@ export default {
             const batch = [];
             for (const p of products) {
               if (!p.id) continue;
+              const rawStock = Number(p.stock ?? 0);
+              const cleanStock = rawStock >= 1 ? Math.floor(rawStock) : 0;
+              const cleanStatus = (cleanStock < 1 && p.status !== 'inactive') ? 'out_of_stock' : (p.status || 'active');
               batch.push(
                 insertStmt.bind(
                   String(p.id).trim(),
@@ -1850,8 +1858,8 @@ export default {
                   p.desc || '',
                   p.img || '',
                   p.tag || '',
-                  p.status || 'active',
-                  Number(p.stock ?? 0)
+                  cleanStatus,
+                  cleanStock
                 )
               );
             }

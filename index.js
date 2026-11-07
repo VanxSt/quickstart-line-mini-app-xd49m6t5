@@ -138,30 +138,107 @@ restoreCachedProfile();
 // ฟังก์ชันจัดการสถานะช่องกรอกเบอร์โทร (ReadOnly หรือแก้ไขได้)
 function setPhoneInputState(isReadOnly) {
   if (!phone || !btnSavePhoneInline) return;
+  const phoneBox = document.getElementById('phoneHighlightBox');
+  const reqBadge = document.getElementById('phoneRequiredBadge');
+  const helperText = document.getElementById('phoneHelperText');
 
   if (isReadOnly) {
     phone.readOnly = true;
     phone.classList.add('readonly-mode');
+    if (phoneBox) phoneBox.classList.add('phone-saved-state');
+    if (reqBadge) {
+      reqBadge.textContent = '✓ ยืนยันเบอร์แล้ว';
+      reqBadge.classList.add('is-verified');
+    }
+    if (helperText) {
+      helperText.textContent = '✅ เบอร์โทรศัพท์ของคุณพร้อมสำหรับการสั่งซื้อและสะสมแต้มสมาชิกแล้ว';
+      helperText.style.color = '#bbf7d0';
+    }
     btnSavePhoneInline.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
         <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
+      <span>แก้ไข</span>
     `;
     btnSavePhoneInline.title = 'แก้ไขเบอร์โทร';
-    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #4a4a4a 0%, #2b2b2b 100%)';
+    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #475569 0%, #334155 100%)';
   } else {
     phone.readOnly = false;
     phone.classList.remove('readonly-mode');
+    if (phoneBox) phoneBox.classList.remove('phone-saved-state');
+    if (reqBadge) {
+      reqBadge.textContent = 'จำเป็นต้องกรอก';
+      reqBadge.classList.remove('is-verified');
+    }
+    if (helperText) {
+      helperText.textContent = '💡 กรุณากรอกเบอร์โทรศัพท์เพื่อเข้าเลือกซื้อสินค้าและสะสมแต้มสมาชิก';
+      helperText.style.color = '#fef08a';
+    }
     phone.focus();
     btnSavePhoneInline.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
+      <span>บันทึก</span>
     `;
     btnSavePhoneInline.title = 'บันทึกเบอร์โทร';
-    btnSavePhoneInline.style.background = 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)';
+    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
   }
+}
+
+// ฟังก์ชันบังคับตรวจสอบเบอร์โทรศัพท์ก่อนอนุญาตให้กดไปหน้าอื่น
+function ensureValidPhoneBeforeNavigate() {
+  if (!phone) return true;
+  const rawVal = phone.value.trim();
+  const clean = cleanPhoneNumber(rawVal);
+  const phoneErrorEl = document.getElementById('phoneError');
+  const phoneBox = document.getElementById('phoneHighlightBox');
+
+  if (!rawVal || !isValidThaiPhone(clean)) {
+    if (phone.readOnly) {
+      setPhoneInputState(false);
+    }
+    phone.style.borderColor = '#ef4444';
+    if (phoneErrorEl) {
+      phoneErrorEl.style.display = 'block';
+      phoneErrorEl.textContent = '⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้องก่อนเข้าใช้งาน (เช่น 08X-XXX-XXXX)';
+    }
+    if (phoneBox) {
+      phoneBox.classList.remove('phone-shake-alert');
+      void phoneBox.offsetWidth; // trigger reflow
+      phoneBox.classList.add('phone-shake-alert');
+    }
+    showToast('⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักก่อนเข้าใช้งาน', false);
+    phone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => phone.focus(), 200);
+    return false;
+  }
+
+  // เบอร์โทรถูกต้อง -> บันทึกลงระบบและแคชอัตโนมัติทันที
+  phone.style.borderColor = '';
+  if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+  if (phoneBox) phoneBox.classList.remove('phone-shake-alert');
+
+  const formatted = formatThaiPhoneNumber(clean);
+  phone.value = formatted;
+
+  if (!userProfileData) {
+    fallbackStandalone();
+  }
+  if (userProfileData) {
+    const isChanged = userProfileData.phone !== clean;
+    userProfileData.phone = clean;
+    localStorage.setItem('user_phone_' + (userProfileData.userId || 'default'), clean);
+    localStorage.setItem('user_phone_default', clean);
+    localStorage.setItem('kuekoonkan_member_profile', JSON.stringify(userProfileData));
+    localStorage.setItem('member_info_cache', JSON.stringify(userProfileData));
+    if (isChanged || !phone.readOnly) {
+      setPhoneInputState(true);
+      saveDataAutomatically();
+    }
+  }
+  return true;
 }
 
 // ========================================================
@@ -414,13 +491,20 @@ if (btnSaveData) {
       const rawVal = phone.value.trim();
       const clean = cleanPhoneNumber(rawVal);
       const phoneErrorEl = document.getElementById('phoneError');
+      const phoneBox = document.getElementById('phoneHighlightBox');
 
-      // ตรวจสอบเบอร์โทร ถ้ามีกรอกต้องเป็นเบอร์ที่ถูกต้อง (ห้ามกรอกช่องว่าง หรือ 001)
-      if (rawVal !== '' && !isValidThaiPhone(clean)) {
+      // บังคับต้องกรอกเบอร์โทรศัพท์ที่ถูกต้องเสมอ (ห้ามเว้นว่าง หรือกรอกเบอร์ปลอม เช่น 001)
+      if (!rawVal || !isValidThaiPhone(clean)) {
+        if (phone.readOnly) setPhoneInputState(false);
         phone.style.borderColor = '#ef4444';
         if (phoneErrorEl) {
           phoneErrorEl.style.display = 'block';
-          phoneErrorEl.textContent = '* กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)';
+          phoneErrorEl.textContent = '⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้องก่อนบันทึก (เช่น 08X-XXX-XXXX)';
+        }
+        if (phoneBox) {
+          phoneBox.classList.remove('phone-shake-alert');
+          void phoneBox.offsetWidth;
+          phoneBox.classList.add('phone-shake-alert');
         }
         showToast('⚠️ กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง', false);
         phone.focus();
@@ -429,6 +513,7 @@ if (btnSaveData) {
 
       phone.style.borderColor = '';
       if (phoneErrorEl) phoneErrorEl.style.display = 'none';
+      if (phoneBox) phoneBox.classList.remove('phone-shake-alert');
       userProfileData.phone = clean;
       if (clean) phone.value = formatThaiPhoneNumber(clean);
     }
@@ -607,9 +692,10 @@ if (btnSavePhoneInline) {
       btnSavePhoneInline.disabled = false;
       if (!phone.readOnly) {
         btnSavePhoneInline.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
+          <span>บันทึก</span>
         `;
       }
     }
@@ -620,6 +706,14 @@ if (btnSavePhoneInline) {
 // 6. การสลับหน้า SPA ระหว่าง Profile View และ Catalog View
 // ========================================================
 window.showCatalogView = function (mode) {
+  // บังคับต้องกรอกเบอร์โทรศัพท์ที่ถูกต้องก่อนจึงจะสามารถเปลี่ยนไปหน้าอื่นได้
+  if (!ensureValidPhoneBeforeNavigate()) {
+    if (window.location.hash) {
+      history.replaceState({ view: 'profile' }, '', window.location.pathname + window.location.search);
+    }
+    return;
+  }
+
   const profileView = document.getElementById('viewProfile');
   const catalogView = document.getElementById('viewCatalog');
   const floatingCart = document.getElementById('floatingCartContainer');
@@ -717,33 +811,26 @@ window.addEventListener('hashchange', handleHashNavigation);
 setTimeout(handleHashNavigation, 50);
 
 if (btnNextPage) {
-  btnNextPage.addEventListener('click', () => {
-    // บันทึกเบอร์โทรศัพท์ถ้ามี
-    if (phone && phone.value.trim()) {
-      localStorage.setItem('user_phone_default', phone.value.trim());
-      if (userProfileData) userProfileData.phone = phone.value.trim();
-    }
+  btnNextPage.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!ensureValidPhoneBeforeNavigate()) return;
     window.showCatalogView();
   });
 }
 
 // ทางลัด: ติดตามสถานะ / ดูประวัติคำสั่งซื้อ
 if (btnTrackOrders) {
-  btnTrackOrders.addEventListener('click', () => {
-    if (phone && phone.value.trim()) {
-      localStorage.setItem('user_phone_default', phone.value.trim());
-      if (userProfileData) userProfileData.phone = phone.value.trim();
-    }
+  btnTrackOrders.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!ensureValidPhoneBeforeNavigate()) return;
     window.showCatalogView('orders');
   });
 }
 
 if (btnFavoriteOrders) {
-  btnFavoriteOrders.addEventListener('click', () => {
-    if (phone && phone.value.trim()) {
-      localStorage.setItem('user_phone_default', phone.value.trim());
-      if (userProfileData) userProfileData.phone = phone.value.trim();
-    }
+  btnFavoriteOrders.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!ensureValidPhoneBeforeNavigate()) return;
     window.showCatalogView('favorites');
   });
 }
@@ -1212,6 +1299,7 @@ function openMemberPointsModal(overridePhone) {
     btnCheckMemberPoints.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!ensureValidPhoneBeforeNavigate()) return;
       openMemberPointsModal();
     });
   }

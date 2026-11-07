@@ -2358,8 +2358,9 @@ function applyProductFilters() {
 
   filteredProducts = allProducts.filter(p => {
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
-    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
-    const isOutStock = stockQty <= 0 || (p.status && p.status === 'out_of_stock');
+    const rawStock = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+    const isOutStock = stockQty < 1 || (p.status && p.status === 'out_of_stock');
 
     if (productSelectedStatus === 'active' && isInactive) return false;
     if (productSelectedStatus === 'inactive' && !isInactive) return false;
@@ -2463,8 +2464,9 @@ function renderProductsTable() {
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
     const isActive = !isInactive;
 
-    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
-    const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+    const rawStock = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+    const isOutStock = (stockQty < 1) || (p.status === 'out_of_stock');
     const isLowStock = !isOutStock && (stockQty <= 5);
 
     let stockBoxBg = '#f0fdf4';
@@ -2552,8 +2554,9 @@ function renderProductsGrid() {
     const isInactive = (p.status && String(p.status).toLowerCase() === 'inactive');
     const isActive = !isInactive;
 
-    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
-    const isOutStock = (stockQty <= 0) || (p.status === 'out_of_stock');
+    const rawStock = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+    const isOutStock = (stockQty < 1) || (p.status === 'out_of_stock');
     const isLowStock = !isOutStock && (stockQty <= 5);
 
     let stockBadgeStyle = '';
@@ -2691,8 +2694,9 @@ function openProductDetailModal(productId) {
   // Stock Badge in Detail Modal
   const stockBadge = document.getElementById('detailProductStockBadge');
   if (stockBadge) {
-    const stockQty = Number(product.stock !== undefined && product.stock !== null ? product.stock : 0);
-    if (stockQty <= 0 || product.status === 'out_of_stock') {
+    const rawStock = Number(product.stock !== undefined && product.stock !== null ? product.stock : 0);
+    const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+    if (stockQty < 1 || product.status === 'out_of_stock') {
       stockBadge.textContent = '❌ สินค้าหมดสต็อก (0 ชิ้น)';
       stockBadge.style.color = '#dc2626';
       stockBadge.style.borderColor = '#fca5a5';
@@ -2803,8 +2807,9 @@ function updateProductStats() {
     } else {
       activeCount++;
     }
-    const stockQty = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
-    if (stockQty > 0 && p.status !== 'out_of_stock') {
+    const rawStock = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
+    const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+    if (stockQty >= 1 && p.status !== 'out_of_stock') {
       inStockCount++;
     } else {
       outStockCount++;

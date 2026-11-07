@@ -134,9 +134,9 @@ function normalizePosposItem(item) {
   const rawPrice = item.price ?? item.retail_price ?? item.sell_price ?? item.normal_price ?? null;
   const price = rawPrice !== null ? Number(rawPrice) : null;
 
-  // จำนวนสต็อกคงเหลือ
+  // จำนวนสต็อกคงเหลือ (ถ้าสต็อกน้อยกว่า 1 เช่น 0.001, 0.1 ให้ปัดเป็น 0 สินค้าหมดทันที)
   const rawStock = item.stock ?? item.quantity ?? item.qty ?? item.remain ?? item.balance ?? item.amount ?? item.total_stock ?? null;
-  const stock = rawStock !== null ? Number(rawStock) : null;
+  const stock = rawStock !== null ? (Number(rawStock) >= 1 ? Math.floor(Number(rawStock)) : 0) : null;
 
   // รูปภาพ
   let img = '';
@@ -243,11 +243,11 @@ async function runSync() {
       // อัปเดตสต็อกคงเหลือ
       if (posMatch.stock !== null) {
         product.stock = posMatch.stock;
-        if (posMatch.stock <= 0) {
-          product.status = 'out_of_stock';
+        if (posMatch.stock < 1) {
+          if (product.status !== 'inactive') product.status = 'out_of_stock';
           outOfStockCount++;
         } else {
-          product.status = 'active';
+          if (product.status !== 'inactive') product.status = 'active';
           inStockCount++;
         }
       } else {

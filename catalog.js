@@ -669,8 +669,10 @@ function renderProducts() {
 
   toRender.forEach(product => {
     const productImg = getOptimizedImageUrl(product.img);
-    const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
-    const isLowStock = !isOutOfStock && product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5;
+    const rawStockNum = product.stock !== undefined && product.stock !== null ? Math.floor(Number(product.stock) || 0) : null;
+    const cleanStock = rawStockNum !== null ? Math.max(0, rawStockNum) : null;
+    const isOutOfStock = (cleanStock !== null && cleanStock < 1) || product.status === 'out_of_stock';
+    const isLowStock = !isOutOfStock && cleanStock !== null && cleanStock >= 1 && cleanStock <= 5;
 
     const card = document.createElement('div');
     card.className = `product-card animate-fade-in ${isOutOfStock ? 'is-out-of-stock' : ''}`;
@@ -678,7 +680,7 @@ function renderProducts() {
       <div class="product-img-wrapper">
         <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
         ${isOutOfStock ? `<span class="product-tag tag-out-of-stock" style="background:#ef4444; color:#fff; font-weight:700;">สินค้าหมด</span>` : (product.tag ? `<span class="product-tag">${product.tag}</span>` : '')}
-        ${isLowStock ? `<span class="product-tag tag-low-stock" style="background:#f59e0b; color:#fff; font-weight:700; top:auto; bottom:8px;">เหลือ ${product.stock} ชิ้น</span>` : ''}
+        ${isLowStock ? `<span class="product-tag tag-low-stock" style="background:#f59e0b; color:#fff; font-weight:700; top:auto; bottom:8px;">เหลือ ${cleanStock} ชิ้น</span>` : ''}
       </div>
       <div class="product-info">
         <h3 class="product-title">${product.name}</h3>
@@ -756,15 +758,17 @@ function openProductDetail(productOrId) {
   }
 
   activeProduct = product;
-  const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
-  const isLowStock = !isOutOfStock && product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5;
+  const rawStockNum = product.stock !== undefined && product.stock !== null ? Math.floor(Number(product.stock) || 0) : null;
+  const cleanStock = rawStockNum !== null ? Math.max(0, rawStockNum) : null;
+  const isOutOfStock = (cleanStock !== null && cleanStock < 1) || product.status === 'out_of_stock';
+  const isLowStock = !isOutOfStock && cleanStock !== null && cleanStock >= 1 && cleanStock <= 5;
   const productImg = getOptimizedImageUrl(product.img);
 
   let stockNoticeHtml = '';
   if (isOutOfStock) {
     stockNoticeHtml = `<span class="modal-tag" style="background:#ef4444; color:#fff; font-weight:700;">❌ สินค้าหมดชั่วคราว</span>`;
   } else if (isLowStock) {
-    stockNoticeHtml = `<span class="modal-tag" style="background:#f59e0b; color:#fff; font-weight:700;">⚡ เหลือเพียง ${product.stock} ชิ้น</span>`;
+    stockNoticeHtml = `<span class="modal-tag" style="background:#f59e0b; color:#fff; font-weight:700;">⚡ เหลือเพียง ${cleanStock} ชิ้น</span>`;
   }
 
   modalContent.innerHTML = `
@@ -832,8 +836,8 @@ function openProductDetail(productOrId) {
   });
   document.getElementById('btnQtyPlus').addEventListener('click', (e) => {
     e.stopPropagation();
-    if (product.stock !== undefined && Number(product.stock) > 0 && modalQtyVal >= Number(product.stock)) {
-      alert(`สินค้านี้มีสต็อกคงเหลือ ${product.stock} ชิ้นครับ`);
+    if (cleanStock !== null && cleanStock >= 1 && modalQtyVal >= cleanStock) {
+      alert(`สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ชิ้นครับ`);
       return;
     }
     modalQtyVal++; modalQtyEl.textContent = modalQtyVal;
@@ -1115,7 +1119,9 @@ function addToCart(product, quantity = 1) {
     alert('ขออภัยครับ สินค้านี้ปิดการขายชั่วคราว');
     return;
   }
-  const isOutOfStock = (product.stock !== undefined && Number(product.stock) <= 0) || product.status === 'out_of_stock';
+  const rawStockNum = product.stock !== undefined && product.stock !== null ? Math.floor(Number(product.stock) || 0) : null;
+  const cleanStock = rawStockNum !== null ? Math.max(0, rawStockNum) : null;
+  const isOutOfStock = (cleanStock !== null && cleanStock < 1) || product.status === 'out_of_stock';
   if (isOutOfStock) {
     alert('ขออภัยครับ สินค้านี้หมดชั่วคราว ไม่สามารถสั่งซื้อได้ในขณะนี้');
     return;
@@ -1123,8 +1129,8 @@ function addToCart(product, quantity = 1) {
 
   const existingItem = cart.find(item => item.id === product.id);
   const currentQty = existingItem ? existingItem.qty : 0;
-  if (product.stock !== undefined && Number(product.stock) > 0 && (currentQty + quantity) > Number(product.stock)) {
-    alert(`ขออภัยครับ สินค้านี้มีสต็อกคงเหลือ ${product.stock} ชิ้น (ในตะกร้ามีแล้ว ${currentQty} ชิ้น)`);
+  if (cleanStock !== null && cleanStock >= 1 && (currentQty + quantity) > cleanStock) {
+    alert(`ขออภัยครับ สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ชิ้น (ในตะกร้ามีแล้ว ${currentQty} ชิ้น)`);
     return;
   }
 
