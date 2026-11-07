@@ -59,7 +59,7 @@
   <!-- Leaflet & LINE LIFF SDKs -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="index.js?v=29"></script>
+  <script type="module" src="index.js?v=30"></script>
 </head>
 
 <body id="body" class="is-profile-view">
@@ -597,7 +597,7 @@
               <span>🛵 ระยะทางจัดส่งจากร้านถึงที่อยู่ของลูกค้า</span>
             </div>
             <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px;">
-              <span id="deliveryDistanceText" style="font-size: 22px; font-weight: 800; color: #15803d;">0 กม.</span>
+              <span id="deliveryDistanceText" style="font-size: 20px; font-weight: 800; color: #15803d;">ยังไม่ได้ปักหมุด</span>
               <span style="font-size: 13px; color: #166534;">(คำนวณตามพิกัดจริง)</span>
             </div>
             <input type="hidden" id="deliveryDistance" value="0" />
@@ -679,8 +679,8 @@
                 <strong id="checkoutSubtotalText" style="color: #ffffff;">0 บาท</strong>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
-                <span style="color: #38bdf8;">🚚 ค่าจัดส่ง (<span id="checkoutDistanceLabel">1 กม.</span>):</span>
-                <strong id="checkoutShippingFeeText" style="color: #38bdf8;">0 บาท</strong>
+                <span style="color: #38bdf8;">🚚 ค่าจัดส่ง (<span id="checkoutDistanceLabel">ยังไม่ปักหมุด</span>):</span>
+                <strong id="checkoutShippingFeeText" style="color: #fbbf24; font-size: 13px;">รอคำนวณค่าจัดส่ง กรุณาปักหมุด</strong>
               </div>
               <div id="checkoutCouponRow" style="display: none; justify-content: space-between; font-size: 14px; margin-bottom: 6px; color: #4ade80;">
                 <span>🎟️ ส่วนลดคูปอง (<span id="checkoutCouponCodeLabel"></span>):</span>
@@ -858,7 +858,7 @@
   </div>
 
   <!-- Catalog Logic Script -->
-  <script src="catalog.js?v=29"></script>
+  <script src="catalog.js?v=30"></script>
 </body>
 
 </html>

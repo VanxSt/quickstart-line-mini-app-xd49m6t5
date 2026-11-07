@@ -135,8 +135,42 @@ function restoreCachedProfile() {
 // เรียกกู้คืนข้อมูลแคชทันทีที่ไฟล์นี้โหลดเข้ามาในเบราว์เซอร์
 restoreCachedProfile();
 
+// ฟังก์ชันช่วยปลุกแป้นพิมพ์มือถือ (iOS / Android / LINE WebView) ให้เด้งขึ้นมาอย่างแน่นอนเมื่ออยู่ใน User Gesture
+function focusAndOpenPhoneKeyboard(clearAndSelect = false) {
+  if (!phone) return;
+  try {
+    phone.readOnly = false;
+    phone.removeAttribute('readonly');
+    phone.disabled = false;
+    phone.classList.remove('readonly-mode');
+
+    // เรียก focus ทันทีในจังหวะแตะหน้าจอ (Synchronous User Gesture) เพื่อให้มือถือยอมเปิดคีย์บอร์ด
+    phone.focus({ preventScroll: false });
+
+    const len = phone.value ? phone.value.length : 0;
+    if (clearAndSelect && len > 0) {
+      if (typeof phone.setSelectionRange === 'function') {
+        phone.setSelectionRange(0, len);
+      } else if (typeof phone.select === 'function') {
+        phone.select();
+      }
+    } else if (len > 0 && typeof phone.setSelectionRange === 'function') {
+      phone.setSelectionRange(len, len);
+    }
+
+    // ย้ำ focus อีกครั้งในเฟรมถัดไปสำหรับ Android บางรุ่น
+    setTimeout(() => {
+      if (document.activeElement !== phone) {
+        phone.focus();
+      }
+    }, 50);
+  } catch (e) {
+    console.warn('Focus phone keyboard warning:', e);
+  }
+}
+
 // ฟังก์ชันจัดการสถานะช่องกรอกเบอร์โทร (ReadOnly หรือแก้ไขได้)
-function setPhoneInputState(isReadOnly) {
+function setPhoneInputState(isReadOnly, shouldFocus = false) {
   if (!phone || !btnSavePhoneInline) return;
   const phoneBox = document.getElementById('phoneHighlightBox');
   const reqBadge = document.getElementById('phoneRequiredBadge');
@@ -144,6 +178,7 @@ function setPhoneInputState(isReadOnly) {
 
   if (isReadOnly) {
     phone.readOnly = true;
+    phone.setAttribute('readonly', 'readonly');
     phone.classList.add('readonly-mode');
     if (phoneBox) phoneBox.classList.add('phone-saved-state');
     if (reqBadge) {
@@ -151,7 +186,7 @@ function setPhoneInputState(isReadOnly) {
       reqBadge.classList.add('is-verified');
     }
     if (helperText) {
-      helperText.textContent = '✅ บันทึกเบอร์โทรศัพท์เรียบร้อยแล้ว กดปุ่มสีฟ้าด้านล่างเพื่อเลือกซื้อสินค้าได้เลยครับ';
+      helperText.textContent = '✅ บันทึกเบอร์โทรศัพท์เรียบร้อยแล้ว (หากต้องการแก้เบอร์ แตะที่ช่องเบอร์โทรหรือปุ่มด้านบนได้เลยครับ)';
       helperText.style.background = '#dcfce7';
       helperText.style.color = '#166534';
     }
@@ -165,8 +200,13 @@ function setPhoneInputState(isReadOnly) {
     btnSavePhoneInline.title = 'เปลี่ยนเบอร์โทรศัพท์';
     btnSavePhoneInline.style.background = 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
   } else {
+    // ปลดล็อก readOnly ก่อนเสมอ
     phone.readOnly = false;
+    phone.removeAttribute('readonly');
     phone.classList.remove('readonly-mode');
+    if (shouldFocus) {
+      focusAndOpenPhoneKeyboard(true);
+    }
     if (phoneBox) phoneBox.classList.remove('phone-saved-state');
     if (reqBadge) {
       reqBadge.textContent = 'กรอกก่อนเริ่มใช้งาน';
@@ -177,7 +217,6 @@ function setPhoneInputState(isReadOnly) {
       helperText.style.background = '#f1f5f9';
       helperText.style.color = '#334155';
     }
-    phone.focus();
     btnSavePhoneInline.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
@@ -582,6 +621,13 @@ if (btnSaveData) {
 }
 
 if (phone) {
+  // หากช่องเบอร์ถูกล็อกอยู่ (บันทึกแล้ว) แต่ลูกค้าแตะที่ช่องตัวเลขโดยตรง ให้ปลดล็อกและเด้งแป้นพิมพ์ทันที
+  phone.addEventListener('click', () => {
+    if (phone.readOnly) {
+      setPhoneInputState(false, true);
+    }
+  });
+
   // จัดรูปแบบให้อ่านง่ายอัตโนมัติขณะพิมพ์ (08X-XXX-XXXX) และตรวจสอบความถูกต้อง
   phone.addEventListener('input', (e) => {
     const formatted = formatThaiPhoneNumber(e.target.value);
@@ -615,14 +661,22 @@ if (phone) {
 }
 
 if (btnSavePhoneInline) {
+  // ดักจับจังหวะแตะปุ่มบนมือถือ (touchend / pointerdown) เพื่อปลดล็อก readOnly และสั่ง focus ทันทีให้แป้นพิมพ์เด้ง 100%
+  btnSavePhoneInline.addEventListener('touchend', (e) => {
+    if (phone && phone.readOnly) {
+      e.preventDefault();
+      if (!userProfileData) fallbackStandalone();
+      setPhoneInputState(false, true);
+    }
+  }, { passive: false });
+
   btnSavePhoneInline.addEventListener('click', async () => {
     if (!userProfileData) {
       fallbackStandalone();
     }
 
     if (phone.readOnly) {
-      setPhoneInputState(false);
-      phone.focus();
+      setPhoneInputState(false, true);
       return;
     }
 

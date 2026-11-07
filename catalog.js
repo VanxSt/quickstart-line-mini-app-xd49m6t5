@@ -1535,21 +1535,22 @@ function selectSavedAddress(idx) {
     if (addrDetailsEl) addrDetailsEl.value = addr.addressDetails || '';
 
     // คำนวณระยะทางจัดส่งจากร้านสำหรับที่อยู่ที่เลือก
-    if (addr.gpsLocation) {
-      const coords = parseCoords(addr.gpsLocation);
-      if (coords) {
-        const rawDistance = calculateHaversineDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, coords.lat, coords.lng);
-        const calcDistance = rawDistance < 0.1 ? 0.1 : Math.round(rawDistance * 10) / 10;
-        const distInput = document.getElementById('deliveryDistance');
-        if (distInput) distInput.value = calcDistance;
-        const distText = document.getElementById('deliveryDistanceText');
-        if (distText) distText.textContent = `${calcDistance} กม.`;
-      }
+    const distInput = document.getElementById('deliveryDistance');
+    const distText = document.getElementById('deliveryDistanceText');
+    const coords = parseCoords(addr.gpsLocation);
+
+    if (coords) {
+      const rawDistance = calculateHaversineDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, coords.lat, coords.lng);
+      const calcDistance = rawDistance < 0.1 ? 0.1 : Math.round(rawDistance * 10) / 10;
+      if (distInput) distInput.value = calcDistance;
+      if (distText) distText.textContent = `${calcDistance} กม.`;
+    } else {
+      if (distInput) distInput.value = 0;
+      if (distText) distText.textContent = 'ยังไม่ได้ปักหมุด';
     }
 
     const statusBadge = document.getElementById('locationStatus');
     if (statusBadge) {
-      const coords = parseCoords(addr.gpsLocation);
       if (coords) {
         statusBadge.textContent = `📍 ใช้ที่อยู่: ${addr.label || 'ที่อยู่เดิม'} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`;
         statusBadge.className = 'location-status-badge success';
@@ -1565,6 +1566,7 @@ function selectSavedAddress(idx) {
         }
         const instructionOverlay = document.getElementById('mapInstructionOverlay');
         if (instructionOverlay) instructionOverlay.classList.remove('hidden');
+        calculateCheckoutTotal();
       }
     }
 
@@ -1752,18 +1754,31 @@ function calculateCheckoutTotal() {
     if (distKm < 0) distKm = 0;
   }
 
+  // ตรวจสอบว่ามีการปักหมุดพิกัดจัดส่งแล้วหรือยัง (เมื่อเลือกจัดส่งตามที่อยู่)
+  const gpsLinkVal = document.getElementById('gpsLocationLink')?.value.trim() || '';
+  const hasPinnedLocation = shippingOption === 'รับหน้าร้าน' || Boolean(parseCoords(gpsLinkVal)) || distKm > 0;
+
   const distanceLabel = document.getElementById('checkoutDistanceLabel');
   if (distanceLabel) {
-    distanceLabel.textContent = `${distKm} กม.`;
+    if (shippingOption === 'รับหน้าร้าน') {
+      distanceLabel.textContent = 'รับที่ร้าน';
+    } else if (!hasPinnedLocation) {
+      distanceLabel.textContent = 'ยังไม่ปักหมุด';
+    } else {
+      distanceLabel.textContent = `${distKm} กม.`;
+    }
   }
   const distanceText = document.getElementById('deliveryDistanceText');
   if (distanceText) {
-    distanceText.textContent = `${distKm} กม.`;
+    distanceText.textContent = hasPinnedLocation ? `${distKm} กม.` : 'ยังไม่ได้ปักหมุด';
   }
 
   if (shippingOption === 'รับหน้าร้าน') {
     shippingFee = 0;
     discountNote = '🏪 รับสินค้าเองที่หน้าร้าน (ฟรีค่าจัดส่ง 0 บาท)';
+  } else if (!hasPinnedLocation) {
+    shippingFee = 0;
+    discountNote = '📍 รอคำนวณค่าจัดส่ง กรุณากดดึงพิกัด GPS หรือแตะปักหมุดบนแผนที่';
   } else {
     if (subtotal >= 1000) {
       if (distKm <= 10) {
@@ -1828,7 +1843,9 @@ function calculateCheckoutTotal() {
 
   const feeEl = document.getElementById('checkoutShippingFeeText');
   if (feeEl) {
-    if (shippingFee === 0) {
+    if (shippingOption === 'จัดส่ง' && !hasPinnedLocation && (!appliedCoupon || appliedCoupon.type !== 'shipping')) {
+      feeEl.innerHTML = '<span style="color: #fbbf24; font-size: 13px;">รอคำนวณค่าจัดส่ง กรุณาปักหมุด</span>';
+    } else if (shippingFee === 0) {
       feeEl.innerHTML = '<span style="color: #4ade80;">ฟรี 0 บาท</span>';
     } else {
       feeEl.textContent = `${shippingFee.toLocaleString()} บาท`;
@@ -1836,7 +1853,10 @@ function calculateCheckoutTotal() {
   }
 
   const discountEl = document.getElementById('checkoutDiscountNote');
-  if (discountEl) discountEl.textContent = discountNote;
+  if (discountEl) {
+    discountEl.textContent = discountNote;
+    discountEl.style.color = (shippingOption === 'จัดส่ง' && !hasPinnedLocation) ? '#fbbf24' : '#4ade80';
+  }
 
   const checkoutItemsList = document.getElementById('checkoutItemsList');
   if (checkoutItemsList) {
@@ -1859,10 +1879,21 @@ function calculateCheckoutTotal() {
     }
   }
 
+  const isShippingPendingPin = shippingOption === 'จัดส่ง' && !hasPinnedLocation && (!appliedCoupon || appliedCoupon.type !== 'shipping');
   const btnSubmitPrice = document.getElementById('btnSubmitPrice');
-  if (btnSubmitPrice) btnSubmitPrice.textContent = `${grandTotal.toLocaleString()} บาท`;
+  if (btnSubmitPrice) {
+    btnSubmitPrice.textContent = isShippingPendingPin
+      ? `${grandTotal.toLocaleString()} บาท (ยังไม่รวมค่าส่ง)`
+      : `${grandTotal.toLocaleString()} บาท`;
+  }
   const totalEl = document.getElementById('checkoutTotalText');
-  if (totalEl) totalEl.textContent = `${grandTotal.toLocaleString()} บาท`;
+  if (totalEl) {
+    if (isShippingPendingPin) {
+      totalEl.innerHTML = `${grandTotal.toLocaleString()} บาท <span style="display: block; font-size: 11.5px; color: #fbbf24; font-weight: 500; text-align: right; margin-top: 2px;">(รอคำนวณค่าจัดส่ง กรุณาปักหมุด)</span>`;
+    } else {
+      totalEl.textContent = `${grandTotal.toLocaleString()} บาท`;
+    }
+  }
 
   return {
     subtotal: subtotal,
@@ -1878,7 +1909,14 @@ function openCheckoutModal() {
   const checkoutModal = document.getElementById('checkoutModal');
   renderQuickCouponChips();
   syncActivePromoCodes();
-  calculateCheckoutTotal();
+
+  // รีเซ็ตระยะทางและพิกัดเริ่มต้นก่อนตรวจสอบที่อยู่ เพื่อไม่ให้แสดงส่งฟรี 0 บาททั้งที่ยังไม่ปักหมุด
+  const initDistInput = document.getElementById('deliveryDistance');
+  if (initDistInput) initDistInput.value = 0;
+  const initDistText = document.getElementById('deliveryDistanceText');
+  if (initDistText) initDistText.textContent = 'ยังไม่ได้ปักหมุด';
+  const initGpsLink = document.getElementById('gpsLocationLink');
+  if (initGpsLink) initGpsLink.value = '';
 
   // Prefill default info from member profile (กรองเบอร์ปลอม เช่น 001 ทิ้ง)
   document.getElementById('checkoutName').value = currentMemberInfo.displayName || '';
@@ -3001,6 +3039,19 @@ if (btnSubmitOrder) {
     if (shippingOption === 'จัดส่ง') {
       // ถ้าเป็นฟอร์มเพิ่มที่อยู่ใหม่ แต่ถูกซ่อนอยู่ ให้เปิดแสดงขึ้นมาก่อน
       const newAddressSec = document.getElementById('newAddressSection');
+      const gpsValCheck = document.getElementById('gpsLocationLink')?.value.trim() || '';
+      const distValCheck = parseFloat(document.getElementById('deliveryDistance')?.value || '0') || 0;
+      const hasValidPin = Boolean(parseCoords(gpsValCheck)) || distValCheck > 0;
+
+      if (!hasValidPin) {
+        if (newAddressSec && newAddressSec.style.display === 'none') {
+          newAddressSec.style.display = 'block';
+          setTimeout(() => { initMapPicker(); }, 250);
+        }
+        missingFields.push('ปักหมุดตำแหน่งจัดส่ง (กดปุ่ม "📡 ดึงตำแหน่งปัจจุบันผ่าน GPS" หรือแตะปักหมุดบนแผนที่เพื่อคำนวณค่าจัดส่ง)');
+        if (!firstMissingEl) firstMissingEl = document.getElementById('btnGetLocation') || document.getElementById('mapPickerContainer');
+      }
+
       if (!rawAddressDetails) {
         if (newAddressSec && newAddressSec.style.display === 'none') {
           newAddressSec.style.display = 'block';
