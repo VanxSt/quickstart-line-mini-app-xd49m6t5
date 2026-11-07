@@ -49,7 +49,7 @@ let PROMO_CODES = {
     amount: 50,
     percent: 0,
     minSpend: 100,
-    desc: 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100',
+    desc: 'ส่วนลด 50 บาท เมื่อสั่งซื้อขั้นต่ำ 100 บาท',
     startDate: '',
     endDate: ''
   },
@@ -69,7 +69,7 @@ let PROMO_CODES = {
     amount: 0,
     percent: 10,
     minSpend: 150,
-    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150',
+    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ 150 บาท',
     startDate: '',
     endDate: ''
   },
@@ -79,7 +79,7 @@ let PROMO_CODES = {
     amount: 20,
     percent: 0,
     minSpend: 60,
-    desc: 'ส่วนลด ฿20 สำหรับของใช้และวัตถุดิบเบเกอรี่',
+    desc: 'ส่วนลด 20 บาท สำหรับของใช้และวัตถุดิบเบเกอรี่',
     startDate: '',
     endDate: ''
   }
@@ -128,9 +128,9 @@ function updatePromoCodesMap(promosList) {
     const minSpend = Number(p.min_spend || p.minSpend) || 0;
     let desc = p.description;
     if (!desc) {
-      if (type === 'percent') desc = `ลด ${percent}% เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}`;
-      else if (type === 'shipping') desc = `ฟรีค่าจัดส่ง${minSpend > 0 ? ` เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}` : ''}`;
-      else desc = `ส่วนลด ฿${amount} เมื่อสั่งซื้อขั้นต่ำ ฿${minSpend}`;
+      if (type === 'percent') desc = `ลด ${percent}% เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท`;
+      else if (type === 'shipping') desc = `ฟรีค่าจัดส่ง${minSpend > 0 ? ` เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท` : ''}`;
+      else desc = `ส่วนลด ${amount} บาท เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท`;
     }
     newMap[code] = {
       code,
@@ -178,7 +178,7 @@ function renderQuickCouponChips() {
       border = '#10b981';
       color = '#047857';
     } else {
-      badgeText = `🏷️ ${p.code} (ลด ${p.amount}฿)`;
+      badgeText = `🏷️ ${p.code} (ลด ${p.amount} บาท)`;
     }
 
     chipsHtml += `<button type="button" class="coupon-chip" onclick="applyPromoChip('${p.code}')" style="background: ${bg}; border: 1px dashed ${border}; color: ${color}; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">${badgeText}</button>`;
@@ -263,7 +263,7 @@ async function applyPromoCode(inputCode) {
     if (msgEl) {
       msgEl.style.display = 'block';
       msgEl.style.color = '#dc2626';
-      msgEl.textContent = `⚠️ โค้ดนี้ต้องมียอดซื้อสินค้าขั้นต่ำ ฿${promo.minSpend} (ยอดปัจจุบัน ฿${subtotal})`;
+      msgEl.textContent = `⚠️ โค้ดนี้ต้องมียอดซื้อสินค้าขั้นต่ำ ${promo.minSpend} บาท (ยอดปัจจุบัน ${subtotal} บาท)`;
     }
     if (container) container.classList.remove('applied');
     if (badgeEl) badgeEl.style.display = 'none';
@@ -344,7 +344,7 @@ function renderUpsellSection(container) {
         <div class="upsell-card">
           <img src="${getOptimizedImageUrl(item.img)}" alt="${item.name}" class="upsell-img" onerror="this.onerror=null; this.src='https://placehold.co/200x200/f3f0ec/a88b62?text=Item';" />
           <div class="upsell-title" title="${item.name}">${item.name}</div>
-          <div class="upsell-price">฿${(Number(item.price) || 0).toLocaleString()}</div>
+          <div class="upsell-price">${(Number(item.price) || 0).toLocaleString()} บาท</div>
           <button type="button" class="btn-upsell-add" onclick="addUpsellToCart('${item.id}')">
             <span>+</span> เพิ่ม
           </button>
@@ -747,7 +747,7 @@ window.getProductUnitInfo = getProductUnitInfo;
         <p class="product-desc" style="display: none;">${product.desc}</p>
         <div class="product-footer">
           <div class="product-price-wrap">
-            <span class="product-price">฿${product.price}</span>
+            <span class="product-price">${product.price} บาท</span>
             <span class="product-price-unit">/ ${unitInfo.unit}</span>
           </div>
           ${isOutOfStock ? `
@@ -846,7 +846,7 @@ function openProductDetail(productOrId) {
     <div class="modal-footer">
       <div>
         <p class="modal-price-label">ราคา (ต่อ${unitInfo.unit})</p>
-        <span class="modal-price">฿${product.price} <small style="font-size:13px; font-weight:600; color:#64748b;">/ ${unitInfo.unit}</small></span>
+        <span class="modal-price">${product.price} บาท <small style="font-size:13px; font-weight:600; color:#64748b;">/ ${unitInfo.unit}</small></span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f5f5f5); border-radius: 12px; padding: 4px 8px; ${isOutOfStock ? 'opacity:0.4; pointer-events:none;' : ''}">
@@ -1043,7 +1043,7 @@ async function shareProduct(product) {
                   contents: [
                     {
                       type: 'text',
-                      text: `ราคา ฿${product.price}`,
+                      text: `ราคา ${product.price} บาท`,
                       weight: 'bold',
                       size: 'lg',
                       color: '#2972a0'
@@ -1099,7 +1099,7 @@ async function shareProduct(product) {
 
 // Order Product (Open LINE official account chat or send Message)
 async function orderProduct(product) {
-  const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n🛒 ${product.name}\n💰 ราคา: ฿${product.price}`;
+  const message = `สนใจสอบถามข้อมูลสินค้าชิ้นนี้ครับ:\n🛒 ${product.name}\n💰 ราคา: ${product.price} บาท`;
 
   // แปลง URL รูปภาพสินค้าให้เป็น URL แบบสัมบูรณ์ (Absolute URL) สำหรับส่งทางไลน์
   let productImg = getOptimizedImageUrl(product.img);
@@ -1267,7 +1267,7 @@ function updateCartBadge() {
           <span style="font-weight: 600; font-size: 15px;">ตะกร้าสินค้า</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-weight: 700; font-size: 16px;">฿<span id="floatCartPrice">${totalPrice.toLocaleString()}</span></span>
+          <span style="font-weight: 700; font-size: 16px;"><span id="floatCartPrice">${totalPrice.toLocaleString()}</span> บาท</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </div>
       </div>
@@ -1301,7 +1301,7 @@ function renderCartItems() {
         <p>ตะกร้าสินค้าของคุณยังว่างเปล่า</p>
       </div>
     `;
-    totalPriceEl.textContent = '฿0';
+    totalPriceEl.textContent = '0 บาท';
     btnGoToCheckout.disabled = true;
     return;
   }
@@ -1319,7 +1319,7 @@ function renderCartItems() {
     row.innerHTML = `
       <div class="cart-item-info">
         <span class="cart-item-title">${item.name}</span>
-        <span class="cart-item-price">฿${item.price}/${itemUnit} × ${item.qty} ${itemUnit} = ฿${subtotal}</span>
+        <span class="cart-item-price">${item.price} บาท/${itemUnit} × ${item.qty} ${itemUnit} = ${subtotal.toLocaleString()} บาท</span>
       </div>
       <div class="cart-item-controls">
         <button class="btn-qty-adjust" onclick="adjustQty('${item.id}', -1)">-</button>
@@ -1336,7 +1336,7 @@ function renderCartItems() {
     cartBody.appendChild(row);
   });
 
-  totalPriceEl.textContent = `฿${total}`;
+  totalPriceEl.textContent = `${total.toLocaleString()} บาท`;
   btnGoToCheckout.disabled = false;
 
   // แสดงแถบสินค้าแนะนำ (Upselling / Cross-selling)
@@ -1704,7 +1704,7 @@ function toggleShippingFields() {
     if (conditionsBox) {
       conditionsBox.innerHTML = `
         <div style="font-size: 14px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 6px;">
-          <span>🏪 มารับสินค้าเองที่หน้าร้าน : <strong style="font-size: 15px; color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></span>
+          <span>🏪 มารับสินค้าเองที่หน้าร้าน : <strong style="font-size: 15px; color: #2563eb;">ฟรีค่าจัดส่ง 0 บาท</strong></span>
         </div>
       `;
     }
@@ -1725,10 +1725,10 @@ function toggleShippingFields() {
           <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
         </div>
         <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
-          <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
-          <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
-          <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
-          <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
+          <li>ยอดไม่ถึง 500 บาท : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
+          <li>ยอดเกิน 500 บาท : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
+          <li>ยอดเกิน 1,000 บาท : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
+          <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง 0 บาท</strong></li>
         </ul>
       `;
     }
@@ -1763,29 +1763,29 @@ function calculateCheckoutTotal() {
 
   if (shippingOption === 'รับหน้าร้าน') {
     shippingFee = 0;
-    discountNote = '🏪 รับสินค้าเองที่หน้าร้าน (ฟรีค่าจัดส่ง ฿0)';
+    discountNote = '🏪 รับสินค้าเองที่หน้าร้าน (ฟรีค่าจัดส่ง 0 บาท)';
   } else {
     if (subtotal >= 1000) {
       if (distKm <= 10) {
         shippingFee = 0;
-        discountNote = '🎉 ยอดซื้อครบ ฿1,000 ฟรีค่าจัดส่ง 10 กิโลเมตรแรก!';
+        discountNote = '🎉 ยอดซื้อครบ 1,000 บาท ฟรีค่าจัดส่ง 10 กิโลเมตรแรก!';
       } else {
         const extraKm = distKm - 10;
         shippingFee = Math.ceil(extraKm * 10);
-        discountNote = `🎉 ยอดเกิน ฿1,000 ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
+        discountNote = `🎉 ยอดเกิน 1,000 บาท ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
       }
     } else if (subtotal >= 500) {
       if (distKm <= 5) {
         shippingFee = 0;
-        discountNote = '🎉 ยอดซื้อครบ ฿500 ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
+        discountNote = '🎉 ยอดซื้อครบ 500 บาท ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
       } else {
         const extraKm = distKm - 5;
         shippingFee = Math.ceil(extraKm * 10);
-        discountNote = `🎉 ยอดเกิน ฿500 ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
+        discountNote = `🎉 ยอดเกิน 500 บาท ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
       }
     } else {
       shippingFee = Math.ceil(distKm * 10);
-      discountNote = `💡 ยอดไม่ถึง ฿500 คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 10 บาท = ฿${shippingFee})`;
+      discountNote = `💡 ยอดไม่ถึง 500 บาท คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
     }
   }
 
@@ -1803,7 +1803,7 @@ function calculateCheckoutTotal() {
       couponLabel = `${appliedCoupon.code} (-${appliedCoupon.percent}%)`;
     } else if (appliedCoupon.type === 'fixed') {
       discountAmount = Math.min(subtotal, appliedCoupon.amount);
-      couponLabel = `${appliedCoupon.code} (-฿${appliedCoupon.amount})`;
+      couponLabel = `${appliedCoupon.code} (-${appliedCoupon.amount} บาท)`;
     }
   }
 
@@ -1817,21 +1817,21 @@ function calculateCheckoutTotal() {
     if (appliedCoupon && discountAmount > 0) {
       couponRow.style.display = 'flex';
       if (couponCodeLabel) couponCodeLabel.textContent = couponLabel;
-      if (couponDiscountText) couponDiscountText.textContent = `-฿${discountAmount.toLocaleString()}`;
+      if (couponDiscountText) couponDiscountText.textContent = `-${discountAmount.toLocaleString()} บาท`;
     } else {
       couponRow.style.display = 'none';
     }
   }
 
   const subtotalEl = document.getElementById('checkoutSubtotalText');
-  if (subtotalEl) subtotalEl.textContent = `฿${subtotal.toLocaleString()}`;
+  if (subtotalEl) subtotalEl.textContent = `${subtotal.toLocaleString()} บาท`;
 
   const feeEl = document.getElementById('checkoutShippingFeeText');
   if (feeEl) {
     if (shippingFee === 0) {
-      feeEl.innerHTML = '<span style="color: #4ade80;">ฟรี ฿0</span>';
+      feeEl.innerHTML = '<span style="color: #4ade80;">ฟรี 0 บาท</span>';
     } else {
-      feeEl.textContent = `฿${shippingFee.toLocaleString()}`;
+      feeEl.textContent = `${shippingFee.toLocaleString()} บาท`;
     }
   }
 
@@ -1852,7 +1852,7 @@ function calculateCheckoutTotal() {
               <span style="font-weight: 500;">${item.name}</span>
               <span style="color: #94a3b8; font-size: 13px; margin-left: 6px;">x${item.qty}</span>
             </div>
-            <div style="color: #ffffff; font-weight: 500;">฿${itemTotal.toLocaleString()}</div>
+            <div style="color: #ffffff; font-weight: 500;">${itemTotal.toLocaleString()} บาท</div>
           </div>
         `;
       });
@@ -1860,9 +1860,9 @@ function calculateCheckoutTotal() {
   }
 
   const btnSubmitPrice = document.getElementById('btnSubmitPrice');
-  if (btnSubmitPrice) btnSubmitPrice.textContent = `฿${grandTotal.toLocaleString()}`;
+  if (btnSubmitPrice) btnSubmitPrice.textContent = `${grandTotal.toLocaleString()} บาท`;
   const totalEl = document.getElementById('checkoutTotalText');
-  if (totalEl) totalEl.textContent = `฿${grandTotal.toLocaleString()}`;
+  if (totalEl) totalEl.textContent = `${grandTotal.toLocaleString()} บาท`;
 
   return {
     subtotal: subtotal,
@@ -2019,15 +2019,11 @@ function validateCheckoutForm() {
     }
   }
 
-  // Valid if Name, Valid Phone, Shipping details, and Preorder (if any) are valid
+  // ตรวจสอบว่าข้อมูลครบถ้วนหรือยัง (แต่ไม่ทำปุ่มเป็นสีเทา เพื่อให้ลูกค้ารู้ว่ากดปุ่มได้ และถ้ายืนยันทั้งที่ยังไม่ครบ ระบบจะแจ้งเตือนแล้วเลื่อนพาไปจุดที่ต้องกรอกทันที)
   const isValid = name !== "" && isPhoneValid && isPreorderValid && isShippingValid;
   if (btnSubmitOrder) {
     btnSubmitOrder.removeAttribute('disabled');
-    if (!isValid) {
-      btnSubmitOrder.classList.add('btn-gray-disabled');
-    } else {
-      btnSubmitOrder.classList.remove('btn-gray-disabled');
-    }
+    btnSubmitOrder.classList.remove('btn-gray-disabled');
   }
 }
 
@@ -2469,7 +2465,7 @@ async function loadMyOrders() {
           </div>
           <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.9em; color: var(--text-light);">
             <span>${dateStr}</span>
-            <span style="font-weight: 600; color: var(--primary-color);">฿${order.totalPrice}</span>
+            <span style="font-weight: 600; color: var(--primary-color);">${order.totalPrice} บาท</span>
           </div>
           
           <!-- รายละเอียดสินค้า (Accordion style) -->
@@ -2925,6 +2921,37 @@ if (addressLabelEl) addressLabelEl.addEventListener('input', validateCheckoutFor
 if (preorderDateInput) preorderDateInput.addEventListener('change', validateCheckoutForm);
 if (preorderTimeSelect) preorderTimeSelect.addEventListener('change', validateCheckoutForm);
 
+// Helper: ไฮไลต์และเลื่อนหน้าจอไปยังช่องที่ยังไม่ได้กรอกข้อมูลในหน้าชำระเงิน
+function highlightAndScrollToCheckoutField(targetEl) {
+  if (!targetEl) return;
+  try {
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const prevBorder = targetEl.style.borderColor;
+    const prevShadow = targetEl.style.boxShadow;
+    const prevBg = targetEl.style.backgroundColor;
+
+    targetEl.style.borderColor = '#ef4444';
+    targetEl.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.25)';
+    targetEl.style.backgroundColor = '#fff5f5';
+
+    setTimeout(() => {
+      if (typeof targetEl.focus === 'function') {
+        targetEl.focus({ preventScroll: true });
+      }
+    }, 350);
+
+    const clearHighlight = () => {
+      targetEl.style.borderColor = prevBorder;
+      targetEl.style.boxShadow = prevShadow;
+      targetEl.style.backgroundColor = prevBg;
+      targetEl.removeEventListener('input', clearHighlight);
+      targetEl.removeEventListener('change', clearHighlight);
+    };
+    targetEl.addEventListener('input', clearHighlight);
+    targetEl.addEventListener('change', clearHighlight);
+  } catch (e) {}
+}
+
 // Submit Order to Cloudflare API / Server
 if (btnSubmitOrder) {
   btnSubmitOrder.addEventListener('click', async () => {
@@ -2936,26 +2963,63 @@ if (btnSubmitOrder) {
 
     const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
     let rawAddressDetails = checkoutAddressDetails ? checkoutAddressDetails.value.trim() : '';
+    const addressLabelInputEl = document.getElementById('addressLabel');
+    let rawAddressLabel = addressLabelInputEl ? addressLabelInputEl.value.trim() : '';
 
-    // ตรวจสอบความครบถ้วนของข้อมูล
+    // ตรวจสอบความครบถ้วนของข้อมูล พร้อมเก็บ Element แรกที่ยังไม่ได้กรอกเพื่อเลื่อนหน้าจอพาไปทันที
     let missingFields = [];
-    if (!name) missingFields.push('ชื่อผู้สั่ง');
+    let firstMissingEl = null;
+
+    if (!name) {
+      missingFields.push('ชื่อผู้รับสินค้า');
+      if (!firstMissingEl) firstMissingEl = checkoutName;
+    }
     if (!rawPhone) {
       missingFields.push('เบอร์โทรศัพท์ติดต่อ');
+      if (!firstMissingEl) firstMissingEl = checkoutPhone;
     } else if (!isPhoneValid) {
-      missingFields.push('เบอร์โทรศัพท์ที่ถูกต้อง (ตัวเลข 10 หลัก ขึ้นต้นด้วย 0 เช่น 08X-XXX-XXXX)');
+      missingFields.push('เบอร์โทรศัพท์ติดต่อให้ครบ 10 หลัก (เช่น 081-234-5678)');
+      if (!firstMissingEl) firstMissingEl = checkoutPhone;
     }
-    if (shippingOption === 'จัดส่ง' && !rawAddressDetails) missingFields.push('รายละเอียดที่อยู่จัดส่ง');
 
     const deliveryTypeCheck = document.querySelector('input[name="deliveryType"]:checked')?.value || 'ทันที';
     if (deliveryTypeCheck === 'ล่วงหน้า') {
-      const pDate = document.getElementById('preorderDate')?.value;
-      const pTime = document.getElementById('preorderTime')?.value;
-      if (!pDate || !pTime) missingFields.push('วันและเวลาสั่งซื้อล่วงหน้า');
+      const pDateEl = document.getElementById('preorderDate');
+      const pTimeEl = document.getElementById('preorderTime');
+      const pDate = pDateEl?.value;
+      const pTime = pTimeEl?.value;
+      if (!pDate) {
+        missingFields.push('วันที่ต้องการสั่งล่วงหน้า');
+        if (!firstMissingEl) firstMissingEl = pDateEl;
+      }
+      if (!pTime) {
+        missingFields.push('เวลาที่ต้องการรับสินค้า (09:00 - 16:00 น.)');
+        if (!firstMissingEl) firstMissingEl = pTimeEl;
+      }
+    }
+
+    if (shippingOption === 'จัดส่ง') {
+      // ถ้าเป็นฟอร์มเพิ่มที่อยู่ใหม่ แต่ถูกซ่อนอยู่ ให้เปิดแสดงขึ้นมาก่อน
+      const newAddressSec = document.getElementById('newAddressSection');
+      if (!rawAddressDetails) {
+        if (newAddressSec && newAddressSec.style.display === 'none') {
+          newAddressSec.style.display = 'block';
+        }
+        missingFields.push('รายละเอียดที่อยู่สำหรับจัดส่ง (บ้านเลขที่ / ซอย / ถนน / จุดสังเกต)');
+        if (!firstMissingEl) firstMissingEl = checkoutAddressDetails;
+      }
+      if (selectedSavedAddressIndex === -1 && !rawAddressLabel) {
+        if (newAddressSec && newAddressSec.style.display === 'none') {
+          newAddressSec.style.display = 'block';
+        }
+        missingFields.push('ตั้งชื่อที่อยู่นี้ (เช่น บ้าน, ที่ทำงาน)');
+        if (!firstMissingEl) firstMissingEl = addressLabelInputEl;
+      }
     }
 
     if (missingFields.length > 0) {
-      alert(`⚠️ ข้อมูลยังไม่ครบถ้วน!\n\nกรุณากรอกข้อมูลต่อไปนี้ก่อนยืนยันการสั่งซื้อครับ:\n• ${missingFields.join('\n• ')}`);
+      alert(`⚠️ ยังกรอกข้อมูลจัดส่งไม่ครบครับ\n\nรบกวนระบุข้อมูลต่อไปนี้เพิ่มเติมนะครับ:\n• ${missingFields.join('\n• ')}\n\n(กดตกลง แล้วระบบจะเลื่อนพาไปตรงช่องที่ต้องกรอกให้ทันทีครับ)`);
+      highlightAndScrollToCheckoutField(firstMissingEl);
       return;
     }
     let addressDetails = '';

@@ -71,16 +71,16 @@ body.no-scroll {
 }
 
 .navbar-logo {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--primary-color);
+  border: 2.5px solid var(--primary-color);
 }
 
 .navbar-title {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 800;
   color: var(--text-dark);
   letter-spacing: 0.5px;
 }

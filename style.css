@@ -61,11 +61,11 @@ body {
 }
 
 .shop-logo {
-  width: 90px;
-  height: 90px;
+  width: 108px;
+  height: 108px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--primary-color);
+  border: 3.5px solid var(--primary-color);
   box-shadow: var(--shadow-md);
   transition: var(--transition);
 }
@@ -75,8 +75,8 @@ body {
 }
 
 .shop-name {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 2.15rem;
+  font-weight: 800;
   color: var(--text-dark);
   margin-bottom: 4px;
   background: linear-gradient(135deg, var(--text-dark), var(--primary-dark));
@@ -85,9 +85,9 @@ body {
 }
 
 .shop-subtitle {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--text-light);
-  font-weight: 300;
+  font-weight: 400;
 }
 
 /* Member Card */
@@ -146,13 +146,13 @@ body {
 }
 
 .card-logo {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 1px;
   color: #ffffff;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .card-logo svg {
