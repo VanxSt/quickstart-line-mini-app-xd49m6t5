@@ -6349,6 +6349,57 @@
       }
     }
 
+    // ดึงหน่วยสินค้า (เช่น ใบ, แพ็ค, ลัง, หิ้ว, มัด, ขวด, ชิ้น) จากชื่อสินค้าโดยอัตโนมัติ
+    function getProductUnitInfo(productOrName) {
+      const rawName = typeof productOrName === 'object' ? (productOrName && productOrName.name ? productOrName.name : '') : String(productOrName || '');
+      const str = rawName.trim();
+      if (!str) return { unit: 'ชิ้น', badge: 'ชิ้น' };
+
+      const parenMatch = str.match(/\(\s*(ลัง|แพ็ค|แพค|หิ้ว|มัด|กระสอบ|ถาด|แผง|กล่อง|แถว|โหล|ถุง)\s*([0-9xX\*]*)\s*\)/i);
+      const innerMatch = str.match(/(?<!เบอร์\s*)(?<!รุ่น\s*)(\d+)\s*(ใบ|ชุด|เส้น|ชิ้น|ซอง|คัน|ก้าน|ม้วน|แผ่น|ดวง|หลอด|ก้อน|ขวด|กระป๋อง|กล่อง|ถ้วย|ถุง|เล่ม|คู่|อัน|ด้าม|ลูก)(?!\s*ละ)/);
+
+      if (parenMatch) {
+        const u = parenMatch[1] === 'แพค' ? 'แพ็ค' : parenMatch[1];
+        const q = parenMatch[2] ? ' ' + parenMatch[2] : '';
+        const innerTxt = innerMatch ? ' (' + innerMatch[1] + ' ' + innerMatch[2] + ')' : '';
+        return { unit: u, badge: u + q + innerTxt };
+      }
+
+      const perUnitMatch = str.match(/(ฟอง|ใบ|ชิ้น|อัน|ซอง|ขวด|ก้อน|แผ่น|ม้วน|แพ็ค|แพค|ถุง|กล่อง|ลูก|เส้น|หลอด)ละ/);
+      if (perUnitMatch) {
+        const u = perUnitMatch[1] === 'แพค' ? 'แพ็ค' : perUnitMatch[1];
+        return { unit: u, badge: u };
+      }
+
+      if (innerMatch) {
+        return { unit: innerMatch[2], badge: innerMatch[1] + ' ' + innerMatch[2] };
+      }
+
+      if (/ไข่ไก่|ไข่เป็ด|ไข่เยี่ยวม้า|ไข่เค็ม/.test(str)) return { unit: 'ฟอง', badge: 'ฟอง' };
+      if (/แกลลอน/.test(str)) return { unit: 'แกลลอน', badge: 'แกลลอน' };
+      if (/กระปุก/.test(str)) return { unit: 'กระปุก', badge: 'กระปุก' };
+      if (/กระป๋อง/.test(str)) return { unit: 'กระป๋อง', badge: 'กระป๋อง' };
+      if (/ขวด/.test(str)) return { unit: 'ขวด', badge: 'ขวด' };
+      if (/กล่อง/.test(str)) return { unit: 'กล่อง', badge: 'กล่อง' };
+      if (/ถ้วย/.test(str)) return { unit: 'ถ้วย', badge: 'ถ้วย' };
+      if (/ถาด/.test(str)) return { unit: 'ถาด', badge: 'ถาด' };
+      if (/กระสอบ/.test(str)) return { unit: 'กระสอบ', badge: 'กระสอบ' };
+      if (/ลัง/.test(str)) return { unit: 'ลัง', badge: 'ลัง' };
+      if (/แพ็ค|แพค/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
+      if (/หิ้ว/.test(str) && !/ถุงหิ้ว/.test(str)) return { unit: 'หิ้ว', badge: 'หิ้ว' };
+      if (/มัด/.test(str)) return { unit: 'มัด', badge: 'มัด' };
+      if (/แผง/.test(str)) return { unit: 'แผง', badge: 'แผง' };
+      if (/ซอง/.test(str)) return { unit: 'ซอง', badge: 'ซอง' };
+      if (/ม้วน/.test(str)) return { unit: 'ม้วน', badge: 'ม้วน' };
+      if (/แผ่น/.test(str)) return { unit: 'แผ่น', badge: 'แผ่น' };
+      if (/ก้อน/.test(str)) return { unit: 'ก้อน', badge: 'ก้อน' };
+      if (/เล่ม|สมุด/.test(str)) return { unit: 'เล่ม', badge: 'เล่ม' };
+      if (/ถุง/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
+      if (/ใบ/.test(str) && !/ชาใบ|ใบชา|ใบเตย|ใบหยก|เรือใบ/.test(str)) return { unit: 'ใบ', badge: 'ใบ' };
+
+      return { unit: 'ชิ้น', badge: 'ชิ้น' };
+    }
+
     function renderProductsTable() {
       const tbody = document.getElementById('productsBody');
       if (!tbody) return;
@@ -6380,6 +6431,7 @@
         const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
         const isOutStock = (stockQty < 1) || (p.status === 'out_of_stock');
         const isLowStock = !isOutStock && (stockQty <= 5);
+        const unitInfo = getProductUnitInfo(p);
 
         let stockBoxBg = '#f0fdf4';
         let stockBoxBorder = '#bbf7d0';
@@ -6406,6 +6458,7 @@
           '<span class="product-title-text" onclick="openProductDetailModal(\'' + p.id + '\')">' + (p.name || 'ไม่มีชื่อสินค้า') + '</span>' +
           '<div class="product-sub-badges">' +
           '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกเพื่อคัดลอกรหัสสินค้า">📋 ' + (p.id || '-') + '</span>' +
+          '<span style="font-size: 11px; font-weight: 700; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; padding: 2px 7px; border-radius: 6px;">📦 หน่วย: ' + unitInfo.badge + '</span>' +
           tagHtml +
           (!isActive ? '<span class="status-pill status-pill-inactive" style="font-size: 11px;">⚪ ซ่อนอยู่</span>' : '') +
           '</div>' +
@@ -6413,10 +6466,10 @@
           '</div>' +
           '</td>' +
           '<td><span class="category-badge">📂 ' + catName + '</span></td>' +
-          '<td><span class="price-tag-big">฿' + (Number(p.price) || 0).toLocaleString() + '</span></td>' +
+          '<td><span class="price-tag-big">฿' + (Number(p.price) || 0).toLocaleString() + '</span> <small style="font-size:11px; color:#64748b; font-weight:600;">/ ' + unitInfo.unit + '</small></td>' +
           '<td style="text-align: center;">' +
           '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; background: ' + stockBoxBg + '; color: ' + stockBoxVal + '; border: 1px solid ' + stockBoxBorder + ';">' +
-          (isOutStock ? '❌ 0 (หมด)' : '📦 ' + stockQty.toLocaleString() + ' ชิ้น') +
+          (isOutStock ? '❌ 0 (หมด)' : '📦 ' + stockQty.toLocaleString() + ' ' + unitInfo.unit) +
           '</span>' +
           '</td>' +
           '<td style="text-align: center;">' +
@@ -6466,6 +6519,7 @@
         const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
         const isOutStock = (stockQty < 1) || (p.status === 'out_of_stock');
         const isLowStock = !isOutStock && (stockQty <= 5);
+        const unitInfo = getProductUnitInfo(p);
 
         let stockBadgeStyle = '';
         let stockBadgeText = '';
@@ -6483,14 +6537,14 @@
           stockBoxVal = '#dc2626';
         } else if (isLowStock) {
           stockBadgeStyle = 'background: rgba(217, 119, 6, 0.92); color: #ffffff;';
-          stockBadgeText = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBadgeText = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ' + unitInfo.unit;
           stockBoxBg = '#fffbeb';
           stockBoxBorder = '#fde68a';
           stockBoxLabel = '#92400e';
           stockBoxVal = '#b45309';
         } else {
           stockBadgeStyle = 'background: rgba(16, 185, 129, 0.92); color: #ffffff;';
-          stockBadgeText = '📦 คงเหลือ ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBadgeText = '📦 คงเหลือ ' + stockQty.toLocaleString() + ' ' + unitInfo.unit;
           stockBoxBg = '#f0fdf4';
           stockBoxBorder = '#bbf7d0';
           stockBoxLabel = '#166534';
@@ -6516,8 +6570,9 @@
           '<div class="admin-product-card-body">' +
           '<div class="admin-product-card-title" title="' + (p.name || '') + '" onclick="openProductDetailModal(\'' + p.id + '\')" style="cursor: pointer;">' + (p.name || 'ไม่มีชื่อสินค้า') + '</div>' +
           
-          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px;">' +
+          '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; gap: 4px; flex-wrap: wrap;">' +
           '<span class="sku-chip" onclick="copyProductSku(\'' + p.id + '\', event)" title="คลิกคัดลอก SKU">📋 ' + (p.id || '-') + '</span>' +
+          '<span style="font-size: 10.5px; font-weight: 700; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 6px;">📦 ' + unitInfo.badge + '</span>' +
           '</div>' +
 
           '<!-- แถบแสดงจำนวนสต็อกคงเหลือชัดเจน -->' +
@@ -6526,7 +6581,7 @@
           '<span>📦 สต็อกสินค้า:</span>' +
           '</span>' +
           '<span style="font-size: 12.5px; font-weight: 800; color: ' + stockBoxVal + '; background: #ffffff; padding: 2px 8px; border-radius: 6px; border: 1px solid ' + stockBoxBorder + '; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">' +
-          (isOutStock ? '❌ 0 (หมด)' : stockQty.toLocaleString() + ' ชิ้น') +
+          (isOutStock ? '❌ 0 (หมด)' : stockQty.toLocaleString() + ' ' + unitInfo.unit) +
           '</span>' +
           '</div>' +
 
@@ -6601,18 +6656,19 @@
       if (stockBadge) {
         const rawStock = Number(product.stock !== undefined && product.stock !== null ? product.stock : 0);
         const stockQty = rawStock >= 1 ? Math.floor(rawStock) : 0;
+        const unitInfo = getProductUnitInfo(product);
         if (stockQty < 1 || product.status === 'out_of_stock') {
-          stockBadge.textContent = '❌ สินค้าหมดสต็อก (0 ชิ้น)';
+          stockBadge.textContent = '❌ สินค้าหมดสต็อก (0 ' + unitInfo.unit + ')';
           stockBadge.style.color = '#dc2626';
           stockBadge.style.borderColor = '#fca5a5';
           stockBadge.style.background = '#fef2f2';
         } else if (stockQty <= 5) {
-          stockBadge.textContent = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ชิ้น (ใกล้หมด)';
+          stockBadge.textContent = '⚠️ เหลือ ' + stockQty.toLocaleString() + ' ' + unitInfo.unit + ' (ใกล้หมด)';
           stockBadge.style.color = '#d97706';
           stockBadge.style.borderColor = '#fde68a';
           stockBadge.style.background = '#fffbeb';
         } else {
-          stockBadge.textContent = '📦 ' + stockQty.toLocaleString() + ' ชิ้น';
+          stockBadge.textContent = '📦 ' + stockQty.toLocaleString() + ' ' + unitInfo.unit;
           stockBadge.style.color = '#15803d';
           stockBadge.style.borderColor = '#86efac';
           stockBadge.style.background = '#ffffff';

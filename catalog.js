@@ -664,6 +664,62 @@ function renderProducts() {
     return;
   }
 
+// Helper: ดึงหน่วยสินค้า (เช่น ใบ, แพ็ค, ลัง, หิ้ว, มัด, ขวด, ชิ้น) จากชื่อสินค้าโดยอัตโนมัติ
+function getProductUnitInfo(productOrName) {
+  const rawName = typeof productOrName === 'object' ? (productOrName?.name || '') : String(productOrName || '');
+  const str = rawName.trim();
+  if (!str) return { unit: 'ชิ้น', badge: 'ชิ้น' };
+
+  // 1. ตรวจหาวงเล็บหน่วยแพ็คเกจท้ายชื่อ เช่น (ลัง10), (แพ็ค12), (แพค10), (หิ้ว10), (มัด10), (กระสอบ10), (ถาด48), (แผง10)
+  const parenMatch = str.match(/\(\s*(ลัง|แพ็ค|แพค|หิ้ว|มัด|กระสอบ|ถาด|แผง|กล่อง|แถว|โหล|ถุง)\s*([0-9xX\*]*)\s*\)/i);
+  const innerMatch = str.match(/(?<!เบอร์\s*)(?<!รุ่น\s*)(\d+)\s*(ใบ|ชุด|เส้น|ชิ้น|ซอง|คัน|ก้าน|ม้วน|แผ่น|ดวง|หลอด|ก้อน|ขวด|กระป๋อง|กล่อง|ถ้วย|ถุง|เล่ม|คู่|อัน|ด้าม|ลูก)(?!\s*ละ)/);
+
+  if (parenMatch) {
+    const u = parenMatch[1] === 'แพค' ? 'แพ็ค' : parenMatch[1];
+    const q = parenMatch[2] ? ' ' + parenMatch[2] : '';
+    const innerTxt = innerMatch ? ' (' + innerMatch[1] + ' ' + innerMatch[2] + ')' : '';
+    return { unit: u, badge: u + q + innerTxt };
+  }
+
+  // 2. ตรวจหาคำว่า ฟองละ / ใบละ / ชิ้นละ / อันละ
+  const perUnitMatch = str.match(/(ฟอง|ใบ|ชิ้น|อัน|ซอง|ขวด|ก้อน|แผ่น|ม้วน|แพ็ค|แพค|ถุง|กล่อง|ลูก|เส้น|หลอด)ละ/);
+  if (perUnitMatch) {
+    const u = perUnitMatch[1] === 'แพค' ? 'แพ็ค' : perUnitMatch[1];
+    return { unit: u, badge: u };
+  }
+
+  // 3. ตรวจหาจำนวนบรรจุในชื่อ เช่น 100 ใบ, 50 ชุด, 250 เส้น, 40 ชิ้น
+  if (innerMatch) {
+    return { unit: innerMatch[2], badge: innerMatch[1] + ' ' + innerMatch[2] };
+  }
+
+  // 4. ตรวจหาคำบอกหน่วยหรือประเภทบรรจุภัณฑ์ในชื่อสินค้า
+  if (/ไข่ไก่|ไข่เป็ด|ไข่เยี่ยวม้า|ไข่เค็ม/.test(str)) return { unit: 'ฟอง', badge: 'ฟอง' };
+  if (/แกลลอน/.test(str)) return { unit: 'แกลลอน', badge: 'แกลลอน' };
+  if (/กระปุก/.test(str)) return { unit: 'กระปุก', badge: 'กระปุก' };
+  if (/กระป๋อง/.test(str)) return { unit: 'กระป๋อง', badge: 'กระป๋อง' };
+  if (/ขวด/.test(str)) return { unit: 'ขวด', badge: 'ขวด' };
+  if (/กล่อง/.test(str)) return { unit: 'กล่อง', badge: 'กล่อง' };
+  if (/ถ้วย/.test(str)) return { unit: 'ถ้วย', badge: 'ถ้วย' };
+  if (/ถาด/.test(str)) return { unit: 'ถาด', badge: 'ถาด' };
+  if (/กระสอบ/.test(str)) return { unit: 'กระสอบ', badge: 'กระสอบ' };
+  if (/ลัง/.test(str)) return { unit: 'ลัง', badge: 'ลัง' };
+  if (/แพ็ค|แพค/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
+  if (/หิ้ว/.test(str) && !/ถุงหิ้ว/.test(str)) return { unit: 'หิ้ว', badge: 'หิ้ว' };
+  if (/มัด/.test(str)) return { unit: 'มัด', badge: 'มัด' };
+  if (/แผง/.test(str)) return { unit: 'แผง', badge: 'แผง' };
+  if (/ซอง/.test(str)) return { unit: 'ซอง', badge: 'ซอง' };
+  if (/ม้วน/.test(str)) return { unit: 'ม้วน', badge: 'ม้วน' };
+  if (/แผ่น/.test(str)) return { unit: 'แผ่น', badge: 'แผ่น' };
+  if (/ก้อน/.test(str)) return { unit: 'ก้อน', badge: 'ก้อน' };
+  if (/เล่ม|สมุด/.test(str)) return { unit: 'เล่ม', badge: 'เล่ม' };
+  if (/ถุง/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
+  if (/ใบ/.test(str) && !/ชาใบ|ใบชา|ใบเตย|ใบหยก|เรือใบ/.test(str)) return { unit: 'ใบ', badge: 'ใบ' };
+
+  return { unit: 'ชิ้น', badge: 'ชิ้น' };
+}
+window.getProductUnitInfo = getProductUnitInfo;
+
   // แสดงผลเฉพาะจำนวนสินค้าที่จำกัดไว้ (Lazy Rendering / Pagination)
   const toRender = filtered.slice(0, visibleLimit);
 
@@ -673,6 +729,7 @@ function renderProducts() {
     const cleanStock = rawStockNum !== null ? Math.max(0, rawStockNum) : null;
     const isOutOfStock = (cleanStock !== null && cleanStock < 1) || product.status === 'out_of_stock';
     const isLowStock = !isOutOfStock && cleanStock !== null && cleanStock >= 1 && cleanStock <= 5;
+    const unitInfo = getProductUnitInfo(product);
 
     const card = document.createElement('div');
     card.className = `product-card animate-fade-in ${isOutOfStock ? 'is-out-of-stock' : ''}`;
@@ -680,13 +737,19 @@ function renderProducts() {
       <div class="product-img-wrapper">
         <img class="product-img" src="${productImg}" alt="${product.name}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x600/f3f0ec/a88b62?text=No+Image';">
         ${isOutOfStock ? `<span class="product-tag tag-out-of-stock" style="background:#ef4444; color:#fff; font-weight:700;">สินค้าหมด</span>` : (product.tag ? `<span class="product-tag">${product.tag}</span>` : '')}
-        ${isLowStock ? `<span class="product-tag tag-low-stock" style="background:#f59e0b; color:#fff; font-weight:700; top:auto; bottom:8px;">เหลือ ${cleanStock} ชิ้น</span>` : ''}
+        ${isLowStock ? `<span class="product-tag tag-low-stock" style="background:#f59e0b; color:#fff; font-weight:700; top:auto; bottom:8px;">เหลือ ${cleanStock} ${unitInfo.unit}</span>` : ''}
       </div>
       <div class="product-info">
         <h3 class="product-title">${product.name}</h3>
+        <div class="product-unit-row">
+          <span class="product-unit-chip">📦 หน่วย: ${unitInfo.badge}</span>
+        </div>
         <p class="product-desc" style="display: none;">${product.desc}</p>
         <div class="product-footer">
-          <span class="product-price">฿${product.price}</span>
+          <div class="product-price-wrap">
+            <span class="product-price">฿${product.price}</span>
+            <span class="product-price-unit">/ ${unitInfo.unit}</span>
+          </div>
           ${isOutOfStock ? `
             <span class="badge-out-of-stock-label" style="font-size:11px; color:#ef4444; font-weight:700; background:#fee2e2; padding:3px 8px; border-radius:8px;">หมด</span>
           ` : `
@@ -763,12 +826,13 @@ function openProductDetail(productOrId) {
   const isOutOfStock = (cleanStock !== null && cleanStock < 1) || product.status === 'out_of_stock';
   const isLowStock = !isOutOfStock && cleanStock !== null && cleanStock >= 1 && cleanStock <= 5;
   const productImg = getOptimizedImageUrl(product.img);
+  const unitInfo = getProductUnitInfo(product);
 
   let stockNoticeHtml = '';
   if (isOutOfStock) {
     stockNoticeHtml = `<span class="modal-tag" style="background:#ef4444; color:#fff; font-weight:700;">❌ สินค้าหมดชั่วคราว</span>`;
   } else if (isLowStock) {
-    stockNoticeHtml = `<span class="modal-tag" style="background:#f59e0b; color:#fff; font-weight:700;">⚡ เหลือเพียง ${cleanStock} ชิ้น</span>`;
+    stockNoticeHtml = `<span class="modal-tag" style="background:#f59e0b; color:#fff; font-weight:700;">⚡ เหลือเพียง ${cleanStock} ${unitInfo.unit}</span>`;
   }
 
   modalContent.innerHTML = `
@@ -776,12 +840,13 @@ function openProductDetail(productOrId) {
     <h2 class="modal-title">${product.name}</h2>
     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin: 4px 0 10px 0;">
       <span class="modal-tag">${product.tag || 'สินค้าคุณภาพ'}</span>
+      <span class="modal-tag" style="background:#e0f2fe; color:#0369a1; font-weight:700; border:1px solid #bae6fd;">📦 หน่วย: ${unitInfo.badge}</span>
       ${stockNoticeHtml}
     </div>
     <div class="modal-footer">
       <div>
-        <p class="modal-price-label">ราคา</p>
-        <span class="modal-price">฿${product.price}</span>
+        <p class="modal-price-label">ราคา (ต่อ${unitInfo.unit})</p>
+        <span class="modal-price">฿${product.price} <small style="font-size:13px; font-weight:600; color:#64748b;">/ ${unitInfo.unit}</small></span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f5f5f5); border-radius: 12px; padding: 4px 8px; ${isOutOfStock ? 'opacity:0.4; pointer-events:none;' : ''}">
@@ -837,7 +902,7 @@ function openProductDetail(productOrId) {
   document.getElementById('btnQtyPlus').addEventListener('click', (e) => {
     e.stopPropagation();
     if (cleanStock !== null && cleanStock >= 1 && modalQtyVal >= cleanStock) {
-      alert(`สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ชิ้นครับ`);
+      alert(`สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ${unitInfo.unit}ครับ`);
       return;
     }
     modalQtyVal++; modalQtyEl.textContent = modalQtyVal;
@@ -1129,8 +1194,9 @@ function addToCart(product, quantity = 1) {
 
   const existingItem = cart.find(item => item.id === product.id);
   const currentQty = existingItem ? existingItem.qty : 0;
+  const unitInfo = getProductUnitInfo(product);
   if (cleanStock !== null && cleanStock >= 1 && (currentQty + quantity) > cleanStock) {
-    alert(`ขออภัยครับ สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ชิ้น (ในตะกร้ามีแล้ว ${currentQty} ชิ้น)`);
+    alert(`ขออภัยครับ สินค้านี้มีสต็อกคงเหลือ ${cleanStock} ${unitInfo.unit} (ในตะกร้ามีแล้ว ${currentQty} ${unitInfo.unit})`);
     return;
   }
 
@@ -1142,11 +1208,12 @@ function addToCart(product, quantity = 1) {
       name: product.name,
       price: product.price,
       qty: quantity,
-      img: product.img
+      img: product.img,
+      unit: unitInfo.unit
     });
   }
   saveCart();
-  alert(`เพิ่ม "${product.name}" x${quantity} ลงในตะกร้าเรียบร้อย!`);
+  alert(`เพิ่ม "${product.name}" จำนวน ${quantity} ${unitInfo.unit} ลงในตะกร้าเรียบร้อย!`);
 }
 
 function updateCartItemQty(id, delta) {
@@ -1245,13 +1312,14 @@ function renderCartItems() {
   cart.forEach(item => {
     const subtotal = item.price * item.qty;
     total += subtotal;
+    const itemUnit = item.unit || getProductUnitInfo(item.name).unit;
 
     const row = document.createElement('div');
     row.className = 'cart-item';
     row.innerHTML = `
       <div class="cart-item-info">
         <span class="cart-item-title">${item.name}</span>
-        <span class="cart-item-price">฿${item.price} x ${item.qty} = ฿${subtotal}</span>
+        <span class="cart-item-price">฿${item.price}/${itemUnit} × ${item.qty} ${itemUnit} = ฿${subtotal}</span>
       </div>
       <div class="cart-item-controls">
         <button class="btn-qty-adjust" onclick="adjustQty('${item.id}', -1)">-</button>

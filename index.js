@@ -147,42 +147,44 @@ function setPhoneInputState(isReadOnly) {
     phone.classList.add('readonly-mode');
     if (phoneBox) phoneBox.classList.add('phone-saved-state');
     if (reqBadge) {
-      reqBadge.textContent = '✓ ยืนยันเบอร์แล้ว';
+      reqBadge.textContent = '✅ บันทึกเบอร์แล้ว';
       reqBadge.classList.add('is-verified');
     }
     if (helperText) {
-      helperText.textContent = '✅ เบอร์โทรศัพท์ของคุณพร้อมสำหรับการสั่งซื้อและสะสมแต้มสมาชิกแล้ว';
-      helperText.style.color = '#bbf7d0';
+      helperText.textContent = '✅ บันทึกเบอร์โทรศัพท์เรียบร้อยแล้ว กดปุ่มสีฟ้าด้านล่างเพื่อเลือกซื้อสินค้าได้เลยครับ';
+      helperText.style.background = '#dcfce7';
+      helperText.style.color = '#166534';
     }
     btnSavePhoneInline.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
         <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
-      <span>แก้ไข</span>
+      <span>กดตรงนี้หากต้องการเปลี่ยนเบอร์โทร</span>
     `;
-    btnSavePhoneInline.title = 'แก้ไขเบอร์โทร';
-    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #475569 0%, #334155 100%)';
+    btnSavePhoneInline.title = 'เปลี่ยนเบอร์โทรศัพท์';
+    btnSavePhoneInline.style.background = 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
   } else {
     phone.readOnly = false;
     phone.classList.remove('readonly-mode');
     if (phoneBox) phoneBox.classList.remove('phone-saved-state');
     if (reqBadge) {
-      reqBadge.textContent = 'จำเป็นต้องกรอก';
+      reqBadge.textContent = 'กรอกก่อนเริ่มใช้งาน';
       reqBadge.classList.remove('is-verified');
     }
     if (helperText) {
-      helperText.textContent = '💡 กรุณากรอกเบอร์โทรศัพท์เพื่อเข้าเลือกซื้อสินค้าและสะสมแต้มสมาชิก';
-      helperText.style.color = '#fef08a';
+      helperText.textContent = '💡 พิมพ์เบอร์มือถือ 10 หลัก (เช่น 081-234-5678) แล้วกดปุ่มสีส้มด้านบน หรือกดปุ่มดูสินค้าด้านล่างได้เลยครับ';
+      helperText.style.background = '#f1f5f9';
+      helperText.style.color = '#334155';
     }
     phone.focus();
     btnSavePhoneInline.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
-      <span>บันทึก</span>
+      <span>กดบันทึกเบอร์โทรศัพท์</span>
     `;
-    btnSavePhoneInline.title = 'บันทึกเบอร์โทร';
+    btnSavePhoneInline.title = 'บันทึกเบอร์โทรศัพท์';
     btnSavePhoneInline.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
   }
 }
@@ -692,10 +694,10 @@ if (btnSavePhoneInline) {
       btnSavePhoneInline.disabled = false;
       if (!phone.readOnly) {
         btnSavePhoneInline.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>บันทึก</span>
+          <span>กดบันทึกเบอร์โทรศัพท์</span>
         `;
       }
     }
