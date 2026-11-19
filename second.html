@@ -128,6 +128,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
         <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-dark);">เรียงลำดับ:</span>
         <select id="sortSelect" style="padding: 8px 14px; border: 1px solid var(--border-color); border-radius: 20px; background-color: var(--card-bg); color: var(--text-dark); font-size: 0.8rem; font-weight: 500; outline: none; box-shadow: var(--shadow-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234a5568%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 28px;">
+          <option value="popular" selected>⭐ แนะนำ / สินค้าขายดี</option>
           <option value="price_asc">ราคา: ถูก - แพง</option>
           <option value="price_desc">ราคา: แพง - ถูก</option>
           <option value="name_asc">ชื่อ: ก - ฮ (A-Z)</option>
@@ -281,29 +282,17 @@
                 style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; box-sizing: border-box;" />
             </div>
             <div class="form-group" style="margin-bottom: 4px;">
-              <label for="preorderTime">เวลาที่ต้องการ (9:00 - 16:00) *</label>
+              <label for="preorderTime">รอบเวลาจัดส่ง (3 รอบต่อวัน) *</label>
               <select id="preorderTime"
                 style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #fff; font-size: 14px; box-sizing: border-box;">
-                <option value="" disabled selected>-- เลือกเวลา --</option>
-                <option value="09:00">09:00 น.</option>
-                <option value="09:30">09:30 น.</option>
-                <option value="10:00">10:00 น.</option>
-                <option value="10:30">10:30 น.</option>
-                <option value="11:00">11:00 น.</option>
-                <option value="11:30">11:30 น.</option>
-                <option value="12:00">12:00 น.</option>
-                <option value="12:30">12:30 น.</option>
-                <option value="13:00">13:00 น.</option>
-                <option value="13:30">13:30 น.</option>
-                <option value="14:00">14:00 น.</option>
-                <option value="14:30">14:30 น.</option>
-                <option value="15:00">15:00 น.</option>
-                <option value="15:30">15:30 น.</option>
-                <option value="16:00">16:00 น.</option>
+                <option value="" disabled selected>-- เลือกรอบเวลาจัดส่ง --</option>
+                <option value="09:00">รอบเช้า 09:00 น.</option>
+                <option value="13:00">รอบบ่าย 13:00 น.</option>
+                <option value="16:30">รอบเย็น 16:30 น.</option>
               </select>
             </div>
             <small style="color: var(--text-light); font-size: 12px; display: block; margin-top: 4px;">ℹ️
-              ทางร้านให้บริการสั่งล่วงหน้าในช่วงเวลา 09:00 น. ถึง 16:00 น. เท่านั้น</small>
+              ทางร้านจัดส่งสินค้าวันละ 3 รอบ: 09:00 น., 13:00 น. และ 16:30 น.</small>
           </div>
         </div>
     <div class="checkout-section">
@@ -372,16 +361,16 @@
             style="background: var(--bg-card, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; padding: 12px 14px; margin-top: 8px;">
             <div
               style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-              <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
+              <span>📋 เงื่อนไขค่าจัดส่งสินค้า (รอบส่ง 09:00, 13:00, 16:30 น.):</span>
             </div>
             <ul
               style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
-              <li>ยอดไม่ถึง ฿500 : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
-              <li>ยอดเกิน ฿500 : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)
+              <li>ยอดไม่ถึง 350 บาท : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
+              <li>ยอดครบ 350 บาทขึ้นไป : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)
               </li>
-              <li>ยอดเกิน ฿1,000 : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10
+              <li>ยอดครบ 1,000 บาทขึ้นไป : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10
                 บาท)</li>
-              <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง ฿0</strong></li>
+              <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง 0 บาท</strong></li>
             </ul>
           </div>
         </div>
@@ -474,9 +463,9 @@
             <!-- Quick Coupon Recommendations -->
             <div id="quickCouponChipsContainer" style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
               <span style="font-size: 11.5px; color: #64748b; font-weight: 500;">แนะนำ:</span>
-              <button type="button" class="coupon-chip" onclick="applyPromoChip('WELCOME50')" style="background: #eff6ff; border: 1px dashed #3b82f6; color: #1d4ed8; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🏷️ WELCOME50 (ลด 50฿)</button>
-              <button type="button" class="coupon-chip" onclick="applyPromoChip('FREESHIP')" style="background: #f0fdf4; border: 1px dashed #10b981; color: #047857; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🚚 FREESHIP (ส่งฟรี)</button>
-              <button type="button" class="coupon-chip" onclick="applyPromoChip('KUE10')" style="background: #fefce8; border: 1px dashed #eab308; color: #854d0e; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">✨ KUE10 (ลด 10%)</button>
+              <button type="button" class="coupon-chip" onclick="applyPromoChip('WELCOME50')" style="background: #eff6ff; border: 1px dashed #3b82f6; color: #1d4ed8; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🏷️ WELCOME50 (ลด 50 บาท เมื่อซื้อครบ 100 บาท)</button>
+              <button type="button" class="coupon-chip" onclick="applyPromoChip('FREESHIP')" style="background: #f0fdf4; border: 1px dashed #10b981; color: #047857; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">🚚 FREESHIP (ส่งฟรี ไม่มีขั้นต่ำ)</button>
+              <button type="button" class="coupon-chip" onclick="applyPromoChip('KUE10')" style="background: #fefce8; border: 1px dashed #eab308; color: #854d0e; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">✨ KUE10 (ลด 10% เมื่อซื้อครบ 150 บาท)</button>
             </div>
           </div>
         </div>
@@ -563,7 +552,7 @@
     </div>
   </div>
 
-  <script src="catalog.js?v=26"></script>
+  <script src="catalog.js?v=31"></script>
 </body>
 
 </html>

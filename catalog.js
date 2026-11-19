@@ -49,7 +49,8 @@ let PROMO_CODES = {
     amount: 50,
     percent: 0,
     minSpend: 100,
-    desc: 'ส่วนลด 50 บาท เมื่อสั่งซื้อขั้นต่ำ 100 บาท',
+    maxDiscount: 0,
+    desc: 'ลด 50 บาท เมื่อซื้อครบ 100 บาท',
     startDate: '',
     endDate: ''
   },
@@ -59,6 +60,7 @@ let PROMO_CODES = {
     amount: 0,
     percent: 0,
     minSpend: 0,
+    maxDiscount: 0,
     desc: 'ฟรีค่าจัดส่งทุกระยะทาง',
     startDate: '',
     endDate: ''
@@ -69,7 +71,8 @@ let PROMO_CODES = {
     amount: 0,
     percent: 10,
     minSpend: 150,
-    desc: 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ 150 บาท',
+    maxDiscount: 100,
+    desc: 'ลด 10% เมื่อซื้อครบ 150 บาท (ลดสูงสุด 100 บาท)',
     startDate: '',
     endDate: ''
   },
@@ -79,7 +82,8 @@ let PROMO_CODES = {
     amount: 20,
     percent: 0,
     minSpend: 60,
-    desc: 'ส่วนลด 20 บาท สำหรับของใช้และวัตถุดิบเบเกอรี่',
+    maxDiscount: 0,
+    desc: 'ลด 20 บาท เมื่อซื้อครบ 60 บาท',
     startDate: '',
     endDate: ''
   }
@@ -126,11 +130,16 @@ function updatePromoCodesMap(promosList) {
     const amount = Number(p.amount) || 0;
     const percent = Number(p.percent) || 0;
     const minSpend = Number(p.min_spend || p.minSpend) || 0;
+    const maxDiscount = Number(p.max_discount || p.maxDiscount) || 0;
     let desc = p.description;
     if (!desc) {
-      if (type === 'percent') desc = `ลด ${percent}% เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท`;
-      else if (type === 'shipping') desc = `ฟรีค่าจัดส่ง${minSpend > 0 ? ` เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท` : ''}`;
-      else desc = `ส่วนลด ${amount} บาท เมื่อสั่งซื้อขั้นต่ำ ${minSpend} บาท`;
+      if (type === 'percent') {
+        desc = `ลด ${percent}%${minSpend > 0 ? ` เมื่อซื้อครบ ${minSpend} บาท` : ''}${maxDiscount > 0 ? ` (ลดสูงสุด ${maxDiscount} บาท)` : ''}`;
+      } else if (type === 'shipping') {
+        desc = `ฟรีค่าจัดส่ง${minSpend > 0 ? ` เมื่อซื้อครบ ${minSpend} บาท` : ''}`;
+      } else {
+        desc = `ลด ${amount} บาท${minSpend > 0 ? ` เมื่อซื้อครบ ${minSpend} บาท` : ''}`;
+      }
     }
     newMap[code] = {
       code,
@@ -138,6 +147,7 @@ function updatePromoCodesMap(promosList) {
       amount,
       percent,
       minSpend,
+      maxDiscount,
       desc,
       startDate: p.start_date || p.startDate || '',
       endDate: p.end_date || p.endDate || ''
@@ -166,22 +176,24 @@ function renderQuickCouponChips() {
     let bg = '#eff6ff';
     let border = '#3b82f6';
     let color = '#1d4ed8';
+    const minTxt = p.minSpend > 0 ? ` เมื่อซื้อครบ ${p.minSpend.toLocaleString()} บาท` : ' ไม่มีขั้นต่ำ';
+    const maxTxt = (p.type === 'percent' && p.maxDiscount > 0) ? ` สูงสุด ${p.maxDiscount.toLocaleString()} บาท` : '';
 
     if (p.type === 'percent') {
-      badgeText = `✨ ${p.code} (ลด ${p.percent}%)`;
+      badgeText = `✨ ${p.code} (ลด ${p.percent}%${maxTxt}${minTxt})`;
       bg = '#fefce8';
       border = '#eab308';
       color = '#854d0e';
     } else if (p.type === 'shipping') {
-      badgeText = `🚚 ${p.code} (ส่งฟรี)`;
+      badgeText = `🚚 ${p.code} (ส่งฟรี${minTxt})`;
       bg = '#f0fdf4';
       border = '#10b981';
       color = '#047857';
     } else {
-      badgeText = `🏷️ ${p.code} (ลด ${p.amount} บาท)`;
+      badgeText = `🏷️ ${p.code} (ลด ${p.amount.toLocaleString()} บาท${minTxt})`;
     }
 
-    chipsHtml += `<button type="button" class="coupon-chip" onclick="applyPromoChip('${p.code}')" style="background: ${bg}; border: 1px dashed ${border}; color: ${color}; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">${badgeText}</button>`;
+    chipsHtml += `<button type="button" class="coupon-chip" onclick="applyPromoChip('${p.code}')" style="background: ${bg}; border: 1px dashed ${border}; color: ${color}; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">${badgeText}</button>`;
   });
   container.innerHTML = chipsHtml;
 }
@@ -365,21 +377,45 @@ window.addUpsellToCart = function(productId) {
 // ========================================================
 // 3. VISUAL ORDER TIMELINE STEPPER
 // ========================================================
+function normalizeCustomerOrderStatus(rawStatus) {
+  const s = String(rawStatus || '').trim();
+  if (s === 'รอตรวจสอบ' || s === 'กำลังตรวจสอบออเดอร์' || s === 'รอตรวจของ') return 'รอพนักงานยืนยันสินค้า';
+  if (s === 'รอการยืนยัน' || s === 'รอลูกค้ายืนยัน') return 'รอลูกค้ายืนยัน';
+  if (s === 'รอชำระเงิน' || s === 'รอชำระ') return 'รอชำระเงิน (Admin ส่ง QR)';
+  if (s === 'ชำระเงิน' || s === 'รอตรวจสลิป' || s === 'รอตรวจเงิน') return 'รอตรวจสอบยอดโอน';
+  if (s === 'ชำระแล้ว' || s === 'กำลังจัดเตรียมสินค้า' || s === 'เตรียมออเดอร์' || s === 'จัดเตรียมสินค้าพร้อมส่ง' || s === 'ต้องส่งรอบถัดไป') return 'กำลังจัดเตรียมสินค้า (รอส่งรอบถัดไป)';
+  if (s === 'กำลังจัดส่ง' || s === 'จัดส่งแล้ว') return 'กำลังจัดส่ง';
+  if (s === 'จัดส่งสำเร็จ' || s === 'ยืนยันแล้ว') return 'จัดส่งสำเร็จ';
+  if (s === 'ยกเลิก') return 'ยกเลิก';
+  return s || 'รอพนักงานยืนยันสินค้า';
+}
+
 function renderOrderTimeline(status) {
   const normStatus = String(status || '').trim();
-  let currentStep = 1;
+  let currentStep = 2; // 1 = สั่งซื้อแล้ว, 2 = รอตรวจของ, 3 = ชำระเงิน/จัดเตรียม, 4 = กำลังจัดส่ง, 5 = ส่งสำเร็จ
   let isCancelled = false;
 
   if (normStatus === 'ยกเลิก') {
     isCancelled = true;
-  } else if (normStatus === 'จัดส่งสำเร็จ') {
-    currentStep = 4;
+  } else if (normStatus === 'จัดส่งสำเร็จ' || normStatus === 'ยืนยันแล้ว') {
+    currentStep = 5;
   } else if (normStatus === 'กำลังจัดส่ง' || normStatus === 'จัดส่งแล้ว') {
+    currentStep = 4;
+  } else if (
+    normStatus === 'กำลังจัดเตรียมสินค้า' ||
+    normStatus === 'ต้องส่งรอบถัดไป' ||
+    normStatus === 'ชำระแล้ว' ||
+    normStatus === 'ชำระเงิน' ||
+    normStatus === 'รอตรวจสลิป' ||
+    normStatus === 'รอตรวจเงิน' ||
+    normStatus === 'รอชำระเงิน' ||
+    normStatus === 'รอชำระ' ||
+    normStatus === 'รอการยืนยัน' ||
+    normStatus === 'รอลูกค้ายืนยัน'
+  ) {
     currentStep = 3;
-  } else if (normStatus === 'กำลังจัดเตรียมสินค้า' || normStatus === 'ชำระเงิน' || normStatus === 'ยืนยันแล้ว' || normStatus === 'รอชำระเงิน') {
-    currentStep = 2;
   } else {
-    currentStep = 1;
+    currentStep = 2;
   }
 
   if (isCancelled) {
@@ -392,11 +428,23 @@ function renderOrderTimeline(status) {
     `;
   }
 
+  let step3Desc = 'แอดมินแจ้งยอดโอน/QR Code หรือทางร้านกำลังจัดเตรียมและแพ็คสินค้าลงกล่อง';
+  if (normStatus === 'รอการยืนยัน' || normStatus === 'รอลูกค้ายืนยัน') {
+    step3Desc = 'มีการปรับรายการสินค้า กรุณาตรวจสอบยอดโอนและกดยืนยันออเดอร์';
+  } else if (normStatus === 'รอชำระเงิน' || normStatus === 'รอชำระ') {
+    step3Desc = 'แอดมินส่ง QR Code แจ้งยอดแล้ว กรุณาโอนชำระเงินและแนบสลิป';
+  } else if (normStatus === 'ชำระเงิน' || normStatus === 'รอตรวจสลิป' || normStatus === 'รอตรวจเงิน') {
+    step3Desc = 'ได้รับสลิปโอนเงินแล้ว รอแอดมินตรวจสอบยอดเงินและแพ็คสินค้า';
+  } else if (normStatus === 'กำลังจัดเตรียมสินค้า' || normStatus === 'ต้องส่งรอบถัดไป' || normStatus === 'ชำระแล้ว') {
+    step3Desc = 'ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่องเพื่อส่งในรอบถัดไป';
+  }
+
   const steps = [
-    { num: 1, label: 'รับออเดอร์', icon: '⏳', desc: 'ร้านค้าได้รับคำสั่งซื้อแล้ว รอการตรวจสอบ' },
-    { num: 2, label: 'กำลังเตรียม', icon: '📦', desc: 'ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่อง' },
-    { num: 3, label: 'กำลังส่ง', icon: '🛵', desc: 'สินค้ากำลังเดินทางไปยังปลายทางของคุณ' },
-    { num: 4, label: 'ส่งสำเร็จ', icon: '✅', desc: 'สินค้าจัดส่งถึงคุณเรียบร้อยแล้ว ขอบคุณที่ใช้บริการครับ' }
+    { num: 1, label: 'สั่งซื้อ', icon: '🛒', desc: 'ส่งคำสั่งซื้อเข้าระบบเรียบร้อยแล้ว' },
+    { num: 2, label: 'รอตรวจของ', icon: '⏳', desc: 'รอพนักงานยืนยันสินค้าและเช็คสต็อกหน้าร้าน' },
+    { num: 3, label: 'ส่ง QR / เตรียมของ', icon: '💳', desc: step3Desc },
+    { num: 4, label: 'กำลังจัดส่ง', icon: '🚚', desc: 'พนักงานกำลังนำสินค้าจัดส่งไปยังที่อยู่ของคุณ' },
+    { num: 5, label: 'ส่งสำเร็จ', icon: '✅', desc: 'จัดส่งสินค้าถึงมือคุณเรียบร้อยแล้ว ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ' }
   ];
 
   const progressPercent = Math.round(((currentStep - 1) / (steps.length - 1)) * 100);
@@ -406,7 +454,7 @@ function renderOrderTimeline(status) {
     <div class="order-timeline-stepper">
       <div class="timeline-track">
         <div class="timeline-track-base"></div>
-        <div class="timeline-track-progress" style="width: calc(${progressPercent}% - 30px);"></div>
+        <div class="timeline-track-progress" style="width: calc(${progressPercent}% - 24px);"></div>
         ${steps.map(s => {
           let stateClass = '';
           if (s.num < currentStep) stateClass = 'completed';
@@ -416,13 +464,13 @@ function renderOrderTimeline(status) {
               <div class="step-dot">
                 ${s.num < currentStep ? '✓' : s.icon}
               </div>
-              <span class="step-label">${s.label}</span>
+              <span class="step-label" style="font-size: 10.5px;">${s.label}</span>
             </div>
           `;
         }).join('')}
       </div>
       <div class="timeline-desc-box">
-        💡 <strong>ความคืบหน้า:</strong> ${activeDesc}
+        💡 <strong>สถานะล่าสุด:</strong> ${activeDesc}
       </div>
     </div>
   `;
@@ -537,7 +585,7 @@ const SHOP_PROMPTPAY_ID = '0957579454';
 let currentParentCategory = 'all';
 let currentSubCategory = 'all';
 let searchQuery = '';
-let currentSort = 'price_asc';
+let currentSort = 'popular';
 let activeProduct = null;
 let visibleLimit = 20; // จำกัดจำนวนการแสดงผลในครั้งแรกเพื่อความรวดเร็ว (Pagination)
 let cart = [];
@@ -617,14 +665,85 @@ async function initLiff() {
   }
 }
 
+// Helper: ตรวจสอบว่าสินค้าเป็นรายการแลกแต้มหรือไม่ (ไม่นำมาปนกับสินค้าขายปกติ)
+function isPointRedemptionProduct(product) {
+  if (!product) return false;
+  const name = String(product.name || '').toLowerCase();
+  const cat = String(product.category || '').toLowerCase();
+  const price = Number(product.price) || 0;
+  return price >= 50000 || name.includes('แลกแต้ม') || name.includes('สะสมแต้ม') || name.includes('แลกของรางวัล') || cat.includes('แลกแต้ม');
+}
+
+// Helper: คำนวณคะแนนความนิยม / สินค้าขายดี & วัตถุดิบหลัก เพื่อให้แสดงผลก่อนสินค้าเบ็ดเตล็ดราคาถูก
+function getProductPopularityScore(product) {
+  if (!product) return 0;
+  let score = 0;
+  const name = String(product.name || '').toLowerCase();
+  const cat = String(product._parsedParent || product.category || '').toLowerCase();
+  const tag = String(product.tag || '').toLowerCase();
+  const price = Number(product.price) || 0;
+  const rawStock = product.stock !== undefined && product.stock !== null ? Math.floor(Number(product.stock) || 0) : 1;
+  const isOut = rawStock < 1 || product.status === 'out_of_stock';
+
+  // สินค้าพร้อมขายต้องขึ้นก่อนสินค้าหมดเสมอ
+  if (!isOut) score += 1000;
+
+  // สินค้าที่ลูกค้าเคยสั่งซื้อในประวัติออเดอร์ หรือรายการโปรด ให้ขึ้นมาบนสุด
+  try {
+    const myOrdersRaw = localStorage.getItem('myOrdersCache');
+    if (myOrdersRaw && myOrdersRaw.includes(product.name)) {
+      score += 500;
+    }
+  } catch (e) {}
+
+  // สินค้าที่มีป้ายแนะนำ / ขายดี / ยอดนิยม
+  if (tag.includes('ขายดี') || tag.includes('ยอดนิยม') || tag.includes('แนะนำ')) {
+    score += 300;
+  }
+
+  // ให้ความสำคัญกับหมวดวัตถุดิบเบเกอรี่ วัตถุดิบทำเครื่องดื่ม และเครื่องปรุงอาหาร เป็นอันดับแรก (ไม่ให้พลาสเตอร์/ของเบ็ดเตล็ด 1-5 บาทขึ้นก่อน)
+  if (cat.includes('เบเกอ') || cat.includes('วัตถุดิบทำเครื่องดื่ม')) {
+    score += 220;
+  } else if (cat.includes('วัตถุดิบอาหาร') || cat.includes('เครื่องปรุง') || cat.includes('ข้าวสาร') || cat.includes('ธัญพืช')) {
+    score += 180;
+  } else if (cat.includes('ถุง') || cat.includes('บรรจุภัณฑ์')) {
+    score += 140;
+  } else if (cat.includes('เครื่องดื่มสำเร็จรูป') || cat.includes('เครื่องดื่ม')) {
+    score += 110;
+  }
+
+  // คำสำคัญของวัตถุดิบหลักที่ลูกค้าซื้อประจำ
+  if (/นมข้น|นมสด|เนย|แป้ง|น้ำตาล|ช็อกโกแลต|โกโก้|ชาเขียว|ชาไทย|ครีมเทียม|วิปปิ้ง|ไซรัป|น้ำเชื่อม|หลอดบีบ|ถุงร้อน|แก้ว/.test(name)) {
+    score += 120;
+  }
+
+  // ลดลำดับสินค้าเบ็ดเตล็ด/ยาทั่วไป เช่น พลาสเตอร์ สำลี ยาหม่อง ไม่ให้แย่งพื้นที่แถวแรกในหน้าทั้งหมด
+  if (/พลาสเตอร์|เทนโซพล๊าส|เทนโซพลาส|สำลี|ธูป|เทียน|ถ่านไฟฉาย|ลูกเหม็น/.test(name)) {
+    score -= 250;
+  }
+
+  // สินค้าราคามาตรฐาน (20 - 500 บาท) ให้คะแนนเสริมเล็กน้อยเพื่อให้ไม่ไปกองที่สินค้าราคา 1-5 บาท
+  if (price >= 20 && price <= 600) {
+    score += 40;
+  }
+
+  // ถ้ามีรูปภาพสินค้าจริง ให้แสดงก่อนสินค้าที่ไม่มีรูป
+  if (product.img && String(product.img).startsWith('http') && !String(product.img).includes('placehold.co')) {
+    score += 50;
+  }
+
+  return score;
+}
+
 // Render Products
 function renderProducts() {
   productsGrid.innerHTML = '';
 
   const filtered = PRODUCTS.filter(product => {
     if (product.status && String(product.status).toLowerCase() === 'inactive') return false;
+    if (isPointRedemptionProduct(product)) return false;
     if (!product._parsedParent) {
-      const parsed = parseProductCategory(product.category);
+      const parsed = parseProductCategory(product.category, product.name);
       product._parsedParent = parsed.parent;
       product._parsedSub = parsed.sub;
     }
@@ -639,9 +758,13 @@ function renderProducts() {
     return matchesCategory && matchesSearch && hasValidPrice;
   });
 
-  // เรียงลำดับสินค้าจากราคาถูกไปหาแพง
+  // เรียงลำดับสินค้า (ค่าเริ่มต้น: สินค้าขายดี / สินค้าซื้อประจำ)
   filtered.sort((a, b) => {
-    if (currentSort === 'price_asc') {
+    if (currentSort === 'popular') {
+      const scoreDiff = getProductPopularityScore(b) - getProductPopularityScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (Number(a.price) || 0) - (Number(b.price) || 0);
+    } else if (currentSort === 'price_asc') {
       return (Number(a.price) || 0) - (Number(b.price) || 0);
     } else if (currentSort === 'price_desc') {
       return (Number(b.price) || 0) - (Number(a.price) || 0);
@@ -653,26 +776,30 @@ function renderProducts() {
 
   if (filtered.length === 0) {
     productsGrid.innerHTML = `
-      <div class="empty-state" style="grid-column: 1 / -1;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 48px 20px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: #94a3b8;">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <p>ไม่พบสินค้าที่คุณกำลังมองหา...</p>
+        <p style="font-size: 16px; font-weight: 700; color: #334155; margin-bottom: 6px;">ไม่พบสินค้า กรุณาเปลี่ยนคำค้นหาใหม่</p>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">ลองใช้คำค้นหาสั้นๆ เช่น นมข้น, แป้ง, ถุง, แก้ว หรือเลือกจากหมวดหมู่สินค้า</p>
+        ${searchQuery ? `<button type="button" onclick="window.clearCatalogSearch()" style="background: var(--primary-color, #388BC2); color: #fff; border: none; border-radius: 20px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer;">🔄 ล้างคำค้นหาเพื่อดูสินค้าทั้งหมด</button>` : ''}
       </div>
     `;
     return;
   }
 
-// Helper: ดึงหน่วยสินค้า (เช่น ใบ, แพ็ค, ลัง, หิ้ว, มัด, ขวด, ชิ้น) จากชื่อสินค้าโดยอัตโนมัติ
+// Helper: ดึงหน่วยสินค้า (เช่น ใบ, แพ็ค, ลัง, หิ้ว, มัด, ขวด, หลอด, ชิ้น) จากชื่อสินค้าโดยอัตโนมัติ
 function getProductUnitInfo(productOrName) {
   const rawName = typeof productOrName === 'object' ? (productOrName?.name || '') : String(productOrName || '');
   const str = rawName.trim();
   if (!str) return { unit: 'ชิ้น', badge: 'ชิ้น' };
 
   // 1. ตรวจหาวงเล็บหน่วยแพ็คเกจท้ายชื่อ เช่น (ลัง10), (แพ็ค12), (แพค10), (หิ้ว10), (มัด10), (กระสอบ10), (ถาด48), (แผง10)
-  const parenMatch = str.match(/\(\s*(ลัง|แพ็ค|แพค|หิ้ว|มัด|กระสอบ|ถาด|แผง|กล่อง|แถว|โหล|ถุง)\s*([0-9xX\*]*)\s*\)/i);
-  const innerMatch = str.match(/(?<!เบอร์\s*)(?<!รุ่น\s*)(\d+)\s*(ใบ|ชุด|เส้น|ชิ้น|ซอง|คัน|ก้าน|ม้วน|แผ่น|ดวง|หลอด|ก้อน|ขวด|กระป๋อง|กล่อง|ถ้วย|ถุง|เล่ม|คู่|อัน|ด้าม|ลูก)(?!\s*ละ)/);
+  const parenMatch = str.match(/\(\s*(ลัง|แพ็ค|แพค|หิ้ว|มัด|กระสอบ|ถาด|แผง|กล่อง|แถว|โหล|ถุง|ลูก)\s*([0-9xX\*]*)\s*\)/i);
+  // ตรวจหาตัวคูณท้ายชื่อ เช่น 1X12, 1x24 (ถ้าไม่มีวงเล็บ แต่ระบุยกแพ็ค/ยกลัง)
+  const multMatch = str.match(/\b1[xX\*](\d+)\b/);
+  const innerMatch = str.match(/(?<!เบอร์\s*)(?<!รุ่น\s*)(\d+)\s*(ใบ|ชุด|เส้น|ชิ้น|ซอง|คัน|ก้าน|ม้วน|แผ่น|ดวง|หลอด|ก้อน|ขวด|กระป๋อง|กระปุก|กล่อง|ถ้วย|ถุง|เล่ม|คู่|อัน|ด้าม|ลูก|เม็ด|ฟอง)(?!\s*ละ)/);
 
   if (parenMatch) {
     const u = parenMatch[1] === 'แพค' ? 'แพ็ค' : parenMatch[1];
@@ -681,8 +808,8 @@ function getProductUnitInfo(productOrName) {
     return { unit: u, badge: u + q + innerTxt };
   }
 
-  // 2. ตรวจหาคำว่า ฟองละ / ใบละ / ชิ้นละ / อันละ
-  const perUnitMatch = str.match(/(ฟอง|ใบ|ชิ้น|อัน|ซอง|ขวด|ก้อน|แผ่น|ม้วน|แพ็ค|แพค|ถุง|กล่อง|ลูก|เส้น|หลอด)ละ/);
+  // 2. ตรวจหาคำว่า ฟองละ / ใบละ / ชิ้นละ / อันละ / หลอดละ
+  const perUnitMatch = str.match(/(ฟอง|ใบ|ชิ้น|อัน|ซอง|ขวด|ก้อน|แผ่น|ม้วน|แพ็ค|แพค|ถุง|กล่อง|ลูก|เส้น|หลอด|กระปุก|กระป๋อง|แกลลอน)ละ/);
   if (perUnitMatch) {
     const u = perUnitMatch[1] === 'แพค' ? 'แพ็ค' : perUnitMatch[1];
     return { unit: u, badge: u };
@@ -693,28 +820,46 @@ function getProductUnitInfo(productOrName) {
     return { unit: innerMatch[2], badge: innerMatch[1] + ' ' + innerMatch[2] };
   }
 
-  // 4. ตรวจหาคำบอกหน่วยหรือประเภทบรรจุภัณฑ์ในชื่อสินค้า
+  // 4. ตรวจหาคำบอกหน่วยหรือประเภทบรรจุภัณฑ์ในชื่อสินค้า (รวมถึงกรณีหน่วยอยู่หน้าขนาด เช่น "หลอดบีบ 180 กรัม")
+  const weightOrVolMatch = str.match(/(\d+(?:[\.,]\d+)?\s*(?:กรัม|ก\.|กก\.|กิโลกรัม|มล\.|มิลลิลิตร|ลิตร|ออนซ์|oz|ml|g|kg|L))/i);
+  const weightBadgeSuffix = weightOrVolMatch ? ` (${weightOrVolMatch[1].trim()})` : '';
+
   if (/ไข่ไก่|ไข่เป็ด|ไข่เยี่ยวม้า|ไข่เค็ม/.test(str)) return { unit: 'ฟอง', badge: 'ฟอง' };
-  if (/แกลลอน/.test(str)) return { unit: 'แกลลอน', badge: 'แกลลอน' };
-  if (/กระปุก/.test(str)) return { unit: 'กระปุก', badge: 'กระปุก' };
-  if (/กระป๋อง/.test(str)) return { unit: 'กระป๋อง', badge: 'กระป๋อง' };
-  if (/ขวด/.test(str)) return { unit: 'ขวด', badge: 'ขวด' };
-  if (/กล่อง/.test(str)) return { unit: 'กล่อง', badge: 'กล่อง' };
-  if (/ถ้วย/.test(str)) return { unit: 'ถ้วย', badge: 'ถ้วย' };
-  if (/ถาด/.test(str)) return { unit: 'ถาด', badge: 'ถาด' };
-  if (/กระสอบ/.test(str)) return { unit: 'กระสอบ', badge: 'กระสอบ' };
+  if (/หลอดบีบ|แบบหลอด|^หลอด/.test(str)) return { unit: 'หลอด', badge: 'หลอด' + weightBadgeSuffix };
+  if (/หลอด/.test(str) && !/หอยหลอด|หลอดไฟ/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค (หลอด)' };
+  if (/แกลลอน|แกลอน/.test(str)) return { unit: 'แกลลอน', badge: 'แกลลอน' + weightBadgeSuffix };
+  if (/กระปุก/.test(str)) return { unit: 'กระปุก', badge: 'กระปุก' + weightBadgeSuffix };
+  if (/กระป๋อง|หมีแคน/.test(str)) return { unit: 'กระป๋อง', badge: 'กระป๋อง' + weightBadgeSuffix };
+  if (/ขวด|กลม|แบน/.test(str)) return { unit: 'ขวด', badge: 'ขวด' + weightBadgeSuffix };
+  if (/กล่อง|ยูเอชที|UHT/i.test(str)) return { unit: 'กล่อง', badge: 'กล่อง' + weightBadgeSuffix };
+  if (/ถ้วย/.test(str)) return { unit: 'ถ้วย', badge: 'ถ้วย' + weightBadgeSuffix };
+  if (/ถาด/.test(str)) return { unit: 'ถาด', badge: 'ถาด' + weightBadgeSuffix };
+  if (/กระสอบ/.test(str)) return { unit: 'กระสอบ', badge: 'กระสอบ' + weightBadgeSuffix };
   if (/ลัง/.test(str)) return { unit: 'ลัง', badge: 'ลัง' };
   if (/แพ็ค|แพค/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
   if (/หิ้ว/.test(str) && !/ถุงหิ้ว/.test(str)) return { unit: 'หิ้ว', badge: 'หิ้ว' };
   if (/มัด/.test(str)) return { unit: 'มัด', badge: 'มัด' };
   if (/แผง/.test(str)) return { unit: 'แผง', badge: 'แผง' };
-  if (/ซอง/.test(str)) return { unit: 'ซอง', badge: 'ซอง' };
+  if (/ซอง/.test(str)) return { unit: 'ซอง', badge: 'ซอง' + weightBadgeSuffix };
   if (/ม้วน/.test(str)) return { unit: 'ม้วน', badge: 'ม้วน' };
   if (/แผ่น/.test(str)) return { unit: 'แผ่น', badge: 'แผ่น' };
-  if (/ก้อน/.test(str)) return { unit: 'ก้อน', badge: 'ก้อน' };
+  if (/ก้อน/.test(str)) return { unit: 'ก้อน', badge: 'ก้อน' + weightBadgeSuffix };
   if (/เล่ม|สมุด/.test(str)) return { unit: 'เล่ม', badge: 'เล่ม' };
-  if (/ถุง/.test(str)) return { unit: 'แพ็ค', badge: 'แพ็ค' };
-  if (/ใบ/.test(str) && !/ชาใบ|ใบชา|ใบเตย|ใบหยก|เรือใบ/.test(str)) return { unit: 'ใบ', badge: 'ใบ' };
+  if (/ด้าม/.test(str)) return { unit: 'ด้าม', badge: 'ด้าม' };
+  if (/ถุง/.test(str)) return { unit: 'ถุง', badge: 'ถุง' + weightBadgeSuffix };
+  if (/ใบ/.test(str) && !/ชาใบ|ใบชา|ใบเตย|ใบหยก|เรือใบ|ใบไม้/.test(str)) return { unit: 'ใบ', badge: 'ใบ' };
+
+  // 5. ถ้ามีระบุน้ำหนัก/ปริมาตรในชื่อ (เช่น 500 กรัม, 1 กก., 1000 มล.) ให้ใช้หน่วยตามบรรจุภัณฑ์มาตรฐาน
+  if (weightOrVolMatch) {
+    if (/มล\.|มิลลิลิตร|ลิตร|ml|L/i.test(weightOrVolMatch[1])) {
+      return { unit: 'ขวด', badge: 'ขวด' + weightBadgeSuffix };
+    }
+    return { unit: 'ถุง', badge: 'ถุง' + weightBadgeSuffix };
+  }
+
+  if (multMatch) {
+    return { unit: 'แพ็ค', badge: `แพ็ค (1×${multMatch[1]})` };
+  }
 
   return { unit: 'ชิ้น', badge: 'ชิ้น' };
 }
@@ -1225,6 +1370,7 @@ function updateCartItemQty(id, delta) {
     }
     saveCart();
     renderCartItems();
+    calculateCheckoutTotal();
   }
 }
 
@@ -1232,6 +1378,7 @@ function removeFromCart(id) {
   cart = cart.filter(i => i.id !== id);
   saveCart();
   renderCartItems();
+  calculateCheckoutTotal();
 }
 
 function clearCart() {
@@ -1724,12 +1871,12 @@ function toggleShippingFields() {
     if (conditionsBox) {
       conditionsBox.innerHTML = `
         <div style="font-size: 13.5px; font-weight: bold; color: var(--primary, #2563eb); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-          <span>📋 เงื่อนไขค่าจัดส่งสินค้า:</span>
+          <span>📋 เงื่อนไขค่าจัดส่งสินค้า (รอบส่ง 09:00, 13:00, 16:30 น.):</span>
         </div>
         <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-color, #334155); line-height: 1.6;">
-          <li>ยอดไม่ถึง 500 บาท : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
-          <li>ยอดเกิน 500 บาท : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
-          <li>ยอดเกิน 1,000 บาท : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
+          <li>ยอดไม่ถึง 350 บาท : คำนวณตามระยะทาง (กิโลเมตรละ 10 บาท)</li>
+          <li>ยอดครบ 350 บาทขึ้นไป : <strong style="color: #16a34a;">ส่งฟรี 5 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
+          <li>ยอดครบ 1,000 บาทขึ้นไป : <strong style="color: #16a34a;">ส่งฟรี 10 กิโลเมตรแรก</strong> (ส่วนเกิน กม. ละ 10 บาท)</li>
           <li>รับเองที่หน้าร้าน : <strong style="color: #2563eb;">ฟรีค่าจัดส่ง 0 บาท</strong></li>
         </ul>
       `;
@@ -1743,6 +1890,23 @@ function toggleShippingFields() {
 function calculateCheckoutTotal() {
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   const shippingOption = document.querySelector('input[name="shippingOption"]:checked')?.value || 'จัดส่ง';
+
+  // ตรวจสอบคูปองใหม่อัตโนมัติทุกครั้งเมื่อมีการแก้ไขตะกร้าสินค้า (ป้องกันยอดลดลงต่ำกว่าขั้นต่ำแล้วยังลดราคาอยู่)
+  if (appliedCoupon && Number(appliedCoupon.minSpend || 0) > 0 && subtotal < Number(appliedCoupon.minSpend || 0)) {
+    const expiredCode = appliedCoupon.code;
+    const reqMin = Number(appliedCoupon.minSpend || 0);
+    appliedCoupon = null;
+    const msgEl = document.getElementById('couponMessage');
+    const badgeEl = document.getElementById('couponBadge');
+    const container = document.getElementById('promoCodeContainer');
+    if (container) container.classList.remove('applied');
+    if (badgeEl) badgeEl.style.display = 'none';
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#dc2626';
+      msgEl.textContent = `⚠️ ยอดรวมสินค้าปัจจุบัน (${subtotal.toLocaleString()} บาท) ต่ำกว่าขั้นต่ำ ${reqMin.toLocaleString()} บาท ของโค้ด ${expiredCode} ระบบจึงยกเลิกส่วนลดอัตโนมัติ`;
+    }
+  }
 
   let shippingFee = 0;
   let discountNote = '';
@@ -1787,20 +1951,20 @@ function calculateCheckoutTotal() {
       } else {
         const extraKm = distKm - 10;
         shippingFee = Math.ceil(extraKm * 10);
-        discountNote = `🎉 ยอดเกิน 1,000 บาท ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
+        discountNote = `🎉 ยอดครบ 1,000 บาท ฟรี 10 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
       }
-    } else if (subtotal >= 500) {
+    } else if (subtotal >= 350) {
       if (distKm <= 5) {
         shippingFee = 0;
-        discountNote = '🎉 ยอดซื้อครบ 500 บาท ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
+        discountNote = '🎉 ยอดซื้อครบ 350 บาท ฟรีค่าจัดส่ง 5 กิโลเมตรแรก!';
       } else {
         const extraKm = distKm - 5;
         shippingFee = Math.ceil(extraKm * 10);
-        discountNote = `🎉 ยอดเกิน 500 บาท ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
+        discountNote = `🎉 ยอดครบ 350 บาท ฟรี 5 กม. แรก (ส่วนเกิน ${extraKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
       }
     } else {
       shippingFee = Math.ceil(distKm * 10);
-      discountNote = `💡 ยอดไม่ถึง 500 บาท คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
+      discountNote = `💡 ยอดไม่ถึง 350 บาท คิดค่าจัดส่งตามระยะทาง (${distKm.toFixed(1)} กม. × 10 บาท = ${shippingFee} บาท)`;
     }
   }
 
@@ -1814,8 +1978,13 @@ function calculateCheckoutTotal() {
       shippingFee = 0;
       couponLabel = `${appliedCoupon.code} (ส่งฟรี)`;
     } else if (appliedCoupon.type === 'percent') {
-      discountAmount = Math.round(subtotal * (appliedCoupon.percent / 100));
-      couponLabel = `${appliedCoupon.code} (-${appliedCoupon.percent}%)`;
+      let rawPercentDisc = Math.round(subtotal * (appliedCoupon.percent / 100));
+      const maxCap = Number(appliedCoupon.maxDiscount || 0);
+      if (maxCap > 0 && rawPercentDisc > maxCap) {
+        rawPercentDisc = maxCap;
+      }
+      discountAmount = Math.min(subtotal, rawPercentDisc);
+      couponLabel = `${appliedCoupon.code} (-${appliedCoupon.percent}%${maxCap > 0 ? ` สูงสุด ${maxCap} บาท` : ''})`;
     } else if (appliedCoupon.type === 'fixed') {
       discountAmount = Math.min(subtotal, appliedCoupon.amount);
       couponLabel = `${appliedCoupon.code} (-${appliedCoupon.amount} บาท)`;
@@ -2233,7 +2402,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
               },
               {
                 type: "text",
-                text: "รอตรวจสอบ",
+                text: "รอพนักงานยืนยันสินค้า",
                 size: "xs",
                 color: "#ffffff",
                 weight: "bold",
@@ -2385,7 +2554,7 @@ async function sendOrderFlexMessage(orderId, name, phone, totalPrice, cartItems 
 
     const formattedText =
       `━━━━━━━━━━━━━━━━━━━\n` +
-      `🛒  คำสั่งซื้อใหม่ (รอตรวจสอบ)\n` +
+      `🛒  คำสั่งซื้อใหม่ (รอพนักงานยืนยันสินค้า)\n` +
       `━━━━━━━━━━━━━━━━━━━\n` +
       `🧾 รหัสออเดอร์: ${orderId}\n` +
       `👤 ผู้รับ: ${name}\n` +
@@ -2468,26 +2637,64 @@ async function loadMyOrders() {
     if (displayOrders && displayOrders.length > 0) {
       ordersBody.innerHTML = '';
       displayOrders.forEach(order => {
-        let statusColor = '#aaaaaa';
-        if (order.status === 'รอตรวจสอบ') statusColor = '#f59e0b';
-        else if (order.status === 'ยืนยันแล้ว' || order.status === 'จัดส่งแล้ว' || order.status === 'กำลังจัดส่ง') statusColor = '#10b981';
-        else if (order.status === 'รอชำระเงิน') statusColor = '#3b82f6';
-        else if (order.status === 'ยกเลิก') statusColor = '#ef4444';
+        const rawStatus = String(order.status || 'รอตรวจสอบ').trim();
+        const displayStatus = normalizeCustomerOrderStatus(rawStatus);
+        let statusColor = '#64748b';
+        if (rawStatus === 'รอตรวจสอบ' || rawStatus === 'กำลังตรวจสอบออเดอร์' || rawStatus === 'รอตรวจของ') statusColor = '#f59e0b';
+        else if (rawStatus === 'รอการยืนยัน' || rawStatus === 'รอลูกค้ายืนยัน') statusColor = '#ea580c';
+        else if (rawStatus === 'รอชำระเงิน' || rawStatus === 'รอชำระ') statusColor = '#2563eb';
+        else if (rawStatus === 'ชำระเงิน' || rawStatus === 'รอตรวจสลิป' || rawStatus === 'รอตรวจเงิน') statusColor = '#0284c7';
+        else if (rawStatus === 'ชำระแล้ว' || rawStatus === 'กำลังจัดเตรียมสินค้า' || rawStatus === 'ต้องส่งรอบถัดไป' || rawStatus === 'ยืนยันแล้ว' || rawStatus === 'จัดส่งแล้ว' || rawStatus === 'กำลังจัดส่ง' || rawStatus === 'จัดส่งสำเร็จ') statusColor = '#10b981';
+        else if (rawStatus === 'ยกเลิก') statusColor = '#ef4444';
 
         const dateObj = new Date(order.timestamp);
         const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('th-TH') : order.timestamp;
         const isFav = favoriteOrderIds.some(fav => String(fav) === String(order.orderId));
 
+        // ข้อ 11: หลังจากสถานะจัดเตรียมสินค้าเป็นต้นไป ไม่ต้องแสดงรายการสินค้าให้รกหน้าจอ
+        const hideItemsStatuses = ['กำลังจัดเตรียมสินค้า', 'เตรียมออเดอร์', 'จัดเตรียมสินค้าพร้อมส่ง', 'ต้องส่งรอบถัดไป', 'ชำระแล้ว', 'กำลังจัดส่ง', 'จัดส่งแล้ว', 'จัดส่งสำเร็จ', 'ยืนยันแล้ว'];
+        const shouldHideItems = hideItemsStatuses.includes(rawStatus);
+
         let itemsHtml = '';
-        if (order.items && order.items.length > 0) {
-          itemsHtml = order.items.map(item => `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85em;">
-              <span style="color: var(--text-main); flex: 1;">${item.name}</span>
-              <span style="color: var(--text-light); width: 40px; text-align: right;">x${item.qty}</span>
+        if (!shouldHideItems) {
+          if (order.items && order.items.length > 0) {
+            itemsHtml = order.items.map(item => `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85em;">
+                <span style="color: var(--text-main); flex: 1;">${item.name}</span>
+                <span style="color: var(--text-light); width: 45px; text-align: right;">x${item.qty}</span>
+              </div>
+            `).join('');
+          } else {
+            itemsHtml = `<div style="font-size: 0.85em; color: var(--text-light);">ไม่มีรายละเอียดสินค้า</div>`;
+          }
+        }
+
+        // ข้อ 10: แสดงยอดโอนสุทธิและ QR Code สำหรับโอนเงินอย่างชัดเจนเมื่ออยู่ในสถานะรอยืนยัน/รอชำระเงิน
+        const isWaitingCustomerConfirm = (rawStatus === 'รอการยืนยัน' || rawStatus === 'รอลูกค้ายืนยัน');
+        const isWaitingPayment = (rawStatus === 'รอชำระเงิน' || rawStatus === 'รอชำระ' || rawStatus === 'ชำระเงิน');
+        const totalNum = Number(order.totalPrice || 0);
+        const qrImgUrl = `https://promptpay.io/${SHOP_PROMPTPAY_ID}/${totalNum}.png`;
+
+        let paymentActionBoxHtml = '';
+        if (isWaitingCustomerConfirm) {
+          paymentActionBoxHtml = `
+            <div style="width: 100%; margin-top: 12px; background: #fff7ed; border: 1.5px solid #fdba74; border-radius: 10px; padding: 12px;">
+              <div style="font-weight: 700; font-size: 13.5px; color: #c2410c; margin-bottom: 6px;">⚠️ ร้านค้าแจ้งปรับรายการสินค้า กรุณายืนยันออเดอร์</div>
+              <div style="font-size: 13px; color: #7c2d12; margin-bottom: 10px;">ยอดชำระสุทธิใหม่: <strong style="font-size: 16px; color: #ea580c;">${totalNum.toLocaleString()} บาท</strong></div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" onclick="window.customerConfirmModifiedOrder('${order.orderId}')" style="flex: 2; padding: 9px 12px; border-radius: 8px; border: none; background: #16a34a; color: #fff; font-weight: 700; cursor: pointer;">✅ ยืนยันรับออเดอร์ (${totalNum.toLocaleString()} บาท)</button>
+                <button type="button" onclick="window.customerCancelModifiedOrder('${order.orderId}')" style="flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #ef4444; background: #fff; color: #ef4444; font-weight: 700; cursor: pointer;">❌ ยกเลิก</button>
+              </div>
             </div>
-          `).join('');
-        } else {
-          itemsHtml = `<div style="font-size: 0.85em; color: var(--text-light);">ไม่มีรายละเอียดสินค้า</div>`;
+          `;
+        } else if (isWaitingPayment && !order.slipUrl) {
+          paymentActionBoxHtml = `
+            <div style="width: 100%; margin-top: 12px; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-weight: 700; font-size: 14px; color: #1d4ed8; margin-bottom: 4px;">💳 ยอดโอนชำระสุทธิ: <span style="font-size: 18px; color: #dc2626;">${totalNum.toLocaleString()} บาท</span></div>
+              <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">สแกน QR PromptPay (${SHOP_PROMPTPAY_ID}) แล้วส่งสลิปในแชท LINE ร้านได้เลยครับ</div>
+              <img src="${qrImgUrl}" alt="PromptPay QR" style="width: 150px; height: 150px; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 6px; margin: 0 auto; display: block;" />
+            </div>
+          `;
         }
 
         const itemsJsonStr = encodeURIComponent(JSON.stringify(order.items || []));
@@ -2497,20 +2704,24 @@ async function loadMyOrders() {
         row.style.flexDirection = 'column';
         row.style.alignItems = 'flex-start';
         row.innerHTML = `
-          <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 8px; align-items: center; gap: 8px;">
             <span style="font-weight: bold; color: var(--text-main);">${order.orderId}</span>
-            <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9em; background: ${statusColor}15; padding: 2px 8px; border-radius: 12px;">${order.status}</span>
+            <span style="color: ${statusColor}; font-weight: bold; font-size: 0.85em; background: ${statusColor}15; padding: 3px 10px; border-radius: 12px; text-align: right;">${displayStatus}</span>
           </div>
           <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.9em; color: var(--text-light);">
             <span>${dateStr}</span>
-            <span style="font-weight: 600; color: var(--primary-color);">${order.totalPrice} บาท</span>
+            <span style="font-weight: 700; color: var(--primary-color); font-size: 1.05em;">ยอดสุทธิ ${Number(order.totalPrice || 0).toLocaleString()} บาท</span>
           </div>
           
-          <!-- รายละเอียดสินค้า (Accordion style) -->
+          ${!shouldHideItems ? `
+          <!-- รายละเอียดสินค้า -->
           <div style="width: 100%; margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
             <div style="font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: #475569;">รายการสินค้า:</div>
             ${itemsHtml}
           </div>
+          ` : ''}
+
+          ${paymentActionBoxHtml}
 
           <!-- ติดตามสถานะคำสั่งซื้อแบบ Visual Timeline Stepper -->
           ${renderOrderTimeline(order.status)}
@@ -3031,7 +3242,7 @@ if (btnSubmitOrder) {
         if (!firstMissingEl) firstMissingEl = pDateEl;
       }
       if (!pTime) {
-        missingFields.push('เวลาที่ต้องการรับสินค้า (09:00 - 16:00 น.)');
+        missingFields.push('รอบเวลาจัดส่ง (09:00, 13:00 หรือ 16:30 น.)');
         if (!firstMissingEl) firstMissingEl = pTimeEl;
       }
     }
@@ -3194,7 +3405,8 @@ if (btnSubmitOrder) {
           timestamp: new Date().toISOString(),
           orderId: orderId,
           totalPrice: totals.grandTotal,
-          status: 'รอตรวจสอบ'
+          status: 'รอพนักงานยืนยันสินค้า',
+          items: orderPayload.items
         });
         localStorage.setItem('myOrdersCache', JSON.stringify(cachedOrders));
         if (typeof window.updateTrackOrdersBadge === 'function') {
@@ -3310,10 +3522,28 @@ function resetCategoryForSearch() {
 
 // === MULTI-LEVEL DYNAMIC CATEGORIES SYSTEM ===
 
-function parseProductCategory(categoryStr) {
+function parseProductCategory(categoryStr, productNameStr = '') {
   if (!categoryStr) return { parent: 'ทั่วไป', sub: 'ทั้งหมด' };
 
   const trimmed = categoryStr.trim();
+  const name = String(productNameStr || '').trim();
+
+  // พี่แอ้ ข้อ 10: แยกหมวด "เครื่องดื่มสำเร็จรูป" กับ "วัตถุดิบทำเครื่องดื่ม" ไม่ให้ปนกัน
+  if (trimmed === 'เครื่องดื่ม' || trimmed === 'เครื่องดื่มสำเร็จรูป') {
+    if (/ใบชา|ผงชา|กาแฟผสม|กาแฟผง|ครีมเทียม|น้ำเชื่อม|ไซรัป|หัวเชื้อ/.test(name) && !/กระป๋อง|ขวด|ยูเอชที|UHT|พร้อมดื่ม/i.test(name)) {
+      return { parent: 'วัตถุดิบทำเครื่องดื่ม', sub: 'ทั้งหมด' };
+    }
+    return { parent: 'เครื่องดื่มสำเร็จรูป', sub: 'ทั้งหมด' };
+  }
+
+  if (trimmed === 'วัตถุดิบทำเครื่องดื่ม') {
+    if (/น้ำดื่ม|คาราบาว|กระทิงแดง|เอ็ม-150|สปอนเซอร์|เป๊ปซี่|โค้ก|แฟนต้า|สไปรท์|โออิชิ|อิชิตัน|เย็นเย็น|แลคตาซอย|ไวตามิลค์|ดัชมิลล์|แบรนด์ซุปไก่|หงส์ทอง|แสงโสม|รวงข้าว|สุรา|เหล้า|เบียร์|สปาย/.test(name)) {
+      return { parent: 'เครื่องดื่มสำเร็จรูป', sub: 'ทั้งหมด' };
+    }
+    if (/ส้อมจิ้ม|ไม้จิ้ม|หลอด|ถุง|แก้ว|ฝาปิด|ช้อนพลาสติก/.test(name)) {
+      return { parent: 'ถุง โฟมและบรรจุภัณฑ์', sub: 'ทั้งหมด' };
+    }
+  }
 
   // Split by common separators: / or > or | or : or -
   const parts = trimmed.split(/[\/>|:-]/).map(p => p.trim());
@@ -3324,6 +3554,41 @@ function parseProductCategory(categoryStr) {
   return { parent: parts[0] || 'ทั่วไป', sub: 'ทั้งหมด' };
 }
 
+window.clearCatalogSearch = function () {
+  searchQuery = '';
+  if (searchInput) searchInput.value = '';
+  if (typeof navSearchInput !== 'undefined' && navSearchInput) navSearchInput.value = '';
+  visibleLimit = 20;
+  renderProducts();
+};
+
+window.customerConfirmModifiedOrder = async function (orderId) {
+  if (!orderId) return;
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'updateOrderStatus', orderId: orderId, status: 'รอชำระเงิน' })
+    });
+  } catch (e) {}
+  alert(`✅ ยืนยันรับออเดอร์ ${orderId} เรียบร้อยแล้ว!\nคุณลูกค้าสามารถสแกน QR Code เพื่อโอนชำระเงินได้เลยครับ`);
+  loadMyOrders();
+};
+
+window.customerCancelModifiedOrder = async function (orderId) {
+  if (!orderId) return;
+  if (!confirm(`ยืนยันการยกเลิกคำสั่งซื้อ ${orderId} ใช่หรือไม่?`)) return;
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'updateOrderStatus', orderId: orderId, status: 'ยกเลิก' })
+    });
+  } catch (e) {}
+  alert(`❌ ยกเลิกคำสั่งซื้อ ${orderId} เรียบร้อยแล้ว`);
+  loadMyOrders();
+};
+
 function initCategoryFilters() {
   const categoryTree = {
     'all': new Set()
@@ -3332,7 +3597,8 @@ function initCategoryFilters() {
   // Build tree from loaded products
   PRODUCTS.forEach(product => {
     if (product.status && String(product.status).toLowerCase() === 'inactive') return;
-    const parsed = parseProductCategory(product.category);
+    if (isPointRedemptionProduct(product)) return;
+    const parsed = parseProductCategory(product.category, product.name);
     product._parsedParent = parsed.parent;
     product._parsedSub = parsed.sub;
 
@@ -3359,11 +3625,13 @@ function initCategoryFilters() {
     iconContainer.className = 'icon-container';
     let iconEmoji = '✨';
     if (val === 'all') iconEmoji = '🛍️';
+    else if (val.includes('เครื่องดื่มสำเร็จรูป')) iconEmoji = '🧃';
     else if (val.includes('เครื่องดื่ม')) iconEmoji = '🧋';
     else if (val.includes('อาหาร') || val.includes('ปรุง')) iconEmoji = '🥘';
-    else if (val.includes('ธัญพืช')) iconEmoji = '🌾';
-    else if (val.includes('เบเกอรี่') || val.includes('ขนม')) iconEmoji = '🥐';
-    else if (val.includes('บรรจุภัณฑ์')) iconEmoji = '📦';
+    else if (val.includes('ธัญพืช') || val.includes('ข้าว')) iconEmoji = '🌾';
+    else if (val.includes('เบเกอ') || val.includes('ขนม')) iconEmoji = '🥐';
+    else if (val.includes('บรรจุภัณฑ์') || val.includes('ถุง')) iconEmoji = '📦';
+    else if (val.includes('ของใช้')) iconEmoji = '🧴';
     iconContainer.innerHTML = `<span class="icon-emoji">${iconEmoji}</span>`;
     const label = document.createElement('span');
     label.className = 'icon-label';
@@ -3709,7 +3977,7 @@ async function start() {
           <p style="color:#64748b;">กรุณารอสักครู่ ระบบกำลังจัดการคำสั่งซื้อ ${orderId}</p>
         </div>
       `;
-      const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'ชำระเงิน';
+      const statusStr = (actionParam === 'cancelOrder') ? 'ยกเลิก' : 'รอชำระเงิน';
 
       try {
         fetch(GOOGLE_SCRIPT_URL, {

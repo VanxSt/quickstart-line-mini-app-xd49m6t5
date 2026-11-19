@@ -752,8 +752,12 @@ export default {
                 const { results } = await db.prepare('SELECT * FROM orders ORDER BY timestamp DESC').all();
             const orders = (results || []).map((row) => {
               let items = [];
+              let editHistory = [];
               try {
                 if (row.items_json) items = JSON.parse(row.items_json);
+              } catch (e) { }
+              try {
+                if (row.edit_history_json) editHistory = JSON.parse(row.edit_history_json);
               } catch (e) { }
 
               return {
@@ -766,7 +770,7 @@ export default {
                 addressDetails: row.address_details,
                 slipUrl: row.slip_url,
                 totalPrice: Number(row.total_price || 0),
-                status: row.status || 'รอตรวจสอบ',
+                status: row.status || 'รอตรวจของ',
                 paymentMethod: row.payment_method || 'ปลายทาง',
                 items,
                 itemsText: row.items_text,
@@ -774,6 +778,8 @@ export default {
                 preorderTime: row.preorder_time || '',
                 shippingOption: row.shipping_option || 'จัดส่ง',
                 note: row.note || '',
+                staffName: row.staff_name || '',
+                editHistory,
               };
             });
 
@@ -794,16 +800,24 @@ export default {
 
             const orders = (results || []).map((row) => {
               let items = [];
+              let editHistory = [];
               try {
                 if (row.items_json) items = JSON.parse(row.items_json);
+              } catch (e) { }
+              try {
+                if (row.edit_history_json) editHistory = JSON.parse(row.edit_history_json);
               } catch (e) { }
               return {
                 timestamp: row.timestamp,
                 orderId: row.order_id,
                 totalPrice: Number(row.total_price || 0),
-                status: row.status || 'รอตรวจสอบ',
+                status: row.status || 'รอพนักงานยืนยันสินค้า',
+                paymentMethod: row.payment_method || 'โอนจ่าย',
+                shippingOption: row.shipping_option || 'จัดส่ง',
+                preorderTime: row.preorder_time || '',
                 slipUrl: row.slip_url || '',
                 items,
+                editHistory,
               };
             });
 
@@ -852,19 +866,104 @@ export default {
             });
           }
 
-          // Action: confirmOrder (เปิดผ่านลิงก์ LINE ใน Browser)
+          // Action: confirmOrder (เปิดผ่านลิงก์ LINE หรือกดปุ่มยืนยันในหน้าประวัติออเดอร์)
           if (action === 'confirmOrder' || url.pathname === '/confirmOrder') {
             const orderId = url.searchParams.get('orderId');
+            let order = null;
+            let qrAmount = 0;
+            let dynamicQrUrl = '';
+            let isTransferOrder = false;
+
             if (orderId) {
-              await db.prepare("UPDATE orders SET status = 'ชำระเงิน' WHERE order_id = ?").bind(orderId).run();
+              order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
+              if (order) {
+                const pm = order.payment_method || '';
+                isTransferOrder = pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม');
+                const nextStatus = isTransferOrder ? 'ชำระเงิน' : 'ต้องส่งรอบถัดไป';
+                await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(nextStatus, orderId).run();
+
+                qrAmount = Number(order.total_price || 0);
+                if (pm.includes('โอนเงินผสมเงินสด')) {
+                  const match = pm.match(/- โอน (\d+(?:\.\d+)?) บาท/);
+                  if (match && match[1]) qrAmount = Number(match[1]);
+                }
+                dynamicQrUrl = `https://promptpay.io/${env.SHOP_PROMPTPAY_ID || '0957579454'}/${qrAmount}.png`;
+
+                // ส่งแจ้งยอดโอนและ QR Code ไปยังแชท LINE ของลูกค้าทันทีเมื่อกดยืนยันออเดอร์
+                if (isTransferOrder && order.user_id && order.user_id !== 'unknown' && order.user_id !== 'web-test-user') {
+                  let items = [];
+                  try {
+                    if (order.items_json) items = JSON.parse(order.items_json);
+                  } catch (e) {}
+
+                  const pushMsgs = [
+                    buildStatusFlexMessage(
+                      '💳 ยืนยันออเดอร์แล้ว • แจ้งยอดโอนชำระ',
+                      orderId,
+                      `คุณลูกค้ายืนยันรายการสั่งซื้อเรียบร้อยแล้วครับ ยอดโอนชำระสุทธิ ฿${qrAmount.toLocaleString()} สามารถสแกน QR Code ด้านล่างเพื่อโอนเงินและแนบสลิปได้เลยครับ ✨`,
+                      '#2563eb',
+                      order.customer_name,
+                      order.phone,
+                      order.shipping_option,
+                      order.delivery_type,
+                      order.preorder_time,
+                      items,
+                      order.total_price,
+                      pm
+                    ),
+                    {
+                      type: 'image',
+                      originalContentUrl: dynamicQrUrl,
+                      previewImageUrl: dynamicQrUrl,
+                    },
+                    {
+                      type: 'text',
+                      text: `💰 ยอดโอนชำระสุทธิ: ฿${qrAmount.toLocaleString()} บาท\nเมื่อโอนเงินเรียบร้อยแล้ว กดปุ่มด้านล่างเพื่อแนบรูปสลิปส่งกลับมาในแชทนี้ได้เลยครับ 👇`,
+                      quickReply: {
+                        items: [
+                          {
+                            type: 'action',
+                            action: { type: 'cameraRoll', label: '📸 แนบสลิปจากอัลบั้ม' },
+                          },
+                          {
+                            type: 'action',
+                            action: { type: 'camera', label: '📷 ถ่ายรูปสลิป' },
+                          },
+                        ],
+                      },
+                    },
+                  ];
+
+                  if (ctx && typeof ctx.waitUntil === 'function') {
+                    ctx.waitUntil(sendLinePush(env, order.user_id, pushMsgs));
+                  } else {
+                    await sendLinePush(env, order.user_id, pushMsgs);
+                  }
+                }
+              }
             }
+
+            const paymentHtmlBlock = (order && isTransferOrder)
+              ? `
+                <div style="max-width:360px; margin:18px auto 0; background:#eff6ff; border:2px solid #93c5fd; border-radius:16px; padding:18px;">
+                  <div style="font-size:13px; color:#1e40af; font-weight:700;">💰 ยอดโอนชำระสุทธิ</div>
+                  <div style="font-size:32px; font-weight:900; color:#1d4ed8; margin:4px 0 10px;">฿${qrAmount.toLocaleString()}</div>
+                  <img src="${dynamicQrUrl}" alt="PromptPay QR" style="width:200px; height:200px; border-radius:12px; border:1px solid #bfdbfe; background:#fff; padding:6px;" />
+                  <div style="font-size:12.5px; color:#334155; margin-top:10px; line-height:1.5;">
+                    สแกน QR Code พร้อมเพย์ด้านบนเพื่อชำระเงิน<br>และส่งรูปสลิปในแชท LINE ร้านเกื้อกูลกันได้เลยครับ
+                  </div>
+                </div>
+              `
+              : `<p style="color:#16a34a; font-weight:700;">ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่องครับ 📦🚚</p>`;
+
             return htmlResponse(`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <div style="text-align:center; padding:50px 20px; font-family:sans-serif;">
+            <div style="text-align:center; padding:36px 20px; font-family:sans-serif;">
               <h1 style="color:#22c55e; font-size:48px; margin-bottom:10px;">✅</h1>
-              <h2 style="color:#22c55e; margin-top:0;">ยืนยันสำเร็จ</h2>
-              <p>ระบบได้เปลี่ยนสถานะออเดอร์ <b>${orderId || ''}</b> เป็น "ชำระเงิน" เรียบร้อยแล้วครับ</p>
-              <p style="color:#666; font-size:14px; margin-top:30px;">คุณสามารถปิดหน้านี้เพื่อกลับไปที่แชท LINE ได้เลยครับ</p>
+              <h2 style="color:#22c55e; margin-top:0;">ยืนยันรายการสั่งซื้อสำเร็จ</h2>
+              <p>ออเดอร์หมายเลข <b>${orderId || ''}</b> ได้รับการยืนยันเรียบร้อยแล้วครับ</p>
+              ${paymentHtmlBlock}
+              <p style="color:#666; font-size:14px; margin-top:24px;">ระบบได้ส่งแจ้งยอดโอนและ QR Code ไปที่แชท LINE ของคุณแล้ว สามารถปิดหน้านี้ได้เลยครับ</p>
             </div>
           `);
           }
@@ -968,6 +1067,7 @@ export default {
               amount REAL DEFAULT 0,
               percent REAL DEFAULT 0,
               min_spend REAL DEFAULT 0,
+              max_discount REAL DEFAULT 0,
               description TEXT,
               start_date TEXT,
               end_date TEXT,
@@ -977,16 +1077,20 @@ export default {
             )
           `).run();
 
+            try {
+              await db.prepare('ALTER TABLE promo_codes ADD COLUMN max_discount REAL DEFAULT 0').run();
+            } catch (e) {}
+
             // Auto-seed defaults if table is empty
             const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM promo_codes').first();
             if (!countRow || countRow.cnt === 0) {
               const seedQuery = `
-              INSERT OR IGNORE INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active)
+              INSERT OR IGNORE INTO promo_codes (code, type, amount, percent, min_spend, max_discount, description, start_date, end_date, is_active)
               VALUES 
-                ('WELCOME50', 'fixed', 50, 0, 100, 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100', '', '', 1),
-                ('FREESHIP', 'shipping', 0, 0, 0, 'ฟรีค่าจัดส่งทุกระยะทาง', '', '', 1),
-                ('KUE10', 'percent', 0, 10, 150, 'ลด 10% เมื่อสั่งซื้อขั้นต่ำ ฿150', '', '', 1),
-                ('BAKERY20', 'fixed', 20, 0, 60, 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่', '', '', 1)
+                ('WELCOME50', 'fixed', 50, 0, 100, 0, 'ส่วนลด ฿50 เมื่อสั่งซื้อขั้นต่ำ ฿100', '', '', 1),
+                ('FREESHIP', 'shipping', 0, 0, 0, 0, 'ฟรีค่าจัดส่งทุกระยะทาง', '', '', 1),
+                ('KUE10', 'percent', 0, 10, 150, 100, 'ลด 10% (สูงสุด ฿100) เมื่อสั่งซื้อขั้นต่ำ ฿150', '', '', 1),
+                ('BAKERY20', 'fixed', 20, 0, 60, 0, 'ส่วนลด ฿20 สำหรับวัตถุดิบและเบเกอรี่', '', '', 1)
             `;
               await db.prepare(seedQuery).run();
             }
@@ -1042,7 +1146,7 @@ export default {
                     let order = await db
                       .prepare(`
                       SELECT order_id, status, customer_name FROM orders 
-                      WHERE user_id = ? AND status IN ('ชำระเงิน', 'รอชำระเงิน', 'รอตรวจสอบ', 'กำลังตรวจสอบออเดอร์')
+                      WHERE user_id = ? AND status IN ('ชำระเงิน', 'รอชำระเงิน', 'รอชำระ', 'รอตรวจสลิป', 'รอตรวจสอบ', 'รอตรวจของ', 'กำลังตรวจสอบออเดอร์')
                       ORDER BY timestamp DESC LIMIT 1
                     `)
                       .bind(userId)
@@ -1104,7 +1208,7 @@ export default {
                                   },
                                   {
                                     type: 'text',
-                                    text: 'แอดมินกำลังตรวจสอบยอดเงินและจัดเตรียมออเดอร์ให้ทันทีครับ รอรับของอร่อยได้เลย! 🧑‍🍳🛵',
+                                    text: 'แอดมินกำลังตรวจสอบยอดเงินและทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่องครับ 📦🚚',
                                     size: 'xs',
                                     wrap: true,
                                     color: '#64748b',
@@ -1153,10 +1257,10 @@ export default {
                             // URL รูปภาพสลิปของ Cloudflare Worker
                             const slipUrl = `${url.origin}/api/orders/${order.order_id}/slip`;
 
-                            // อัปเดตตาราง orders
+                            // อัปเดตตาราง orders เป็นสถานะ รอตรวจสลิป
                             await db
                               .prepare(`
-                              UPDATE orders SET slip_url = ?, status = 'ชำระเงิน' WHERE order_id = ?
+                              UPDATE orders SET slip_url = ?, status = 'รอตรวจสลิป' WHERE order_id = ?
                             `)
                               .bind(slipUrl, order.order_id)
                               .run();
@@ -1194,8 +1298,71 @@ export default {
                 const pbOrderId = params.get('orderId');
 
                 if (pbOrderId && (pbAction === 'cancelOrder' || pbAction === 'confirmOrder')) {
-                  const newStatus = pbAction === 'cancelOrder' ? 'ยกเลิก' : 'ชำระเงิน';
-                  await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(newStatus, pbOrderId).run();
+                  if (pbAction === 'cancelOrder') {
+                    await db.prepare("UPDATE orders SET status = 'ยกเลิก' WHERE order_id = ?").bind(pbOrderId).run();
+                    if (ev.replyToken) {
+                      await sendLineReply(env, ev.replyToken, [
+                        { type: 'text', text: `❌ ยกเลิกออเดอร์ ${pbOrderId} เรียบร้อยแล้วครับ` }
+                      ]);
+                    }
+                  } else {
+                    const ord = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(pbOrderId).first();
+                    const pm = (ord && ord.payment_method) ? ord.payment_method : '';
+                    const isTransfer = pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม');
+                    const nextStatus = isTransfer ? 'ชำระเงิน' : 'ต้องส่งรอบถัดไป';
+                    await db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').bind(nextStatus, pbOrderId).run();
+
+                    if (ord && isTransfer) {
+                      let items = [];
+                      try { if (ord.items_json) items = JSON.parse(ord.items_json); } catch (e) {}
+                      let qrAmount = Number(ord.total_price || 0);
+                      if (pm.includes('โอนเงินผสมเงินสด')) {
+                        const match = pm.match(/- โอน (\d+(?:\.\d+)?) บาท/);
+                        if (match && match[1]) qrAmount = Number(match[1]);
+                      }
+                      const dynamicQrUrl = `https://promptpay.io/${env.SHOP_PROMPTPAY_ID || '0957579454'}/${qrAmount}.png`;
+                      const replyMsgs = [
+                        buildStatusFlexMessage(
+                          '💳 ยืนยันออเดอร์แล้ว • แจ้งยอดโอนชำระ',
+                          pbOrderId,
+                          `คุณลูกค้ายืนยันรายการสั่งซื้อเรียบร้อยแล้วครับ ยอดโอนชำระสุทธิ ฿${qrAmount.toLocaleString()} สามารถโอนเงินตาม QR Code ด้านล่างนี้ แล้วแนบสลิปมาได้เลยครับ ✨`,
+                          '#2563eb',
+                          ord.customer_name,
+                          ord.phone,
+                          ord.shipping_option,
+                          ord.delivery_type,
+                          ord.preorder_time,
+                          items,
+                          ord.total_price,
+                          pm
+                        ),
+                        {
+                          type: 'image',
+                          originalContentUrl: dynamicQrUrl,
+                          previewImageUrl: dynamicQrUrl,
+                        },
+                        {
+                          type: 'text',
+                          text: `💰 ยอดโอนชำระสุทธิ: ฿${qrAmount.toLocaleString()} บาท\nเมื่อโอนเงินเรียบร้อยแล้ว กดปุ่มด้านล่างเพื่อเลือกรูปสลิปส่งกลับมาในแชทนี้ได้ทันทีครับ 👇`,
+                          quickReply: {
+                            items: [
+                              { type: 'action', action: { type: 'cameraRoll', label: '📸 แนบสลิปจากอัลบั้ม' } },
+                              { type: 'action', action: { type: 'camera', label: '📷 ถ่ายรูปสลิป' } },
+                            ],
+                          },
+                        },
+                      ];
+                      if (ev.replyToken) {
+                        await sendLineReply(env, ev.replyToken, replyMsgs);
+                      } else if (ord.user_id) {
+                        await sendLinePush(env, ord.user_id, replyMsgs);
+                      }
+                    } else if (ev.replyToken) {
+                      await sendLineReply(env, ev.replyToken, [
+                        { type: 'text', text: `✅ ยืนยันออเดอร์ ${pbOrderId} เรียบร้อยแล้วครับ ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่องครับ 📦🚚` }
+                      ]);
+                    }
+                  }
                 }
               }
             }
@@ -1246,7 +1413,7 @@ export default {
             if (finalSlipUrl) {
               await db
                 .prepare(`
-                UPDATE orders SET slip_url = ?, status = CASE WHEN status IN ('รอชำระเงิน', 'รอตรวจสอบ') THEN 'ชำระเงิน' ELSE status END 
+                UPDATE orders SET slip_url = ?, status = CASE WHEN status IN ('รอชำระเงิน', 'รอชำระ', 'ชำระเงิน', 'รอตรวจสอบ', 'รอตรวจของ', 'รอลูกค้ายืนยัน', 'รอการยืนยัน') THEN 'รอตรวจสลิป' ELSE status END 
                 WHERE order_id = ?
               `)
                 .bind(finalSlipUrl, orderId)
@@ -1566,7 +1733,7 @@ export default {
             const pm = order.payment_method || '';
 
             if (
-              (status === 'ชำระเงิน' || status === 'รอชำระเงิน') &&
+              (status === 'ชำระเงิน' || status === 'รอชำระเงิน' || status === 'รอชำระ') &&
               (pm.includes('โอน') || pm.includes('บัญชีธนาคาร') || pm.includes('ผสม'))
             ) {
               messages.push(
@@ -1602,7 +1769,7 @@ export default {
               // Quick Reply ให้ลูกค้ากดแนบสลิปจากอัลบั้มหรือกล้อง
               messages.push({
                 type: 'text',
-                text: '💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇',
+                text: `💰 ยอดโอนชำระสุทธิ: ฿${qrAmount.toLocaleString()} บาท\n💡 เมื่อโอนเงินเรียบร้อยแล้ว สามารถกดปุ่มด้านล่างนี้เพื่อเลือกรูปสลิปจากอัลบั้ม หรือถ่ายรูปส่งกลับมาในแชทนี้ได้ทันทีครับ ระบบจะบันทึกสลิปให้อัตโนมัติครับ 👇`,
                 quickReply: {
                   items: [
                     {
@@ -1622,12 +1789,12 @@ export default {
                   ],
                 },
               });
-            } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง') {
+            } else if (status === 'กำลังจัดเตรียมสินค้า' || status === 'เตรียมออเดอร์' || status === 'จัดเตรียมสินค้าพร้อมส่ง' || status === 'ต้องส่งรอบถัดไป' || status === 'ชำระแล้ว') {
               messages.push(
                 buildStatusFlexMessage(
-                  '📦 กำลังจัดเตรียมสินค้า',
+                  '📦 กำลังจัดเตรียมและแพ็คสินค้า',
                   orderId,
-                  'แอดมินกำลังจัดเตรียมออเดอร์ให้คุณลูกค้าอย่างตั้งใจครับ รอรับความอร่อยได้เลย! 🧑‍🍳✨',
+                  'ทางร้านกำลังจัดเตรียมและแพ็คสินค้าของคุณลงกล่องเพื่อเตรียมจัดส่งในรอบถัดไปครับ 📦🚚',
                   '#f59e0b',
                   order.customer_name,
                   order.phone,
@@ -1644,7 +1811,7 @@ export default {
                 buildStatusFlexMessage(
                   '🚚 สินค้าอยู่ระหว่างจัดส่ง',
                   orderId,
-                  'พี่ไรเดอร์กำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนครับ 😊🛵',
+                  'พนักงานจัดส่งกำลังนำสินค้าส่งตรงไปถึงคุณลูกค้าแล้วครับ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🏪🚚',
                   '#8b5cf6',
                   order.customer_name,
                   order.phone,
@@ -1661,7 +1828,7 @@ export default {
                 buildStatusFlexMessage(
                   '🎉 จัดส่งสินค้าสำเร็จเรียบร้อย',
                   orderId,
-                  'สินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ทานให้อร่อยนะค้าบ! ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🥰❤️',
+                  'จัดส่งสินค้าถึงมือคุณลูกค้าเรียบร้อยแล้ว ขอบคุณที่อุดหนุนร้านเกื้อกูลกันครับ 🏪📦❤️',
                   '#16a34a',
                   order.customer_name,
                   order.phone,
@@ -1703,9 +1870,24 @@ export default {
             return jsonResponse({ status: 'success' });
           }
 
+          // 3.5 Action: updateOrderStaff (บันทึกชื่อพนักงานผู้ดูแลออเดอร์)
+          if (postAction === 'updateOrderStaff' || url.pathname === '/api/orders/staff') {
+            const { orderId, staffName } = postData;
+            if (!orderId) {
+              return jsonResponse({ status: 'error', message: 'Missing orderId' }, 400);
+            }
+            try {
+              await db.prepare('ALTER TABLE orders ADD COLUMN staff_name TEXT DEFAULT ""').run();
+            } catch (e) {}
+            try {
+              await db.prepare('UPDATE orders SET staff_name = ? WHERE order_id = ?').bind(staffName || '', orderId).run();
+            } catch (e) {}
+            return jsonResponse({ status: 'success', orderId, staffName });
+          }
+
           // 4. Action: updateOrderItems OR POST /api/orders/items
           if (postAction === 'updateOrderItems' || url.pathname === '/api/orders/items') {
-            const { orderId, items, totalPrice, changeNote } = postData;
+            const { orderId, items, totalPrice, changeNote, staffName, editHistory } = postData;
             const order = await db.prepare('SELECT * FROM orders WHERE order_id = ?').bind(orderId).first();
             if (!order) {
               return jsonResponse({ status: 'error', message: 'Order not found' }, 404);
@@ -1715,23 +1897,40 @@ export default {
             const itemsText = newItems.map((it) => `${it.name} x${it.qty}`).join(', ');
             const itemsJson = JSON.stringify(newItems);
             const newTotal = Number(totalPrice || 0);
+            const editHistoryJson = Array.isArray(editHistory) ? JSON.stringify(editHistory) : (order.edit_history_json || '[]');
 
-            await db
-              .prepare(
-                "UPDATE orders SET items_text = ?, items_json = ?, total_price = ?, status = 'รอการยืนยัน' WHERE order_id = ?"
-              )
-              .bind(itemsText, itemsJson, newTotal, orderId)
-              .run();
+            try {
+              await db.prepare('ALTER TABLE orders ADD COLUMN staff_name TEXT DEFAULT ""').run();
+            } catch (e) {}
+            try {
+              await db.prepare('ALTER TABLE orders ADD COLUMN edit_history_json TEXT DEFAULT "[]"').run();
+            } catch (e) {}
+
+            try {
+              await db
+                .prepare(
+                  "UPDATE orders SET items_text = ?, items_json = ?, total_price = ?, status = 'รอลูกค้ายืนยัน', staff_name = COALESCE(NULLIF(?, ''), staff_name), edit_history_json = ? WHERE order_id = ?"
+                )
+                .bind(itemsText, itemsJson, newTotal, staffName || '', editHistoryJson, orderId)
+                .run();
+            } catch (e) {
+              await db
+                .prepare(
+                  "UPDATE orders SET items_text = ?, items_json = ?, total_price = ?, status = 'รอลูกค้ายืนยัน' WHERE order_id = ?"
+                )
+                .bind(itemsText, itemsJson, newTotal, orderId)
+                .run();
+            }
 
             // แจ้งเตือนลูกค้าพร้อมปุ่ม Postback ให้กดยืนยันหรือยกเลิก
             if (order.user_id && order.user_id !== 'unknown' && order.user_id !== 'web-test-user') {
-              let bodyText = 'ทางร้านได้อัปเดตราคาสินค้า/จำนวนเรียบร้อยแล้วครับ';
+              let bodyText = 'ทางร้านได้อัปเดตรายการสินค้า/จำนวนเรียบร้อยแล้วครับ กรุณาตรวจสอบและกดยืนยันรับออเดอร์เพื่อดำเนินการชำระเงินต่อครับ';
               if (changeNote && changeNote.trim()) {
-                bodyText += ` (หมายเหตุ: ${changeNote.trim()})`;
+                bodyText += ` (เหตุผล: ${changeNote.trim()})`;
               }
 
               const flexMsg = buildStatusFlexMessage(
-                '✏️ แจ้งปรับเปลี่ยนออเดอร์',
+                '✏️ แจ้งปรับเปลี่ยนออเดอร์ (รอลูกค้ายืนยัน)',
                 orderId,
                 bodyText,
                 '#0f766e',
@@ -1750,11 +1949,11 @@ export default {
                 altText: 'กรุณายืนยันการเปลี่ยนแปลงออเดอร์',
                 template: {
                   type: 'buttons',
-                  text: 'คุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?',
+                  text: `ยอดสุทธิใหม่: ฿${newTotal.toLocaleString()} บาท\nคุณลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้หรือไม่ครับ?`,
                   actions: [
                     {
                       type: 'postback',
-                      label: '✅ ยืนยันรายการสั่งซื้อ',
+                      label: '✅ ยืนยัน & รับ QR โอนเงิน',
                       data: `action=confirmOrder&orderId=${orderId}`,
                       displayText: 'ลูกค้ายืนยันรับออเดอร์ที่แก้ไขนี้ครับ',
                     },
@@ -1990,6 +2189,7 @@ export default {
               amount REAL DEFAULT 0,
               percent REAL DEFAULT 0,
               min_spend REAL DEFAULT 0,
+              max_discount REAL DEFAULT 0,
               description TEXT,
               start_date TEXT,
               end_date TEXT,
@@ -1999,23 +2199,29 @@ export default {
             )
           `).run();
 
+            try {
+              await db.prepare('ALTER TABLE promo_codes ADD COLUMN max_discount REAL DEFAULT 0').run();
+            } catch (e) {}
+
             const type = postData.type || 'fixed'; // fixed, percent, shipping
             const amount = Number(postData.amount) || 0;
             const percent = Number(postData.percent) || 0;
             const minSpend = Number(postData.minSpend || postData.min_spend) || 0;
+            const maxDiscount = Number(postData.maxDiscount || postData.max_discount) || 0;
             const description = (postData.description || '').trim();
             const startDate = (postData.startDate || postData.start_date || '').trim();
             const endDate = (postData.endDate || postData.end_date || '').trim();
             const isActive = (postData.isActive !== undefined ? (postData.isActive ? 1 : 0) : (postData.is_active !== undefined ? (postData.is_active ? 1 : 0) : 1));
 
             const query = `
-            INSERT INTO promo_codes (code, type, amount, percent, min_spend, description, start_date, end_date, is_active, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO promo_codes (code, type, amount, percent, min_spend, max_discount, description, start_date, end_date, is_active, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(code) DO UPDATE SET
               type = excluded.type,
               amount = excluded.amount,
               percent = excluded.percent,
               min_spend = excluded.min_spend,
+              max_discount = excluded.max_discount,
               description = excluded.description,
               start_date = excluded.start_date,
               end_date = excluded.end_date,
@@ -2023,7 +2229,7 @@ export default {
               updated_at = CURRENT_TIMESTAMP
           `;
 
-            await db.prepare(query).bind(rawCode, type, amount, percent, minSpend, description, startDate, endDate, isActive).run();
+            await db.prepare(query).bind(rawCode, type, amount, percent, minSpend, maxDiscount, description, startDate, endDate, isActive).run();
             return jsonResponse({ status: 'success', message: 'บันทึกโค้ดส่วนลดเรียบร้อย', code: rawCode });
           }
 
